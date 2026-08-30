@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/runtime/server.js",
     "db:migrate": "npm run build && node dist/db/migrate.js",
     "db:verify": "npm run build && node dist/db/verify-railway.js"
   },
