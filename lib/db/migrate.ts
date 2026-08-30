@@ -1,8 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { runTrial1FoundationMigration } from "./migration-runner.js";
 import { createPgPool } from "./pg-adapter.js";
-
-const MIGRATION_ID = "0001_trial1_foundation";
-const MIGRATION_PATH = new URL("../../db/migrations/0001_trial1_foundation.sql", import.meta.url);
 
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
@@ -11,31 +8,10 @@ async function main(): Promise<void> {
   }
 
   const pool = createPgPool(connectionString);
-  const client = await pool.connect();
-
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        id text PRIMARY KEY,
-        applied_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-
-    const existing = await client.query<{ id: string }>(
-      "SELECT id FROM schema_migrations WHERE id = $1",
-      [MIGRATION_ID],
-    );
-
-    if (existing.rows.length > 0) {
-      process.stdout.write(`${MIGRATION_ID}: already applied\n`);
-      return;
-    }
-
-    const sql = await readFile(MIGRATION_PATH, "utf8");
-    await client.query(sql);
-    process.stdout.write(`${MIGRATION_ID}: applied\n`);
+    const result = await runTrial1FoundationMigration(pool);
+    process.stdout.write(`0001_trial1_foundation: ${result}\n`);
   } finally {
-    client.release();
     await pool.end();
   }
 }
