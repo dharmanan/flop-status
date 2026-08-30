@@ -10,14 +10,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "db:migrate": "npm run build && node dist/db/migrate.js",
+    "db:verify": "npm run build && node dist/db/verify-railway.js"
   },
   "dependencies": {
     "canonicalize": "^4.0.0",
+    "pg": "8.23.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
+    "@types/pg": "8.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
