@@ -33,8 +33,6 @@ async function main(): Promise<void> {
 
     const sql = await readFile(MIGRATION_PATH, "utf8");
     await client.query(sql);
-
-    await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [MIGRATION_ID]);
     process.stdout.write(`${MIGRATION_ID}: applied\n`);
   } finally {
     client.release();
