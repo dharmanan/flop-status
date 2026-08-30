@@ -188,7 +188,7 @@ The hidden context contains deterministic verifier ground truth and is never ret
 
 PostgreSQL cannot use `now()` inside a stable partial unique index predicate.
 
-Therefore the application must serialize issuance and perform an explicit active challenge query inside a transaction.
+Therefore the application must serialize issuance and perform an explicit active challenge query inside a transaction. This remains the primary concurrency mechanism.
 
 Recommended lock key is the tuple:
 
@@ -199,6 +199,22 @@ A PostgreSQL advisory transaction lock or a dedicated lock row can be used.
 The application then queries for `state = 'ISSUED'` and checks expiry using server time before creating another challenge.
 
 Expired rows should be transitioned to `EXPIRED` before a replacement challenge is inserted.
+
+### Defense in depth: partial unique index
+
+A partial unique index enforces the same invariant at the storage layer, independent of application correctness:
+
+```sql
+CREATE UNIQUE INDEX idx_challenges_one_active_per_agent_trial
+  ON challenge_instances (agent_id, trial_definition_id)
+  WHERE state = 'ISSUED';
+```
+
+Its predicate only references `state`, never `now()` or `expires_at`, so it stays a valid immutable partial index.
+
+This index cannot decide whether an existing `ISSUED` row is expired — that judgment still requires server time and stays the application's responsibility, inside the advisory-locked transaction described above. What the index guarantees is narrower and unconditional: PostgreSQL itself refuses a second `ISSUED` row for the same `agent_id` and `trial_definition_id`, even if application logic has a bug or the advisory lock is somehow bypassed. Because the application always transitions a stale `ISSUED` row to `EXPIRED` before inserting its replacement, a correct issuance flow never conflicts with this index; an incorrect one fails loudly with a constraint violation instead of silently creating two active challenges.
+
+The advisory transaction lock is not redundant with this index: it is what allows the expire-then-insert sequence to happen safely as one atomic step in the first place. The index is a backstop, not a replacement.
 
 ## submissions
 
