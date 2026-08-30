@@ -129,3 +129,18 @@ export const trial1SignedSubmissionEnvelopeSchema = z
   .strict();
 
 export type Trial1SignedSubmissionEnvelope = z.infer<typeof trial1SignedSubmissionEnvelopeSchema>;
+
+// Hidden verifier context: generated alongside the public challenge payload,
+// persisted separately, and never exposed through any public challenge API.
+export const trial1CaseClassSchema = z.enum(["VALID_SIGNATURE", "INVALID_SIGNATURE"]);
+
+export type Trial1CaseClass = z.infer<typeof trial1CaseClassSchema>;
+
+export const trial1HiddenVerifierContextSchema = z
+  .object({
+    expected_valid: z.boolean(),
+    case_class: trial1CaseClassSchema,
+  })
+  .strict();
+
+export type Trial1HiddenVerifierContext = z.infer<typeof trial1HiddenVerifierContextSchema>;
