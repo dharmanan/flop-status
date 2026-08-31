@@ -16,16 +16,6 @@ import {
   type PublicServerKey,
 } from "../verification/public-verification-service.js";
 import {
-  PUBLIC_AGENT_CSS,
-  PUBLIC_AGENT_PAGE,
-  PUBLIC_AGENT_SCRIPT,
-} from "./agent-page.js";
-import {
-  PUBLIC_VERIFICATION_CSS,
-  PUBLIC_VERIFICATION_SCRIPT,
-  renderPublicVerificationPage,
-} from "./public-verification-page.js";
-import {
   Trial1ApiRequestError,
   Trial1VerificationUnknownError,
 } from "./trial1-api-service.js";
@@ -74,14 +64,6 @@ const API_HEADERS = {
   "access-control-allow-headers": "content-type",
 } as const;
 
-const PAGE_HEADERS = {
-  "content-type": "text/html; charset=utf-8",
-  "cache-control": "no-store",
-  "x-content-type-options": "nosniff",
-  "referrer-policy": "no-referrer",
-  "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-} as const;
-
 class RequestBodyError extends Error {
   constructor(
     readonly code: "INVALID_JSON" | "PAYLOAD_TOO_LARGE",
@@ -100,29 +82,6 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 
 function apiError(response: ServerResponse, status: number, code: string, message: string, requestId: string): void {
   json(response, status, { error: { code, message, request_id: requestId } });
-}
-
-function html(response: ServerResponse, status: number, body: string): void {
-  response.writeHead(status, PAGE_HEADERS);
-  response.end(body);
-}
-
-function script(response: ServerResponse, body: string): void {
-  response.writeHead(200, {
-    "content-type": "text/javascript; charset=utf-8",
-    "cache-control": "public, max-age=3600",
-    "x-content-type-options": "nosniff",
-  });
-  response.end(body);
-}
-
-function css(response: ServerResponse, body: string): void {
-  response.writeHead(200, {
-    "content-type": "text/css; charset=utf-8",
-    "cache-control": "public, max-age=3600",
-    "x-content-type-options": "nosniff",
-  });
-  response.end(body);
 }
 
 async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<{ value: unknown; bytes: number }> {
@@ -176,31 +135,6 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       json(response, 200, { status: "ok", database: "ready", migrations: deps.health });
       return;
     }
-    if (request.method === "GET" && path === "/") {
-      response.writeHead(302, { location: "/agent", "cache-control": "no-store" });
-      response.end();
-      return;
-    }
-    if (request.method === "GET" && path === "/agent") {
-      html(response, 200, PUBLIC_AGENT_PAGE);
-      return;
-    }
-    if (request.method === "GET" && path === "/assets/agent.js") {
-      script(response, PUBLIC_AGENT_SCRIPT);
-      return;
-    }
-    if (request.method === "GET" && path === "/assets/agent.css") {
-      css(response, PUBLIC_AGENT_CSS);
-      return;
-    }
-    if (request.method === "GET" && path === "/assets/verify.js") {
-      script(response, PUBLIC_VERIFICATION_SCRIPT);
-      return;
-    }
-    if (request.method === "GET" && path === "/assets/verify.css") {
-      css(response, PUBLIC_VERIFICATION_CSS);
-      return;
-    }
     if (request.method === "GET" && path === "/api/v1/server-keys") {
       json(response, 200, { keys: await deps.publicVerification.getServerKeys() });
       return;
@@ -235,6 +169,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       json(response, 201, await deps.trial1Api.createChallenge(body.value));
       return;
     }
+
     const challengeMatch = path.match(/^\/api\/v1\/challenges\/([^/]+)$/);
     if (request.method === "GET" && challengeMatch) {
       const state = await deps.trial1Api.getChallenge(challengeMatch[1] ?? "");
@@ -245,12 +180,14 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       json(response, 200, state);
       return;
     }
+
     const submissionMatch = path.match(/^\/api\/v1\/challenges\/([^/]+)\/submissions$/);
     if (request.method === "POST" && submissionMatch) {
       const body = await readJsonBody(request, MAX_SUBMISSION_BODY_BYTES);
       json(response, 200, await deps.trial1Api.submitChallenge(submissionMatch[1] ?? "", body.value, body.bytes));
       return;
     }
+
     const receiptMatch = path.match(/^\/api\/v1\/receipts\/([^/]+)$/);
     if (request.method === "GET" && receiptMatch) {
       const receipt = await deps.publicVerification.getReceipt(receiptMatch[1] ?? "");
@@ -261,6 +198,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       json(response, 200, { receipt });
       return;
     }
+
     const verificationMatch = path.match(/^\/api\/v1\/verification\/([^/]+)$/);
     if (request.method === "GET" && verificationMatch) {
       const verification = await deps.publicVerification.getVerification(verificationMatch[1] ?? "");
@@ -271,21 +209,8 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       json(response, 200, verification);
       return;
     }
-    const pageMatch = path.match(/^\/verify\/([^/]+)$/);
-    if (request.method === "GET" && pageMatch) {
-      const verification = await deps.publicVerification.getVerification(pageMatch[1] ?? "");
-      if (!verification) {
-        html(response, 404, "<!doctype html><title>Receipt not found</title><p>Receipt not found.</p>");
-        return;
-      }
-      html(response, 200, renderPublicVerificationPage(verification));
-      return;
-    }
-    if (path.startsWith("/api/")) {
-      apiError(response, 404, "NOT_FOUND", "Route not found.", requestId);
-      return;
-    }
-    html(response, 404, "<!doctype html><title>Not found</title><p>Not found.</p>");
+
+    apiError(response, 404, "NOT_FOUND", "Route not found.", requestId);
   } catch (error) {
     if (error instanceof RequestBodyError) {
       apiError(response, error.status, error.code, error.message, requestId);
