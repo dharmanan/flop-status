@@ -1,12 +1,15 @@
 import { z } from "zod";
-import { issueEd25519SignatureChallenge } from "../challenges/issuance-service.js";
+import {
+  issueCapabilityChallenge,
+} from "../challenges/issuance-service.js";
 import type { ChallengeIssuanceRepository } from "../db/challenge-repository.js";
 import type { ChallengeStateRepository } from "../db/challenge-state-repository.js";
 import type { Trial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
 import type { SubmissionAcceptanceRepository } from "../db/submission-repository.js";
 import type { AttestationSigner } from "../receipts/receipt.js";
-import { acceptTrial1SignedSubmission } from "../submissions/submission-service.js";
-import { TRIAL_ID } from "../trials/ed25519-signature-verification/constants.js";
+import { acceptCapabilitySignedSubmission } from "../submissions/submission-service.js";
+import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
+import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import {
   FinalizationUnknownError,
   finalizeTrial1WithUnknownRecovery,
@@ -17,7 +20,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const createChallengeSchema = z
   .object({
     agent_did: z.string().min(1),
-    trial_id: z.literal(TRIAL_ID),
+    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID]),
   })
   .strict();
 
@@ -38,7 +41,7 @@ export class Trial1VerificationUnknownError extends Error {
   }
 }
 
-export interface Trial1ApiDependencies {
+export interface CapabilityApiDependencies {
   challengeRepository: ChallengeIssuanceRepository;
   challengeStateRepository: ChallengeStateRepository;
   submissionRepository: SubmissionAcceptanceRepository;
@@ -46,8 +49,15 @@ export interface Trial1ApiDependencies {
   signer: AttestationSigner;
 }
 
-export class Trial1ApiService {
-  constructor(private readonly deps: Trial1ApiDependencies) {}
+export type Trial1ApiDependencies = CapabilityApiDependencies;
+
+/**
+ * Shared public capability API service. The legacy file/class alias remains so
+ * accepted Trial 1 imports do not break while the runtime now dispatches by
+ * trial id through the same persistence/evidence engine.
+ */
+export class CapabilityApiService {
+  constructor(private readonly deps: CapabilityApiDependencies) {}
 
   async createChallenge(body: unknown) {
     const parsed = createChallengeSchema.safeParse(body);
@@ -57,8 +67,8 @@ export class Trial1ApiService {
         parsed.error.issues.map((issue) => issue.message).join("; "),
       );
     }
-    const issued = await issueEd25519SignatureChallenge(
-      { agentDid: parsed.data.agent_did },
+    const issued = await issueCapabilityChallenge(
+      { agentDid: parsed.data.agent_did, trialId: parsed.data.trial_id },
       { repository: this.deps.challengeRepository },
     );
     return { challenge: issued.publicPayload, challenge_hash: issued.challengeHash };
@@ -76,7 +86,7 @@ export class Trial1ApiService {
       throw new Trial1ApiRequestError("INVALID_CHALLENGE_ID", "challenge id must be a lowercase UUID");
     }
 
-    await acceptTrial1SignedSubmission(
+    await acceptCapabilitySignedSubmission(
       { challengeId, envelope, bodyByteLength },
       { repository: this.deps.submissionRepository },
     );
@@ -107,3 +117,5 @@ export class Trial1ApiService {
     }
   }
 }
+
+export class Trial1ApiService extends CapabilityApiService {}
