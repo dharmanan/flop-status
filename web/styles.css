@@ -40,7 +40,6 @@ label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
 .alternate-methods { margin-top: 24px; border-top: 1px solid #2c2c2c; padding-top: 16px; }
 .alternate-methods > summary, .backup-option > summary, .technical-details > summary { cursor: pointer; color: #d8d8d8; }
 .alternate-block { margin-top: 18px; padding-top: 18px; border-top: 1px solid #252525; }
-.advanced-block { opacity: .86; }
 .file-name { margin-top: 8px; min-height: 20px; font-size: 12px; opacity: .55; overflow-wrap: anywhere; }
 .seed-gate { margin-top: 8px; }
 .key-box { border: 1px solid #333; background: #151515; border-radius: 12px; padding: 14px; }
@@ -50,7 +49,10 @@ label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
 .seed-confirm { margin-top: 22px; }
 .trial-entry { margin-top: 8px; }
 .identity-summary { padding-bottom: 18px; }
-.payload-box { min-height: 220px; resize: vertical; font-size: 12px; }
+.external-api-note { max-width: 720px; border: 1px solid #2d2d2d; background: #151515; border-radius: 12px; padding: 14px 16px; line-height: 1.55; opacity: .72; }
+.lang-copy { display: none; }
+html[lang="en"] .en-copy { display: inline; }
+html[lang="tr"] .tr-copy { display: inline; }
 .capability { padding: 12px 0; border-bottom: 1px solid #292929; overflow-wrap: anywhere; }
 .receipt { display: inline-block; margin-top: 18px; color: inherit; }
 .technical-details { border-top: 1px solid #2c2c2c; padding: 18px 0 0; margin-top: 6px; opacity: .82; }
