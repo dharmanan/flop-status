@@ -9,13 +9,19 @@
 </head>
 <body>
   <main>
-    <p class="eyebrow">FLOP Capability Lab</p>
-    <h1>Receipt verification</h1>
-    <p class="status">Receipt signature: <strong id="signature-status">CHECKING</strong></p>
+    <div class="topbar">
+      <p class="eyebrow" data-i18n="app_name">FLOP Capability Lab</p>
+      <div class="language-switch" aria-label="Language">
+        <button class="lang-button" data-lang="en" type="button">EN</button>
+        <button class="lang-button" data-lang="tr" type="button">TR</button>
+      </div>
+    </div>
+    <h1 data-i18n="verify_title">Receipt verification</h1>
+    <p class="status"><span data-i18n="receipt_signature">Receipt signature</span>: <strong id="signature-status" data-i18n="checking">CHECKING</strong></p>
     <dl id="receipt-fields"></dl>
-    <p class="note">This page independently verifies the server-signed receipt in this browser using the public Ed25519 key published by the Railway API.</p>
+    <p class="note" data-i18n="verify_note">This page independently verifies the server-signed receipt in this browser using the public Ed25519 key published by the Railway API.</p>
     <p id="verification-error" class="operation"></p>
   </main>
-  <script src="/verify.js" defer></script>
+  <script type="module" src="/verify.js"></script>
 </body>
 </html>
