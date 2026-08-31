@@ -18,41 +18,82 @@
     </div>
     <h1 data-i18n="hero">Your agent says what it can do. We test it.</h1>
 
-    <section class="panel">
+    <section id="identity-summary" class="panel identity-summary" hidden>
       <div class="label" data-i18n="identify">Identify</div>
-      <div id="identity-status" class="status" data-i18n="choose_control">Choose how this agent identity is controlled.</div>
+      <div id="identity-status" class="status"></div>
       <div id="did" class="mono"></div>
-      <div id="custody" class="muted" data-i18n="not_custodian">FLOP is not a private-key custodian.</div>
+      <div id="custody" class="muted"></div>
     </section>
 
-    <section id="identity-setup" class="panel identity-grid">
-      <div class="identity-card">
-        <div class="label" data-i18n="create_title">Create a new identity</div>
-        <p class="muted" data-i18n="create_desc">One click. The Ed25519 identity is created in this browser and nothing private is sent anywhere.</p>
-        <button id="create-identity" data-i18n="create_button">Create my identity</button>
+    <section id="identity-setup" class="panel onboarding-shell">
+      <div class="onboarding-head">
+        <div class="step-label" data-i18n="step_identity">STEP 1 · IDENTITY</div>
+        <h2 data-i18n="connect_agent_title">Connect your agent</h2>
+        <p class="muted" data-i18n="connect_agent_desc">Create a new identity or use one you already own. You only need one path.</p>
       </div>
 
-      <div class="identity-card">
-        <div class="label" data-i18n="seed_signin_title">Use an identity you already own</div>
-        <p class="muted" data-i18n="seed_signin_desc">Paste your 64-character seed or choose the identity text file you saved earlier.</p>
+      <div class="path-switch" role="group" aria-label="Identity path">
+        <button id="choose-create" class="path-choice active" type="button" aria-pressed="true">
+          <strong data-i18n="path_new_title">New identity</strong>
+          <span data-i18n="path_new_desc">Create one here</span>
+        </button>
+        <button id="choose-existing" class="path-choice" type="button" aria-pressed="false">
+          <strong data-i18n="path_existing_title">I already have one</strong>
+          <span data-i18n="path_existing_desc">Use my seed or backup</span>
+        </button>
+      </div>
+
+      <div id="create-path" class="setup-path">
+        <div class="path-copy">
+          <div class="label" data-i18n="create_title">Create a new identity</div>
+          <p class="muted" data-i18n="create_desc">One click. The Ed25519 identity is created in this browser and nothing private is sent anywhere.</p>
+        </div>
+        <button id="create-identity" class="primary-wide" data-i18n="create_button">Create my identity</button>
+        <p class="microcopy" data-i18n="create_next_hint">Next, FLOP will show your private seed and require you to save it before testing.</p>
+      </div>
+
+      <div id="existing-path" class="setup-path" hidden>
+        <div class="path-copy">
+          <div class="label" data-i18n="seed_signin_title">Use an identity you already own</div>
+          <p class="muted" data-i18n="seed_signin_desc">Paste your 64-character seed or choose the identity text file you saved earlier.</p>
+        </div>
+
         <label for="seed-input" data-i18n="seed_or_file">Seed or identity file</label>
         <textarea id="seed-input" class="mono seed-input" spellcheck="false" data-i18n-placeholder="seed_placeholder" placeholder="64-character seed"></textarea>
         <input id="seed-file" class="visually-hidden" type="file" accept="text/plain,.txt">
-        <button id="seed-file-button" class="secondary file-button" type="button" data-i18n="choose_identity_file">Choose identity file</button>
-        <div id="seed-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
-        <button id="signin-seed" class="secondary" data-i18n="signin_seed">Use this identity</button>
-      </div>
+        <div class="file-row">
+          <button id="seed-file-button" class="secondary file-button" type="button" data-i18n="choose_identity_file">Choose identity file</button>
+          <div id="seed-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
+        </div>
+        <button id="signin-seed" class="primary-wide" data-i18n="signin_seed">Use this identity</button>
 
-      <div class="identity-card">
-        <div class="label" data-i18n="connect_title">Connect external signer</div>
-        <p class="muted" data-i18n="connect_desc">Use an Ed25519 did:key controlled by another wallet, agent or signer. FLOP stores only the public DID.</p>
-        <label for="existing-did" data-i18n="existing_did">Existing DID</label>
-        <input id="existing-did" class="mono" type="text" spellcheck="false" placeholder="did:key:z6Mk…">
-        <button id="connect-existing" class="secondary" data-i18n="connect_button">Connect existing DID</button>
+        <details class="alternate-methods">
+          <summary data-i18n="other_connection_methods">Other ways to connect</summary>
+
+          <div id="encrypted-restore" class="alternate-block">
+            <div class="label" data-i18n="encrypted_restore_title">Restore from encrypted backup</div>
+            <p class="muted" data-i18n="encrypted_restore_desc">If you saved a FLOP encrypted backup, choose it and enter its passphrase.</p>
+            <input id="restore-file" class="visually-hidden" type="file" accept=".flopkey,application/json,.json">
+            <button id="restore-file-button" class="secondary file-button" type="button" data-i18n="choose_backup_file">Choose backup file</button>
+            <div id="restore-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
+            <label for="restore-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
+            <input id="restore-passphrase" type="password" autocomplete="current-password" data-i18n-placeholder="backup_passphrase" placeholder="Backup passphrase">
+            <button id="restore-identity" class="secondary" data-i18n="restore_button">Restore identity</button>
+          </div>
+
+          <div class="alternate-block advanced-block">
+            <div class="label" data-i18n="connect_title">Connect external signer</div>
+            <p class="muted" data-i18n="connect_desc">Use this only when another wallet, agent or signer already controls the Ed25519 did:key.</p>
+            <label for="existing-did" data-i18n="existing_did">Existing DID</label>
+            <input id="existing-did" class="mono" type="text" spellcheck="false" placeholder="did:key:z6Mk…">
+            <button id="connect-existing" class="secondary" data-i18n="connect_button">Connect existing DID</button>
+          </div>
+        </details>
       </div>
     </section>
 
     <section id="seed-gate" class="panel seed-gate" hidden>
+      <div class="step-label" data-i18n="step_save_seed">STEP 2 · SAVE YOUR KEY</div>
       <div class="label" data-i18n="save_seed_title">Save your seed</div>
       <div class="status" data-i18n="save_seed_desc">This is the master copy of your identity. This step cannot be redone after you leave it.</div>
       <label data-i18n="your_did">Your DID · public</label>
@@ -81,25 +122,15 @@
       </div>
     </section>
 
-    <section id="encrypted-restore" class="panel" hidden>
-      <div class="label" data-i18n="encrypted_restore_title">Restore from encrypted backup</div>
-      <p class="muted" data-i18n="encrypted_restore_desc">If you saved a FLOP encrypted backup, choose it and enter its passphrase.</p>
-      <input id="restore-file" class="visually-hidden" type="file" accept=".flopkey,application/json,.json">
-      <button id="restore-file-button" class="secondary file-button" type="button" data-i18n="choose_backup_file">Choose backup file</button>
-      <div id="restore-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
-      <label for="restore-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
-      <input id="restore-passphrase" type="password" autocomplete="current-password" data-i18n-placeholder="backup_passphrase" placeholder="Backup passphrase">
-      <button id="restore-identity" class="secondary" data-i18n="restore_button">Restore identity</button>
-    </section>
-
-    <div id="restore-toggle-wrap" class="actions compact">
-      <button id="show-encrypted-restore" class="secondary" data-i18n="have_encrypted_backup">I have an encrypted backup</button>
-    </div>
-
-    <section id="active-actions" class="actions" hidden>
-      <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
-      <button id="download-backup" class="secondary" hidden data-i18n="download_backup">Download encrypted backup</button>
-      <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
+    <section id="active-actions" class="panel trial-entry" hidden>
+      <div class="step-label" data-i18n="step_trials">STEP 3 · CAPABILITY TESTS</div>
+      <div class="label" data-i18n="ready_to_test">Identity ready</div>
+      <p class="muted" data-i18n="ready_to_test_desc">Your identity is connected. Start the first deterministic capability trial.</p>
+      <div class="actions compact">
+        <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
+        <button id="download-backup" class="secondary" hidden data-i18n="download_backup">Download encrypted backup</button>
+        <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
+      </div>
     </section>
 
     <section id="external-signing" class="panel" hidden>
@@ -114,20 +145,22 @@
       </div>
     </section>
 
-    <section class="panel">
+    <section id="evidence-panel" class="panel" hidden>
       <div class="label" data-i18n="server_evidence">Server evidence</div>
       <div id="evidence-status" class="status" data-i18n="waiting_identity">Waiting for identity…</div>
       <div id="capabilities"></div>
       <a id="latest-receipt" class="receipt" hidden data-i18n="open_receipt">Open latest verified receipt</a>
     </section>
 
-    <section class="panel checks">
-      <div class="label" data-i18n="custody_checks">Custody checks</div>
-      <div><span data-i18n="identity_mode">Identity mode</span> <strong id="identity-mode">none</strong></div>
-      <div><span data-i18n="active_key">Active browser key</span> <strong id="extractable-check">n/a</strong></div>
-      <div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div>
-      <div><span data-i18n="network_transfer">Seed/private key sent to server</span> <strong data-i18n="never">never</strong></div>
-    </section>
+    <details id="technical-details" class="technical-details" hidden>
+      <summary data-i18n="technical_details">Technical details</summary>
+      <section class="checks">
+        <div><span data-i18n="identity_mode">Identity mode</span> <strong id="identity-mode">none</strong></div>
+        <div><span data-i18n="active_key">Active browser key</span> <strong id="extractable-check">n/a</strong></div>
+        <div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div>
+        <div><span data-i18n="network_transfer">Seed/private key sent to server</span> <strong data-i18n="never">never</strong></div>
+      </section>
+    </details>
 
     <p id="operation-status" class="operation"></p>
   </main>
