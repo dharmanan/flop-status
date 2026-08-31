@@ -19,6 +19,14 @@ import {
 } from "../trials/ed25519-signature-verification/constants.js";
 import type { Trial1ChallengePayload } from "../trials/ed25519-signature-verification/schema.js";
 import {
+  generateSignedReceiptVerificationChallenge,
+  type Trial4ChallengeGeneratorDependencies,
+} from "../trials/signed-receipt-verification/challenge-generator.js";
+import {
+  TRIAL_ID as TRIAL4_ID,
+  TRIAL_VERSION as TRIAL4_VERSION,
+} from "../trials/signed-receipt-verification/constants.js";
+import {
   generateTechnocoreCanonicalMessageChallenge,
   type Trial3ChallengeGeneratorDependencies,
 } from "../trials/technocore-canonical-message/challenge-generator.js";
@@ -161,6 +169,16 @@ export async function issueCapabilityChallenge(
     const generated = generateTechnocoreCanonicalMessageChallenge({ agentDid: input.agentDid }, generatorDeps);
     return persistGeneratedChallenge(
       { agentDid: input.agentDid, trialId: TRIAL3_ID, trialVersion: TRIAL3_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  if (input.trialId === TRIAL4_ID) {
+    const generatorDeps: Trial4ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
+    const generated = generateSignedReceiptVerificationChallenge({ agentDid: input.agentDid }, generatorDeps);
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: TRIAL4_ID, trialVersion: TRIAL4_VERSION },
       generated,
       deps,
     );
