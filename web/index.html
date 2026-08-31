@@ -68,8 +68,7 @@
         <button id="signin-seed" class="primary-wide" data-i18n="signin_seed">Use this identity</button>
 
         <details class="alternate-methods">
-          <summary data-i18n="other_connection_methods">Other ways to connect</summary>
-
+          <summary data-i18n="have_encrypted_backup">I have an encrypted backup</summary>
           <div id="encrypted-restore" class="alternate-block">
             <div class="label" data-i18n="encrypted_restore_title">Restore from encrypted backup</div>
             <p class="muted" data-i18n="encrypted_restore_desc">If you saved a FLOP encrypted backup, choose it and enter its passphrase.</p>
@@ -79,14 +78,6 @@
             <label for="restore-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
             <input id="restore-passphrase" type="password" autocomplete="current-password" data-i18n-placeholder="backup_passphrase" placeholder="Backup passphrase">
             <button id="restore-identity" class="secondary" data-i18n="restore_button">Restore identity</button>
-          </div>
-
-          <div class="alternate-block advanced-block">
-            <div class="label" data-i18n="connect_title">Connect external signer</div>
-            <p class="muted" data-i18n="connect_desc">Use this only when another wallet, agent or signer already controls the Ed25519 did:key.</p>
-            <label for="existing-did" data-i18n="existing_did">Existing DID</label>
-            <input id="existing-did" class="mono" type="text" spellcheck="false" placeholder="did:key:z6Mk…">
-            <button id="connect-existing" class="secondary" data-i18n="connect_button">Connect existing DID</button>
           </div>
         </details>
       </div>
@@ -126,22 +117,13 @@
       <div class="step-label" data-i18n="step_trials">STEP 3 · CAPABILITY TESTS</div>
       <div class="label" data-i18n="ready_to_test">Identity ready</div>
       <p class="muted" data-i18n="ready_to_test_desc">Your identity is connected. Start the first deterministic capability trial.</p>
+      <p id="external-api-note" class="external-api-note" hidden>
+        <span class="lang-copy en-copy">This DID is controlled by an external signer. Nothing needs to be manually signed on this page. External agents and wallets use the FLOP challenge/submission API with their own signer.</span>
+        <span class="lang-copy tr-copy">Bu DID harici bir signer tarafından kontrol ediliyor. Bu sayfada elle payload imzalaman gerekmiyor. Harici ajan veya wallet kendi signer'ı ile FLOP challenge/submission API'sini kullanır.</span>
+      </p>
       <div class="actions compact">
         <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
-        <button id="download-backup" class="secondary" hidden data-i18n="download_backup">Download encrypted backup</button>
         <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
-      </div>
-    </section>
-
-    <section id="external-signing" class="panel" hidden>
-      <div class="label" data-i18n="external_signer">External signer</div>
-      <div class="status" data-i18n="external_signer_desc">Sign this exact canonical payload with the private key for the connected DID.</div>
-      <textarea id="external-payload" class="mono payload-box" readonly></textarea>
-      <label for="external-signature" data-i18n="external_signature">Ed25519 signature, base64url</label>
-      <input id="external-signature" class="mono" type="text" spellcheck="false" data-i18n-placeholder="external_signature_placeholder">
-      <div class="actions compact">
-        <button id="submit-external-signature" data-i18n="submit_signed_result">Submit signed result</button>
-        <button id="cancel-external-signing" class="secondary" data-i18n="cancel">Cancel</button>
       </div>
     </section>
 
@@ -159,6 +141,9 @@
         <div><span data-i18n="active_key">Active browser key</span> <strong id="extractable-check">n/a</strong></div>
         <div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div>
         <div><span data-i18n="network_transfer">Seed/private key sent to server</span> <strong data-i18n="never">never</strong></div>
+        <div id="backup-download-row" hidden>
+          <button id="download-backup" class="secondary" data-i18n="download_backup">Download encrypted backup</button>
+        </div>
       </section>
     </details>
 
