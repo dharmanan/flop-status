@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 const MIGRATION_LOCK_KEY = "flop:migrations";
 const FOUNDATION_MIGRATION_ID = "0001_trial1_foundation";
@@ -19,9 +19,7 @@ export interface MigrationResult {
   status: "applied" | "already-applied";
 }
 
-async function backfillLegacyFoundationMarker(
-  client: Pick<Awaited<ReturnType<Pool["connect"]>>, "query">,
-): Promise<void> {
+async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void> {
   const existing = await client.query<{ id: string }>(
     "SELECT id FROM schema_migrations WHERE id = $1",
     [FOUNDATION_MIGRATION_ID],
