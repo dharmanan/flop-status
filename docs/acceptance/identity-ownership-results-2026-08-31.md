@@ -65,9 +65,9 @@ No secret material was shared back during the manual acceptance run.
 
 ## Gate ID — optional encrypted backup
 
-Status: PENDING DEPLOYED BROWSER ACCEPTANCE
+Status: PASS
 
-Automated coverage exists for:
+Automated coverage verifies:
 
 * AES-GCM encrypted backup
 * PBKDF2-SHA256 key derivation
@@ -76,12 +76,14 @@ Automated coverage exists for:
 * exact same DID restoration
 * nonextractable restored active key
 
-Still required:
+Deployed browser acceptance additionally verified:
 
-* deployed create encrypted backup
+* encrypted backup creation on Vercel
 * clean-browser restore using backup plus passphrase
-* same DID confirmation
-* Trial 1 PASS after restore
+* restoration of the same DID
+* Trial 1 PASS after encrypted-backup restore
+
+No backup contents or passphrase were shared back during acceptance.
 
 ## Gate IE — external signer semantics
 
@@ -93,7 +95,7 @@ Consumer UI no longer exposes manual canonical-payload signing fields. External 
 
 Status: PENDING ACCEPTANCE
 
-The Railway API already accepts DID-bound challenge creation and externally signed submissions, but a current seed-first milestone acceptance run still needs to be recorded.
+The Railway API already accepts DID-bound challenge creation and externally signed submissions. A dedicated deployed acceptance runner now exists at `lib/acceptance/verify-external-agent-deployed.ts`; its deployed execution result still needs to be recorded.
 
 ## Gate IG — custody boundary and browser security
 
@@ -103,6 +105,6 @@ Repository tests and Vercel configuration cover the intended CSP/no-custody rule
 
 ## Current milestone statement
 
-Browser creation, direct seed ownership, Trial 1 PASS, refresh persistence behavior and clean-browser identity text-file restoration are now demonstrated on deployed Vercel.
+Browser creation, direct seed ownership, Trial 1 PASS, refresh persistence behavior, clean-browser identity text-file restoration and clean-browser encrypted-backup restoration are now demonstrated on deployed Vercel.
 
-Identity ownership/connectivity is not yet complete. Gates ID, IE, IF and IG remain open, and IA/IB retain their explicit deployed custody checks.
+Identity ownership/connectivity is not yet complete. Gates IE, IF and IG remain open, and IA/IB retain their explicit deployed custody checks.
