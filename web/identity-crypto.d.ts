@@ -20,11 +20,24 @@ export interface PortableIdentity {
   backup: FlopIdentityBackup;
 }
 
+export interface UnlockedPrivateKey {
+  did: string;
+  privateKeyBase64Url: string;
+  publicKeyBase64Url: string;
+  jwk: {
+    kty: "OKP";
+    crv: "Ed25519";
+    x: string;
+    d: string;
+  };
+}
+
 export function bytesToBase64Url(bytes: Uint8Array): string;
 export function base64UrlToBytes(value: string): Uint8Array;
 export function didFromPublicKey(raw: Uint8Array): string;
 export function parseEd25519DidKey(did: string): Uint8Array;
 export function createPortableIdentity(passphrase: string): Promise<PortableIdentity>;
+export function unlockPrivateKeyBackup(backup: FlopIdentityBackup, passphrase: string): Promise<UnlockedPrivateKey>;
 export function restorePortableIdentity(backup: FlopIdentityBackup, passphrase: string): Promise<PortableIdentity>;
 export function serializeBackup(backup: FlopIdentityBackup): string;
 export function parseBackupJson(text: string): FlopIdentityBackup;
