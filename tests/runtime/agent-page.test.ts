@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_AGENT_PAGE, PUBLIC_AGENT_SCRIPT } from "../../lib/runtime/agent-page.js";
+import { PUBLIC_AGENT_SCRIPT } from "../../lib/runtime/agent-page.js";
 
 describe("browser agent custody surface", () => {
   it("uses IndexedDB and a nonextractable WebCrypto Ed25519 private key", () => {
@@ -17,6 +17,6 @@ describe("browser agent custody surface", () => {
     expect(PUBLIC_AGENT_SCRIPT).toContain('fetch("/api/v1/challenges"');
     expect(PUBLIC_AGENT_SCRIPT).toContain('"/submissions"');
     expect(PUBLIC_AGENT_SCRIPT).toContain('fetch("/api/v1/agents/"');
-    expect(PUBLIC_AGENT_PAGE).toContain("Hard refresh");
+    expect(PUBLIC_AGENT_SCRIPT).toContain("Hard refresh this page to test recovery");
   });
 });
