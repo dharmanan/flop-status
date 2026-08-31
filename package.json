@@ -15,7 +15,8 @@
     "db:migrate": "npm run build && node dist/db/migrate.js",
     "db:verify": "npm run build && node dist/db/verify-railway.js",
     "db:verify-submission": "npm run build && node dist/db/verify-submission-railway.js",
-    "db:verify-receipt": "npm run build && node dist/db/verify-receipt-railway.js"
+    "db:verify-receipt": "npm run build && node dist/db/verify-receipt-railway.js",
+    "attestation:generate": "npm run build && node dist/receipts/generate-attestation-key.js"
   },
   "dependencies": {
     "canonicalize": "^4.0.0",
