@@ -5,6 +5,11 @@ import {
   type ChallengeIssuanceTransaction,
   type QueryExecutor,
 } from "./challenge-repository.js";
+import {
+  PostgresSubmissionRepository,
+  type SubmissionAcceptanceRepository,
+  type SubmissionAcceptanceTransaction,
+} from "./submission-repository.js";
 import type { AgentRow, TrialDefinitionRow } from "./types.js";
 
 function normalizeValue(value: unknown): unknown {
@@ -36,14 +41,6 @@ class PgExecutor implements QueryExecutor {
   }
 }
 
-/**
- * Concrete repository backed by node-postgres.
- *
- * Non-transactional lookups may use the pool. For the advisory-lock section,
- * this adapter always checks out exactly one PoolClient and keeps BEGIN,
- * pg_advisory_xact_lock, callback queries and COMMIT/ROLLBACK on that same
- * PostgreSQL session before releasing the client.
- */
 export class PgChallengeRepository implements ChallengeIssuanceRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -73,6 +70,23 @@ export class PgChallengeRepository implements ChallengeIssuanceRepository {
     try {
       const repository = new PostgresChallengeRepository(new PgExecutor(client));
       return await repository.withAgentTrialLock(agentId, trialDefinitionId, fn);
+    } finally {
+      client.release();
+    }
+  }
+}
+
+export class PgSubmissionRepository implements SubmissionAcceptanceRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async withChallengeLock<T>(
+    challengeId: string,
+    fn: (tx: SubmissionAcceptanceTransaction) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      const repository = new PostgresSubmissionRepository(new PgExecutor(client));
+      return await repository.withChallengeLock(challengeId, fn);
     } finally {
       client.release();
     }

@@ -1,8 +1,6 @@
-// Row shapes for the Trial 1 foundation tables defined in
-// db/migrations/0001_trial1_foundation.sql. jsonb columns are typed as
-// `unknown` here — this layer is trial-agnostic persistence, not domain
-// validation. Callers (e.g. lib/challenges/issuance-service.ts) parse
-// public_payload/hidden_context through the specific trial's Zod schema.
+// Row shapes for Trial 1 persistence. jsonb columns are typed as `unknown`
+// here because this layer is trial-agnostic persistence; domain callers parse
+// them through the relevant strict trial schemas.
 
 export type ChallengeState = "ISSUED" | "SUBMITTED" | "PASS" | "FAIL" | "UNKNOWN" | "EXPIRED";
 
@@ -54,4 +52,48 @@ export interface InsertChallengeInput {
   challengeHash: string;
   issuedAt: string;
   expiresAt: string;
+}
+
+export interface SubmissionChallengeContext {
+  id: string;
+  agentId: string;
+  agentDid: string;
+  trialDefinitionId: string;
+  trialId: string;
+  trialVersion: string;
+  verifierId: string;
+  verifierVersion: string;
+  state: ChallengeState;
+  publicPayload: unknown;
+  hiddenContext: unknown;
+  challengeHash: string;
+  expiresAt: string;
+}
+
+export interface SubmissionRow {
+  id: string;
+  challengeId: string;
+  agentId: string;
+  payload: unknown;
+  payloadHash: string;
+  resultPayload: unknown;
+  resultHash: string;
+  signatureAlgorithm: string;
+  signatureEncoding: string;
+  signatureValue: string;
+  agentSignatureValid: boolean;
+  receivedAt: string;
+  createdAt: string;
+}
+
+export interface InsertSubmissionInput {
+  challengeId: string;
+  agentId: string;
+  payload: unknown;
+  payloadHash: string;
+  resultPayload: unknown;
+  resultHash: string;
+  signatureAlgorithm: string;
+  signatureEncoding: string;
+  signatureValue: string;
 }
