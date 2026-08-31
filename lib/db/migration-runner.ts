@@ -12,6 +12,10 @@ const MIGRATIONS = [
     id: "0002_trial1_submissions",
     path: new URL("../../db/migrations/0002_trial1_submissions.sql", import.meta.url),
   },
+  {
+    id: "0003_trial1_receipts",
+    path: new URL("../../db/migrations/0003_trial1_receipts.sql", import.meta.url),
+  },
 ] as const;
 
 export interface MigrationResult {
@@ -61,11 +65,6 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
       )
     `);
 
-    // Compatibility for the Railway database created by the original
-    // one-migration runner, which applied 0001 before schema_migrations began
-    // recording migration ids. Only backfill when the full foundation shape
-    // is already present; otherwise an empty/partial database still fails
-    // loudly instead of being falsely marked migrated.
     await backfillLegacyFoundationMarker(client);
 
     const results: MigrationResult[] = [];
@@ -81,7 +80,12 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
 
       const sql = await readFile(migration.path, "utf8");
       await client.query(sql);
-      await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [migration.id]);
+      // Some historical migrations self-register inside their transaction.
+      // ON CONFLICT keeps the runner compatible with both styles.
+      await client.query(
+        "INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
+        [migration.id],
+      );
       results.push({ id: migration.id, status: "applied" });
     }
 
