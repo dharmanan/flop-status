@@ -2,101 +2,87 @@
 
 ## Now
 
-Implement Trial 4: Signed Receipt Verification.
+Build Production Capability 1: Ed25519 Signature Verification through the real FLOP capability runtime and certificate flow.
+
+Required product flow:
+
+**ACQUIRE → PRACTICE → VERIFY → CERTIFY → USE → PROVE**
 
 Required outcome:
 
-* reuse the accepted Identity → Challenge → Signed Submission → Deterministic Verification → Receipt → Capability Record engine
-* issue a deterministic FLOP-style signed receipt challenge with a bounded public-key set
-* cover valid receipt, tampered receipt, key-binding mismatch and unknown-key cases deterministically
-* require a strict result containing validity, selected key id when applicable, status and reason code
-* verify the receipt signature over canonical unsigned receipt fields
-* enforce receipt `server_key_id` binding rather than accepting a signature under an unrelated key
-* preserve PASS/FAIL/UNKNOWN semantics
-* preserve one-time challenge and DID-binding rules
-* create the normal server-signed receipt and capability evidence on PASS
-* expose Trial 4 evidence through the existing public agent/receipt APIs
-* keep verification self-contained; no external network service is required
-* do not create a parallel receipt or evidence architecture
+* the user starts at Capability 1 regardless of any internal Trial 1–4 development acceptance history
+* the user explicitly acquires Capability 1 inside FLOP
+* FLOP attaches the versioned capability implementation to the agent profile
+* the user can run a bounded practice task that does not create certification
+* production verification issues a fresh DID-bound challenge
+* the result is produced by the installed FLOP capability implementation, not by a page-specific answer shortcut
+* the browser-owned DID signs the exact result submission
+* the existing deterministic verifier determines PASS/FAIL/UNKNOWN
+* PASS creates the normal immutable server-signed receipt
+* PASS also creates the first individual public capability certificate
+* the certificate has its own proof URL and independently verifiable receipt
+* the capability is usable through an explicit FLOP product action after acquisition
+* no public third-party agent invocation endpoint is added
+* no LLM is required for Capability 1
 
-Acceptance for Trial 4 must be defined before declaring it complete.
+Acceptance for this production vertical slice must be defined before declaring it complete.
 
 ## Next
 
-Implement the remaining FLOP v1 deterministic capability trials from `docs/capability-program-v1.md` in order:
+Apply the same production pattern sequentially, one capability at a time:
 
-1. Trial 5: Structured Data Transformation
-2. Trial 6: Tool Selection and Function Calling
-3. Trial 7: Multi-step Workflow Execution
-4. Trial 8: Retrieval and Grounded Evidence
-5. Trial 9: Constraint and Policy Compliance
-6. Trial 10: Failure Recovery and Idempotency
+1. Capability 2: Canonical JSON + SHA256
+2. Capability 3: Technocore Canonical Message Construction
+3. Capability 4: Signed Receipt Verification
+4. Capability 5: Structured Data Transformation
+5. Capability 6: Constraint and Policy Compliance
+6. Capability 7: Failure Recovery and Idempotency
+7. Capability 8: Goal Planning & Tool Use, optional LLM
+8. Capability 9: Grounded Research & Synthesis, optional LLM
+9. Capability 10: Autonomous Multi Step Execution, optional LLM
 
-After the trial engine supports the broader program:
+Each PASS issues a separate certificate.
 
-* implement CLAIM/UNTESTED product flow
-* build the real IDENTIFY → CLAIM → TRIALS → RECORD product information architecture
-* build the high-information public capability certificate/profile
-* add proof links, per-trial receipt verification, downloadable certificate image, copy image and X sharing
-* refine premium Vercel product UI and user-facing copy
+Cumulative rank is updated independently from certificate issuance:
+
+* 3–4 certificates: Rookie
+* 5–6 certificates: Regular
+* 7 certificates: Core Verified
+* 8–9 certificates: Advanced
+* 10 certificates: Agentic Verified
+
+After the certificate runtime is proven across the program:
+
+* build the complete public agent profile aggregating all individual certificates
+* add certificate image download/copy/share surfaces
+* refine the premium product UI and onboarding copy
+* add optional official testnet integration only when its specification exists
 
 ## FLOP v1 completion target
 
 Product v1 is not complete until:
 
-* accepted identity ownership and seed portability remain intact
-* external signer/Agent API path remains usable without browser custody
-* all ten deterministic v1 capability trials complete through the same evidence engine
-* public profile shows `N OF 10 VERIFIED`
-* all ten current trials produce the distinct `FLOP VERIFIED AGENT · 10 OF 10` state
-* certificate/profile has a public proof URL and independently verifiable receipts
+* accepted identity ownership and portable seed recovery remain intact
+* all seven deterministic Core capabilities are independently acquirable, usable, verifiable and individually certifiable
+* all three optional Agentic capabilities can be enabled only with explicit LLM opt-in and can be individually certified with deterministic verdicts
+* every certificate has a public proof URL and independently verifiable signed receipt
+* the public profile aggregates individual certificates and cumulative rank
+* FLOP-managed execution remains contained inside FLOP in v1
+* idle agents do not create permanently running services
 
-The ten v1 trial definitions and certificate requirements live in `docs/capability-program-v1.md`.
+## Completed infrastructure milestones
 
-## Completed milestones
+The following are accepted development infrastructure milestones, not production user certificates:
 
-Identity ownership/connectivity passed acceptance on 2026-08-31.
+* identity ownership/connectivity acceptance
+* Trial 1 protocol acceptance
+* Trial 2 protocol acceptance
+* Trial 3 protocol acceptance
+* Trial 4 backend/protocol acceptance and browser wiring
 
-Accepted identity model:
+These acceptance runs established the shared identity, challenge, DID-signed submission, deterministic verification, receipt, persistence and public-verification engine.
 
-* create a new Ed25519 `did:key`
-* direct user ownership of portable 32-byte seed
-* seed Reveal, Copy and Download before continuation
-* same-DID clean-browser restore from seed/text file
-* optional encrypted backup/restore
-* nonextractable active browser key in IndexedDB
-* no browser secret material sent to FLOP backend
-* externally controlled Ed25519 `did:key` supported through the same public challenge/submission API
-* manual canonical-payload signing excluded from normal consumer onboarding
-
-Evidence: `docs/acceptance/identity-ownership-results-2026-08-31.md`.
-
-Trial 2 Canonical JSON + SHA256 passed deployed acceptance on 2026-08-31.
-
-Accepted Trial 2 behavior:
-
-* versioned deterministic JCS/SHA256 challenge cases
-* DID-signed result through the shared submission layer
-* deterministic canonical JSON and digest verification
-* normal server-signed receipt and durable capability record
-* public receipt verification and capability aggregation
-* browser-owned identity flow exposed as a second capability action
-
-Evidence: `docs/acceptance/trial2-results-2026-08-31.md`.
-
-Trial 3 Technocore Canonical Message Construction passed deployed and browser acceptance on 2026-08-31.
-
-Accepted Trial 3 behavior:
-
-* exact inspected Technocore canonical form `room|nonce|cleaned text`
-* DID remains FLOP challenge binding but is not inserted into the Technocore canonical string
-* deterministic text cleaning and byte-for-byte canonical comparison
-* no Technocore network dependency in verifier path
-* deterministic mismatch produces FAIL without receipt
-* PASS produces normal server-signed receipt and durable capability evidence
-* same browser-owned DID reached 3 of 3 verified across Trials 1–3
-
-Evidence: `docs/acceptance/trial3-results-2026-08-31.md` plus deployed browser verification.
+Their historical receipts remain immutable protocol evidence but do not count toward production certificate totals or rank.
 
 ## Later
 
@@ -104,11 +90,13 @@ Evidence: `docs/acceptance/trial3-results-2026-08-31.md` plus deployed browser v
 * peer verified evidence class
 * Deal Room seam
 * official FLOP testnet integration when specification exists
-* identity-bound FLOP Capability Certificate NFT for eligible completed profiles when official testnet primitives are available
-* FLOP-denominated trial/mint/re-certification flows only when official token interfaces are known
+* identity-bound certificate/rank representation only if supported by official testnet primitives
+* FLOP-denominated execution or mint flows only when official token interfaces are known
 
 ## Not planned for current v1 core
 
+* public arbitrary third-party invocation of FLOP-managed agents
+* permanently running agent service per user
 * messaging product
 * inbox
 * passport product
@@ -116,6 +104,5 @@ Evidence: `docs/acceptance/trial3-results-2026-08-31.md` plus deployed browser v
 * speculative wallet or faucet implementation before official testnet specification
 * airdrop prediction
 * LLM judge
-* generic orchestrator
-* generic autonomous agent runtime
+* generic unrestricted orchestrator
 * arbitrary user code execution
