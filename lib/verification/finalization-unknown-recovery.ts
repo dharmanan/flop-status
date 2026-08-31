@@ -1,3 +1,4 @@
+import type { Trial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
 import type { PassFinalizationRepository } from "../db/finalization-repository.js";
 import type { AttestationSigner } from "../receipts/receipt.js";
 import {
@@ -26,7 +27,7 @@ export type Trial1Finalizer = (
 ) => Promise<FinalizedTrial1Verification>;
 
 export interface FinalizeWithUnknownRecoveryDependencies {
-  repository: PassFinalizationRepository;
+  repository: Trial1FinalizationRepository;
   signer: AttestationSigner;
   now?: () => Date;
   randomUuid?: () => string;
