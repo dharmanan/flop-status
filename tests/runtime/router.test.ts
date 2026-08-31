@@ -68,11 +68,13 @@ async function start() {
 }
 
 describe("runtime HTTP router", () => {
-  it("serves agent page and durable public agent evidence", async () => {
+  it("keeps Railway frontend routes closed while serving durable public agent evidence", async () => {
     const base = await start();
     const page = await fetch(`${base}/agent`);
-    expect(page.status).toBe(200);
-    expect(await page.text()).toContain("Browser identity");
+    expect(page.status).toBe(404);
+    expect(page.headers.get("content-type")).toContain("application/json");
+    expect((await page.json() as { error: { code: string } }).error.code).toBe("NOT_FOUND");
+
     const agent = await fetch(`${base}/api/v1/agents/${encodeURIComponent(agentDid)}`);
     expect(agent.status).toBe(200);
     const body = await agent.json() as { agent: { did: string; capabilities: Array<{ latest_receipt_id: string }> } };
@@ -118,11 +120,12 @@ describe("runtime HTTP router", () => {
     expect(response.status).toBe(204);
   });
 
-  it("serves a CSP-protected verification page", async () => {
+  it("keeps Railway receipt UI closed because verification UI belongs on Vercel", async () => {
     const base = await start();
     const page = await fetch(`${base}/verify/${receipt.receipt_id}`);
-    expect(page.status).toBe(200);
-    expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect(page.status).toBe(404);
+    expect(page.headers.get("content-type")).toContain("application/json");
+    expect((await page.json() as { error: { code: string } }).error.code).toBe("NOT_FOUND");
   });
 
   it("uses the documented error envelope for a missing receipt", async () => {
