@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "echo 'Static FLOP frontend'",
+  "outputDirectory": "web",
+  "rewrites": [
+    { "source": "/agent", "destination": "/index.html" },
+    { "source": "/verify/:receiptId", "destination": "/verify.html" }
+  ]
+}

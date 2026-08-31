@@ -67,12 +67,14 @@ async function start() {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
-describe("API-only runtime HTTP router", () => {
-  it("serves durable public agent evidence as JSON", async () => {
+describe("runtime HTTP router", () => {
+  it("serves agent page and durable public agent evidence", async () => {
     const base = await start();
+    const page = await fetch(`${base}/agent`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain("Browser identity");
     const agent = await fetch(`${base}/api/v1/agents/${encodeURIComponent(agentDid)}`);
     expect(agent.status).toBe(200);
-    expect(agent.headers.get("content-type")).toContain("application/json");
     const body = await agent.json() as { agent: { did: string; capabilities: Array<{ latest_receipt_id: string }> } };
     expect(body.agent.did).toBe(agentDid);
     expect(body.agent.capabilities[0]?.latest_receipt_id).toBe(receipt.receipt_id);
@@ -99,18 +101,9 @@ describe("API-only runtime HTTP router", () => {
     expect(created.status).toBe(201);
     const recovered = await fetch(`${base}/api/v1/challenges/${challengeId}`);
     expect(recovered.status).toBe(200);
+    expect((await recovered.json() as { state: string }).state).toBe("ISSUED");
     const submitted = await fetch(`${base}/api/v1/challenges/${challengeId}/submissions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ payload: {}, signature: {} }) });
     expect(submitted.status).toBe(200);
-  });
-
-  it("does not serve frontend pages from Railway runtime", async () => {
-    const base = await start();
-    for (const path of ["/", "/agent", `/verify/${receipt.receipt_id}`, "/assets/agent.js", "/assets/verify.js"]) {
-      const response = await fetch(base + path);
-      expect(response.status).toBe(404);
-      expect(response.headers.get("content-type")).toContain("application/json");
-      expect((await response.json() as { error: { code: string } }).error.code).toBe("NOT_FOUND");
-    }
   });
 
   it("rejects oversized challenge request bodies with 413", async () => {
@@ -123,5 +116,21 @@ describe("API-only runtime HTTP router", () => {
     const base = await start();
     const response = await fetch(`${base}/api/v1/challenges`, { method: "OPTIONS" });
     expect(response.status).toBe(204);
+  });
+
+  it("serves a CSP-protected verification page", async () => {
+    const base = await start();
+    const page = await fetch(`${base}/verify/${receipt.receipt_id}`);
+    expect(page.status).toBe(200);
+    expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
+  });
+
+  it("uses the documented error envelope for a missing receipt", async () => {
+    const base = await start();
+    const response = await fetch(`${base}/api/v1/receipts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`);
+    expect(response.status).toBe(404);
+    const body = await response.json() as { error: { code: string; request_id: string } };
+    expect(body.error.code).toBe("RECEIPT_NOT_FOUND");
+    expect(body.error.request_id).toBeTruthy();
   });
 });
