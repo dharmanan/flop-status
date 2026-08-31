@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const html = readFileSync(new URL("../../web/index.html", import.meta.url), "utf8");
 
-describe("consumer identity onboarding surface", () => {
+describe("consumer identity and production capability surface", () => {
   it("keeps the primary onboarding to create or restore identity", () => {
     expect(html).toContain('id="choose-create"');
     expect(html).toContain('id="choose-existing"');
@@ -19,20 +19,23 @@ describe("consumer identity onboarding surface", () => {
     expect(html).toContain('id="confirm-seed-saved"');
   });
 
-  it("exposes Trials 1 through 4 as distinct capability actions", () => {
-    expect(html).toContain('id="run-trial-1"');
-    expect(html).toContain('id="run-trial-2"');
-    expect(html).toContain('id="run-trial-3"');
-    expect(html).toContain('id="run-trial-4"');
+  it("starts the production certificate journey at Capability 1 only", () => {
     expect(html).toContain("Ed25519 Signature Verification");
-    expect(html).toContain("Canonical JSON + SHA256");
-    expect(html).toContain("Technocore Canonical Message");
-    expect(html).toContain("Signed Receipt Verification");
     expect(html).toContain("cryptography.signature-verification");
-    expect(html).toContain("data.canonical-json-sha256");
-    expect(html).toContain("protocol.technocore-canonical-message");
-    expect(html).toContain("evidence.signed-receipt-verification");
-    expect(html).toContain("0 of 4 verified");
+    expect(html).toContain('id="acquire-capability-1"');
+    expect(html).toContain('id="practice-capability-1"');
+    expect(html).toContain('id="verify-capability-1"');
+    expect(html).toContain('id="capability-1-certificate"');
+    expect(html).toContain('id="capability-1-use"');
+    expect(html).toContain("0 certificates");
+  });
+
+  it("does not expose the old four-button development acceptance harness", () => {
+    expect(html).not.toContain('id="run-trial-1"');
+    expect(html).not.toContain('id="run-trial-2"');
+    expect(html).not.toContain('id="run-trial-3"');
+    expect(html).not.toContain('id="run-trial-4"');
+    expect(html).not.toContain("0 of 4 verified");
   });
 
   it("does not expose manual canonical-payload signing in the consumer page", () => {
