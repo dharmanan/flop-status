@@ -13,8 +13,6 @@ import {
 import { bindLanguageControls, onLanguageChange, t } from "/i18n.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
-const TRIAL_ID = "ed25519-signature-verification";
-const TRIAL_VERSION = "1";
 const SUBMISSION_VERSION = "1";
 const CANONICALIZATION = "jcs-rfc8785-v1";
 const DB_NAME = "flop-agent-key-v1";
@@ -22,6 +20,23 @@ const STORE_NAME = "identity";
 const ACTIVE_ID = "active";
 const MASKED_SEED = "•••• •••• •••• •••• •••• •••• •••• ••••";
 const encoder = new TextEncoder();
+
+const TRIALS = {
+  trial1: {
+    trialId: "ed25519-signature-verification",
+    trialVersion: "1",
+    capabilityId: "cryptography.signature-verification",
+    buttonId: "run-trial-1",
+    statusId: "trial-1-status",
+  },
+  trial2: {
+    trialId: "canonical-json-sha256",
+    trialVersion: "1",
+    capabilityId: "data.canonical-json-sha256",
+    buttonId: "run-trial-2",
+    statusId: "trial-2-status",
+  },
+};
 
 let identity = null;
 let pendingSeed = null;
@@ -32,6 +47,10 @@ let setupPath = "create";
 
 const byId = (id) => document.getElementById(id);
 const setOperation = (value) => { byId("operation-status").textContent = value; };
+
+function uiText(en, tr) {
+  return document.documentElement.lang === "tr" ? tr : en;
+}
 
 function canonicalize(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return JSON.stringify(value);
@@ -115,6 +134,39 @@ async function getAgentEvidence(did) {
   return response.json();
 }
 
+function verifiedCapabilityIds(data) {
+  if (!data?.agent?.capabilities) return new Set();
+  return new Set(
+    data.agent.capabilities
+      .filter((capability) => capability.evidence_type === "DETERMINISTICALLY_VERIFIED")
+      .map((capability) => capability.capability_id),
+  );
+}
+
+function renderTrialState() {
+  const verified = verifiedCapabilityIds(evidenceData);
+  let count = 0;
+  for (const trial of Object.values(TRIALS)) {
+    const passed = verified.has(trial.capabilityId);
+    if (passed) count += 1;
+    const status = byId(trial.statusId);
+    if (status) {
+      status.textContent = passed
+        ? uiText("Verified", "Doğrulandı")
+        : uiText("Not verified", "Doğrulanmadı");
+      status.classList.toggle("verified", passed);
+    }
+  }
+  const progress = byId("trial-progress");
+  if (progress) {
+    progress.textContent = uiText(`${count} of 2 verified`, `2 testten ${count} doğrulandı`);
+  }
+  const trial1Button = byId(TRIALS.trial1.buttonId);
+  const trial2Button = byId(TRIALS.trial2.buttonId);
+  if (trial1Button) trial1Button.textContent = uiText("Run Ed25519 trial", "Ed25519 testini çalıştır");
+  if (trial2Button) trial2Button.textContent = uiText("Run Canonical JSON trial", "Canonical JSON testini çalıştır");
+}
+
 function renderEvidence(data) {
   evidenceData = data;
   const container = byId("capabilities");
@@ -123,6 +175,7 @@ function renderEvidence(data) {
   link.hidden = true;
   if (!data || !data.agent || data.agent.capabilities.length === 0) {
     byId("evidence-status").textContent = t("no_evidence");
+    renderTrialState();
     return;
   }
   byId("evidence-status").textContent = t("durable_evidence");
@@ -136,6 +189,7 @@ function renderEvidence(data) {
       link.hidden = false;
     }
   }
+  renderTrialState();
 }
 
 async function refreshEvidence() {
@@ -163,13 +217,19 @@ function renderSeedGate() {
   byId("confirm-seed-saved").disabled = !seedSavedAction;
 }
 
+function setTrialButtonsVisible(visible) {
+  for (const trial of Object.values(TRIALS)) {
+    const button = byId(trial.buttonId);
+    if (button) button.hidden = !visible;
+  }
+}
+
 function renderIdentity() {
   const setup = byId("identity-setup");
   const summary = byId("identity-summary");
   const actions = byId("active-actions");
   const evidencePanel = byId("evidence-panel");
   const technical = byId("technical-details");
-  const run = byId("run-trial");
   const backupRow = byId("backup-download-row");
   const apiNote = byId("external-api-note");
 
@@ -216,8 +276,7 @@ function renderIdentity() {
   byId("did").textContent = identity.did;
 
   if (identity.mode === "browser") {
-    run.hidden = false;
-    run.disabled = false;
+    setTrialButtonsVisible(true);
     apiNote.hidden = true;
     byId("identity-status").textContent = t("browser_ready");
     byId("custody").textContent = t("browser_custody");
@@ -226,7 +285,7 @@ function renderIdentity() {
     byId("backup-check").textContent = identity.backup ? t("encrypted_ready") : t("optional_none");
     backupRow.hidden = !identity.backup;
   } else {
-    run.hidden = true;
+    setTrialButtonsVisible(false);
     apiNote.hidden = false;
     byId("identity-status").textContent = t("existing_connected");
     byId("custody").textContent = t("external_custody");
@@ -235,6 +294,7 @@ function renderIdentity() {
     byId("backup-check").textContent = t("owned_externally");
     backupRow.hidden = true;
   }
+  renderTrialState();
 }
 
 function downloadText(text, filename, type) {
@@ -390,18 +450,19 @@ async function restoreBrowserIdentity() {
   }
 }
 
-async function prepareTrialPayload() {
-  if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
-  setOperation(t("op_challenge"));
+async function createChallenge(trial) {
+  setOperation(uiText("Creating DID-bound challenge…", "DID'e bağlı challenge oluşturuluyor…"));
   const challengeResponse = await fetch(API_BASE + "/api/v1/challenges", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ agent_did: identity.did, trial_id: TRIAL_ID }),
+    body: JSON.stringify({ agent_did: identity.did, trial_id: trial.trialId }),
   });
   const created = await challengeResponse.json();
   if (!challengeResponse.ok) throw new Error(created.error ? created.error.code : "challenge creation failed");
+  return created;
+}
 
-  const challenge = created.challenge;
+async function solveTrial1(challenge) {
   const message = base64UrlToBytes(challenge.case.message);
   const challengePublicKey = await crypto.subtle.importKey(
     "raw",
@@ -416,26 +477,43 @@ async function prepareTrialPayload() {
     base64UrlToBytes(challenge.case.signature),
     message,
   );
-  const result = {
+  return {
     valid,
     reason_code: valid ? "SIGNATURE_VALID" : "SIGNATURE_INVALID",
     message_hash: await sha256(message),
   };
+}
+
+async function solveTrial2(challenge) {
+  const canonicalJson = canonicalize(challenge.case.document);
+  return {
+    canonical_json: canonicalJson,
+    sha256: await sha256(encoder.encode(canonicalJson)),
+  };
+}
+
+async function prepareTrialPayload(trial) {
+  if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
+  const created = await createChallenge(trial);
+  const challenge = created.challenge;
+  const result = trial.trialId === TRIALS.trial1.trialId
+    ? await solveTrial1(challenge)
+    : await solveTrial2(challenge);
   const payload = {
     submission_version: SUBMISSION_VERSION,
     canonicalization: CANONICALIZATION,
     challenge_id: challenge.challenge_id,
     challenge_hash: created.challenge_hash,
     agent_did: identity.did,
-    trial_id: TRIAL_ID,
-    trial_version: TRIAL_VERSION,
+    trial_id: trial.trialId,
+    trial_version: trial.trialVersion,
     result,
     submitted_at: new Date().toISOString(),
   };
   return { challenge, payload, canonicalPayload: canonicalize(payload) };
 }
 
-async function submitEnvelope(challengeId, payload, signatureValue) {
+async function submitEnvelope(trial, challengeId, payload, signatureValue) {
   const envelope = {
     payload,
     signature: { algorithm: "Ed25519", encoding: "base64url", value: signatureValue },
@@ -450,16 +528,19 @@ async function submitEnvelope(challengeId, payload, signatureValue) {
   );
   const submitted = await submitResponse.json();
   if (!submitResponse.ok) throw new Error(submitted.error ? submitted.error.code : "submission failed");
-  if (submitted.verdict !== "PASS" || !submitted.receipt_id) throw new Error("Trial 1 did not produce PASS");
+  if (submitted.verdict !== "PASS" || !submitted.receipt_id) {
+    throw new Error(`${trial.trialId} did not produce PASS`);
+  }
   await refreshEvidence();
   return submitted;
 }
 
-async function runTrial() {
+async function runTrial(trial) {
   if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
-  byId("run-trial").disabled = true;
+  const button = byId(trial.buttonId);
+  button.disabled = true;
   try {
-    const prepared = await prepareTrialPayload();
+    const prepared = await prepareTrialPayload(trial);
     const signature = new Uint8Array(
       await crypto.subtle.sign(
         { name: "Ed25519" },
@@ -467,15 +548,19 @@ async function runTrial() {
         encoder.encode(prepared.canonicalPayload),
       ),
     );
-    setOperation(t("op_submitting"));
+    setOperation(uiText("Submitting signed result…", "İmzalı sonuç gönderiliyor…"));
     await submitEnvelope(
+      trial,
       prepared.challenge.challenge_id,
       prepared.payload,
       bytesToBase64Url(signature),
     );
-    setOperation(t("op_pass"));
+    setOperation(uiText(
+      `PASS. ${trial.capabilityId} receipt persisted and verified.`,
+      `PASS. ${trial.capabilityId} receipt kaydedildi ve doğrulandı.`,
+    ));
   } finally {
-    byId("run-trial").disabled = false;
+    button.disabled = false;
   }
 }
 
@@ -504,6 +589,7 @@ async function boot() {
     renderEvidence(evidenceData);
     syncFileName("seed-file", "seed-file-name");
     syncFileName("restore-file", "restore-file-name");
+    renderTrialState();
   });
 
   try {
@@ -533,7 +619,8 @@ byId("create-backup").addEventListener("click", () => createOptionalBackup().cat
 byId("confirm-seed-saved").addEventListener("click", () => confirmSeedSaved().catch(report));
 byId("signin-seed").addEventListener("click", () => signInFromSeed().catch(report));
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
-byId("run-trial").addEventListener("click", () => runTrial().catch(report));
+byId("run-trial-1").addEventListener("click", () => runTrial(TRIALS.trial1).catch(report));
+byId("run-trial-2").addEventListener("click", () => runTrial(TRIALS.trial2).catch(report));
 byId("download-backup").addEventListener("click", () => {
   if (identity?.backup) downloadBackup(identity.backup);
 });
