@@ -2,20 +2,30 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
+const capability = readFileSync(
+  new URL("../../web/capabilities/ed25519-signature-verification.js", import.meta.url),
+  "utf8",
+);
 
-describe("browser custody network boundary", () => {
-  it("sends only public challenge identity fields when creating supported trials", () => {
-    expect(source).toContain('body: JSON.stringify({ agent_did: identity.did, trial_id: trial.trialId })');
-    expect(source).toContain('trialId: "ed25519-signature-verification"');
-    expect(source).toContain('trialId: "canonical-json-sha256"');
-    expect(source).toContain('trialId: "technocore-canonical-message"');
-    expect(source).toContain('trialId: "signed-receipt-verification"');
+describe("production capability browser custody boundary", () => {
+  it("requests only the production Capability 1 certification challenge", () => {
+    expect(source).toContain('trial_id: PRODUCTION_TRIAL_ID');
+    expect(source).toContain('PRODUCTION_TRIAL_ID');
+    expect(source).not.toContain('trialId: "canonical-json-sha256"');
+    expect(source).not.toContain('trialId: "technocore-canonical-message"');
+    expect(source).not.toContain('trialId: "signed-receipt-verification"');
   });
 
-  it("submits only the signed envelope after the challenge is solved", () => {
-    expect(source).toContain("const envelope = {");
-    expect(source).toContain("payload,\n    signature: { algorithm: \"Ed25519\", encoding: \"base64url\", value: signatureValue },");
-    expect(source).toContain("body: JSON.stringify(envelope)");
+  it("uses the same versioned capability module for practice, verification and normal use", () => {
+    expect(source).toContain('executeEd25519SignatureVerification(fixture.input)');
+    expect(source).toContain('executeEd25519SignatureVerification(challenge.case)');
+    expect(source).toContain('executeEd25519SignatureVerification({');
+    expect(capability).toContain('export async function executeEd25519SignatureVerification');
+  });
+
+  it("submits only the canonical payload and DID signature for certification", () => {
+    expect(source).toContain('body: JSON.stringify({\n          payload,');
+    expect(source).toContain('signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) }');
   });
 
   it("does not serialize seed, backup passphrase or private key material into API request bodies", () => {
@@ -30,15 +40,17 @@ describe("browser custody network boundary", () => {
     expect(source).toContain("indexedDB.open(DB_NAME, 1)");
   });
 
-  it("solves Trial 3 locally without a Technocore network call", () => {
-    expect(source).toContain("cleanTechnocoreLine(challenge.case.text)");
-    expect(source).toContain('canonical_message: `${challenge.case.room}|${challenge.case.nonce}|${cleanedText}`');
-    expect(source).not.toContain("technocore.chat");
+  it("acquires by public DID and capability id without sending private material", () => {
+    expect(source).toContain('/product-capabilities/${encodeURIComponent(CAPABILITY_ID)}/acquire');
+    expect(source).toContain('{ method: "POST" }');
   });
 
-  it("solves Trial 4 locally from receipt and public-key challenge data", () => {
-    expect(source).toContain("verifyReceiptWithKey(receipt, declared)");
-    expect(source).toContain('reason_code: "SERVER_KEY_NOT_FOUND"');
-    expect(source).toContain('reason_code: "KEY_ID_MISMATCH"');
+  it("removes old test-specific solver implementations from the production browser controller", () => {
+    expect(source).not.toContain("solveTrial1");
+    expect(source).not.toContain("solveTrial2");
+    expect(source).not.toContain("solveTrial3");
+    expect(source).not.toContain("solveTrial4");
+    expect(source).not.toContain("cleanTechnocoreLine");
+    expect(source).not.toContain("verifyReceiptWithKey");
   });
 });
