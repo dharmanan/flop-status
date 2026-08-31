@@ -2,34 +2,36 @@
 
 ## Now
 
-Implement Trial 2: Canonical JSON + SHA256.
+Implement Trial 3: Technocore Canonical Message Construction.
 
 Required outcome:
 
 * reuse the accepted Identity → Challenge → Signed Submission → Deterministic Verification → Receipt → Capability Record engine
-* issue a versioned deterministic challenge containing structured JSON with nested objects, arrays, Unicode and numeric edge cases
-* require the agent to return RFC 8785 JCS canonical output and SHA256 digest
-* verify canonical bytes and digest deterministically
+* preserve the actual Technocore canonical signing behavior from the inspected reference implementation
+* construct the exact canonical string `room|nonce|cleaned text`
+* keep FLOP challenge binding to the agent DID without falsely adding the DID to the Technocore signing string
+* apply the same deterministic text-cleaning semantics used by the reference before canonical construction
+* verify byte-for-byte canonical payload equality
 * preserve PASS/FAIL/UNKNOWN semantics
 * preserve one-time challenge and DID-binding rules
 * create the normal server-signed receipt and capability evidence on PASS
-* expose Trial 2 evidence through the existing public agent/receipt APIs
+* expose Trial 3 evidence through the existing public agent/receipt APIs
+* keep Technocore network availability optional and outside the verifier path
 * do not create a parallel verification or receipt architecture
 
-Acceptance for Trial 2 must be defined before declaring it complete.
+Acceptance for Trial 3 must be defined before declaring it complete.
 
 ## Next
 
 Implement the remaining FLOP v1 deterministic capability trials from `docs/capability-program-v1.md` in order:
 
-1. Trial 3: Technocore Canonical Message Construction
-2. Trial 4: Signed Receipt Verification
-3. Trial 5: Structured Data Transformation
-4. Trial 6: Tool Selection and Function Calling
-5. Trial 7: Multi-step Workflow Execution
-6. Trial 8: Retrieval and Grounded Evidence
-7. Trial 9: Constraint and Policy Compliance
-8. Trial 10: Failure Recovery and Idempotency
+1. Trial 4: Signed Receipt Verification
+2. Trial 5: Structured Data Transformation
+3. Trial 6: Tool Selection and Function Calling
+4. Trial 7: Multi-step Workflow Execution
+5. Trial 8: Retrieval and Grounded Evidence
+6. Trial 9: Constraint and Policy Compliance
+7. Trial 10: Failure Recovery and Idempotency
 
 After the trial engine supports the broader program:
 
@@ -52,7 +54,7 @@ Product v1 is not complete until:
 
 The ten v1 trial definitions and certificate requirements live in `docs/capability-program-v1.md`.
 
-## Completed milestone
+## Completed milestones
 
 Identity ownership/connectivity passed acceptance on 2026-08-31.
 
@@ -69,6 +71,19 @@ Accepted identity model:
 * manual canonical-payload signing excluded from normal consumer onboarding
 
 Evidence: `docs/acceptance/identity-ownership-results-2026-08-31.md`.
+
+Trial 2 Canonical JSON + SHA256 passed deployed acceptance on 2026-08-31.
+
+Accepted Trial 2 behavior:
+
+* versioned deterministic JCS/SHA256 challenge cases
+* DID-signed result through the shared submission layer
+* deterministic canonical JSON and digest verification
+* normal server-signed receipt and durable capability record
+* public receipt verification and capability aggregation
+* browser-owned identity flow exposed as a second capability action
+
+Evidence: `docs/acceptance/trial2-results-2026-08-31.md`.
 
 ## Later
 
