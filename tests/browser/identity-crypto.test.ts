@@ -5,6 +5,7 @@ import {
   parseEd25519DidKey,
   restorePortableIdentity,
   serializeBackup,
+  unlockPrivateKeyBackup,
 } from "../../web/identity-crypto.js";
 
 describe("portable browser identity custody", () => {
@@ -20,6 +21,19 @@ describe("portable browser identity custody", () => {
     const serialized = serializeBackup(created.backup);
     expect(serialized).not.toContain('"d"');
     expect(serialized).not.toContain("correct horse battery staple");
+  });
+
+  it("reveals the private key only after the correct backup passphrase is supplied", async () => {
+    const passphrase = "private key reveal passphrase";
+    const created = await createPortableIdentity(passphrase);
+    const unlocked = await unlockPrivateKeyBackup(created.backup, passphrase);
+
+    expect(unlocked.did).toBe(created.did);
+    expect(unlocked.jwk.kty).toBe("OKP");
+    expect(unlocked.jwk.crv).toBe("Ed25519");
+    expect(unlocked.privateKeyBase64Url).toBe(unlocked.jwk.d);
+    expect(unlocked.privateKeyBase64Url.length).toBeGreaterThan(0);
+    await expect(unlockPrivateKeyBackup(created.backup, "wrong password value")).rejects.toThrow(/could not be decrypted/i);
   });
 
   it("restores the same DID while keeping the restored active key nonextractable", async () => {
