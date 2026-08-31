@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { PgChallengeStateRepository } from "../db/challenge-state-repository.js";
-import { PgPassFinalizationRepository } from "../db/finalization-repository.js";
+import { PgTrial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
 import { PgPublicVerificationRepository } from "../db/public-verification-repository.js";
 import { ensureActiveServerSigningKey } from "../db/server-key-repository.js";
 import { PgSubmissionRepository } from "../db/pg-adapter.js";
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),
     submissionRepository: new PgSubmissionRepository(pool),
-    finalizationRepository: new PgPassFinalizationRepository(pool),
+    finalizationRepository: new PgTrial1FinalizationRepository(pool),
     signer,
   });
   const server = createServer(
