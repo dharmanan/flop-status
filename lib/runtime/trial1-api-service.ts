@@ -1,8 +1,6 @@
 import { z } from "zod";
-import {
-  issueEd25519SignatureChallenge,
-  type ChallengeIssuanceRepository,
-} from "../challenges/issuance-service.js";
+import { issueEd25519SignatureChallenge } from "../challenges/issuance-service.js";
+import type { ChallengeIssuanceRepository } from "../db/challenge-repository.js";
 import type { ChallengeStateRepository } from "../db/challenge-state-repository.js";
 import type { PassFinalizationRepository } from "../db/finalization-repository.js";
 import type { SubmissionAcceptanceRepository } from "../db/submission-repository.js";
@@ -31,7 +29,7 @@ export class Trial1ApiRequestError extends Error {
 }
 
 export class Trial1VerificationUnknownError extends Error {
-  constructor(readonly cause: unknown) {
+  constructor(readonly originalError: unknown) {
     super("accepted submission could not be finalized deterministically");
     this.name = "Trial1VerificationUnknownError";
   }
