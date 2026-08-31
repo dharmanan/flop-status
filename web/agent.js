@@ -36,6 +36,13 @@ const TRIALS = {
     buttonId: "run-trial-2",
     statusId: "trial-2-status",
   },
+  trial3: {
+    trialId: "technocore-canonical-message",
+    trialVersion: "1",
+    capabilityId: "protocol.technocore-canonical-message",
+    buttonId: "run-trial-3",
+    statusId: "trial-3-status",
+  },
 };
 
 let identity = null;
@@ -57,6 +64,16 @@ function canonicalize(value) {
   if (Array.isArray(value)) return "[" + value.map(canonicalize).join(",") + "]";
   if (typeof value === "object") return "{" + Object.keys(value).sort().map((key) => JSON.stringify(key) + ":" + canonicalize(value[key])).join(",") + "}";
   throw new Error("unsupported canonical JSON value");
+}
+
+function cleanTechnocoreLine(value, limit = 4096) {
+  const result = value
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!result) throw new Error("Technocore text cannot be empty after cleaning");
+  if (result.length > limit) throw new Error(`Technocore text is limited to ${limit} characters`);
+  return result;
 }
 
 async function sha256(bytes) {
@@ -159,12 +176,14 @@ function renderTrialState() {
   }
   const progress = byId("trial-progress");
   if (progress) {
-    progress.textContent = uiText(`${count} of 2 verified`, `2 testten ${count} doğrulandı`);
+    progress.textContent = uiText(`${count} of 3 verified`, `3 testten ${count} doğrulandı`);
   }
   const trial1Button = byId(TRIALS.trial1.buttonId);
   const trial2Button = byId(TRIALS.trial2.buttonId);
+  const trial3Button = byId(TRIALS.trial3.buttonId);
   if (trial1Button) trial1Button.textContent = uiText("Run Ed25519 trial", "Ed25519 testini çalıştır");
   if (trial2Button) trial2Button.textContent = uiText("Run Canonical JSON trial", "Canonical JSON testini çalıştır");
+  if (trial3Button) trial3Button.textContent = uiText("Run Technocore trial", "Technocore testini çalıştır");
 }
 
 function renderEvidence(data) {
@@ -492,13 +511,24 @@ async function solveTrial2(challenge) {
   };
 }
 
+async function solveTrial3(challenge) {
+  const cleanedText = cleanTechnocoreLine(challenge.case.text);
+  return {
+    cleaned_text: cleanedText,
+    canonical_message: `${challenge.case.room}|${challenge.case.nonce}|${cleanedText}`,
+  };
+}
+
 async function prepareTrialPayload(trial) {
   if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   const created = await createChallenge(trial);
   const challenge = created.challenge;
-  const result = trial.trialId === TRIALS.trial1.trialId
-    ? await solveTrial1(challenge)
-    : await solveTrial2(challenge);
+  let result;
+  if (trial.trialId === TRIALS.trial1.trialId) result = await solveTrial1(challenge);
+  else if (trial.trialId === TRIALS.trial2.trialId) result = await solveTrial2(challenge);
+  else if (trial.trialId === TRIALS.trial3.trialId) result = await solveTrial3(challenge);
+  else throw new Error("unsupported browser trial");
+
   const payload = {
     submission_version: SUBMISSION_VERSION,
     canonicalization: CANONICALIZATION,
@@ -621,6 +651,7 @@ byId("signin-seed").addEventListener("click", () => signInFromSeed().catch(repor
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
 byId("run-trial-1").addEventListener("click", () => runTrial(TRIALS.trial1).catch(report));
 byId("run-trial-2").addEventListener("click", () => runTrial(TRIALS.trial2).catch(report));
+byId("run-trial-3").addEventListener("click", () => runTrial(TRIALS.trial3).catch(report));
 byId("download-backup").addEventListener("click", () => {
   if (identity?.backup) downloadBackup(identity.backup);
 });
