@@ -57,11 +57,27 @@ export interface InsertReceiptInput {
   serverSignature: string;
 }
 
+export interface InsertCapabilityCertificateInput {
+  id: string;
+  agentId: string;
+  capabilityId: string;
+  certificateName: string;
+  capabilityVersion: string;
+  programVersion: string;
+  trialId: string;
+  trialVersion: string;
+  verifierId: string;
+  verifierVersion: string;
+  receiptId: string;
+  issuedAt: string;
+}
+
 export interface PassFinalizationTransaction {
   loadContext(): Promise<FinalizationContext | null>;
   insertVerificationRun(input: InsertVerificationRunInput): Promise<string>;
   ensureServerKey(input: EnsureServerKeyInput): Promise<void>;
   insertReceipt(input: InsertReceiptInput): Promise<void>;
+  insertCapabilityCertificate(input: InsertCapabilityCertificateInput): Promise<void>;
   markChallengeFinal(challengeId: string, verdict: "PASS" | "FAIL", completedAt: string): Promise<void>;
   upsertCapabilityRecord(agentId: string, capabilityId: string, receiptId: string, verifiedAt: string): Promise<void>;
 }
@@ -196,6 +212,32 @@ export class PgPassFinalizationRepository implements PassFinalizationRepository 
             input.serverKeyId,
             input.unsignedPayload,
             input.serverSignature,
+          ],
+        );
+      },
+
+      async insertCapabilityCertificate(input) {
+        await client.query(
+          `INSERT INTO capability_certificates (
+             id, agent_id, capability_id, certificate_name, capability_version,
+             program_version, trial_id, trial_version, verifier_id, verifier_version,
+             receipt_id, status, issued_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'ACTIVE',$12)
+           ON CONFLICT (agent_id, capability_id, capability_version, program_version)
+           DO NOTHING`,
+          [
+            input.id,
+            input.agentId,
+            input.capabilityId,
+            input.certificateName,
+            input.capabilityVersion,
+            input.programVersion,
+            input.trialId,
+            input.trialVersion,
+            input.verifierId,
+            input.verifierVersion,
+            input.receiptId,
+            input.issuedAt,
           ],
         );
       },
