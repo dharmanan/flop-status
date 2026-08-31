@@ -1,7 +1,5 @@
 import { z } from "zod";
-import {
-  issueCapabilityChallenge,
-} from "../challenges/issuance-service.js";
+import { issueCapabilityChallenge } from "../challenges/issuance-service.js";
 import type { ChallengeIssuanceRepository } from "../db/challenge-repository.js";
 import type { ChallengeStateRepository } from "../db/challenge-state-repository.js";
 import type { Trial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
@@ -10,6 +8,7 @@ import type { AttestationSigner } from "../receipts/receipt.js";
 import { acceptCapabilitySignedSubmission } from "../submissions/submission-service.js";
 import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
+import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
 import {
   FinalizationUnknownError,
   finalizeTrial1WithUnknownRecovery,
@@ -20,7 +19,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const createChallengeSchema = z
   .object({
     agent_did: z.string().min(1),
-    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID]),
+    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID, TRIAL3_ID]),
   })
   .strict();
 
@@ -51,11 +50,6 @@ export interface CapabilityApiDependencies {
 
 export type Trial1ApiDependencies = CapabilityApiDependencies;
 
-/**
- * Shared public capability API service. The legacy file/class alias remains so
- * accepted Trial 1 imports do not break while the runtime now dispatches by
- * trial id through the same persistence/evidence engine.
- */
 export class CapabilityApiService {
   constructor(private readonly deps: CapabilityApiDependencies) {}
 
