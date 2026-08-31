@@ -1,16 +1,24 @@
 import type { ChallengeIssuanceRepository } from "../db/challenge-repository.js";
 import { parseEd25519DidKey } from "../identity/did-key.js";
 import {
+  generateCanonicalJsonSha256Challenge,
+  type Trial2ChallengeGeneratorDependencies,
+} from "../trials/canonical-json-sha256/challenge-generator.js";
+import {
+  TRIAL_ID as TRIAL2_ID,
+  TRIAL_VERSION as TRIAL2_VERSION,
+} from "../trials/canonical-json-sha256/constants.js";
+import {
   generateEd25519SignatureChallenge,
   type ClockFn,
   type RandomBytesFn,
 } from "../trials/ed25519-signature-verification/challenge-generator.js";
-import { TRIAL_ID, TRIAL_VERSION } from "../trials/ed25519-signature-verification/constants.js";
+import {
+  TRIAL_ID as TRIAL1_ID,
+  TRIAL_VERSION as TRIAL1_VERSION,
+} from "../trials/ed25519-signature-verification/constants.js";
 import type { Trial1ChallengePayload } from "../trials/ed25519-signature-verification/schema.js";
 
-// Milestone 1 accepted values per docs/database-schema.md — Trial 1 accepts
-// only Ed25519 did:key, enforced above by parseEd25519DidKey before this is
-// ever used, so hardcoding here matches what has already been validated.
 const AGENT_DID_METHOD = "key";
 const AGENT_KEY_TYPE = "Ed25519";
 
@@ -35,6 +43,13 @@ export class TrialDefinitionNotFoundError extends Error {
   }
 }
 
+export class UnsupportedTrialError extends Error {
+  constructor(readonly trialId: string) {
+    super(`unsupported trial: ${trialId}`);
+    this.name = "UnsupportedTrialError";
+  }
+}
+
 export interface IssueEd25519ChallengeInput {
   agentDid: string;
 }
@@ -45,39 +60,45 @@ export interface IssueEd25519ChallengeDependencies {
   randomBytes?: RandomBytesFn;
 }
 
-// The model handed back to callers. There is deliberately no hiddenContext
-// field on this type — it is structurally impossible to leak the hidden
-// verifier context through this return shape.
+export interface IssueCapabilityChallengeInput {
+  agentDid: string;
+  trialId: string;
+}
+
+export interface IssueCapabilityChallengeDependencies {
+  repository: ChallengeIssuanceRepository;
+  now?: ClockFn;
+  randomBytes?: RandomBytesFn;
+}
+
 export interface IssuedChallenge {
   id: string;
-  publicPayload: Trial1ChallengePayload;
+  publicPayload: unknown;
   challengeHash: string;
 }
 
-/**
- * Race-safe Trial 1 challenge issuance. Serializes issuance per
- * (agent, trial) using the repository's advisory transaction lock,
- * transitions a stale ISSUED challenge to EXPIRED before replacing it, and
- * refuses a second challenge while one is still active — matching the
- * transaction boundary described in docs/database-schema.md.
- *
- * now/randomBytes are optional and exist only for deterministic tests; the
- * production call path (only `repository` supplied) falls through to
- * generateEd25519SignatureChallenge's own CSPRNG-backed defaults.
- */
-export async function issueEd25519SignatureChallenge(
-  input: IssueEd25519ChallengeInput,
-  deps: IssueEd25519ChallengeDependencies,
+interface GeneratedChallenge {
+  publicPayload: {
+    challenge_id: string;
+    nonce: string;
+    issued_at: string;
+    expires_at: string;
+  };
+  hiddenContext: unknown;
+  challengeHash: string;
+}
+
+async function persistGeneratedChallenge(
+  input: { agentDid: string; trialId: string; trialVersion: string },
+  generated: GeneratedChallenge,
+  deps: IssueCapabilityChallengeDependencies,
 ): Promise<IssuedChallenge> {
   const { repository } = deps;
   const now = deps.now ?? (() => new Date());
 
-  // Fail fast with a typed did:key error before touching the database.
-  parseEd25519DidKey(input.agentDid);
-
-  const trialDefinition = await repository.findActiveTrialDefinition(TRIAL_ID, TRIAL_VERSION);
+  const trialDefinition = await repository.findActiveTrialDefinition(input.trialId, input.trialVersion);
   if (!trialDefinition) {
-    throw new TrialDefinitionNotFoundError(TRIAL_ID, TRIAL_VERSION);
+    throw new TrialDefinitionNotFoundError(input.trialId, input.trialVersion);
   }
 
   const agent = await repository.findOrCreateAgentByDid(
@@ -88,7 +109,6 @@ export async function issueEd25519SignatureChallenge(
 
   return repository.withAgentTrialLock(agent.id, trialDefinition.id, async (tx) => {
     const active = await tx.findActiveIssuedChallenge(agent.id, trialDefinition.id);
-
     if (active) {
       const isExpired = new Date(active.expiresAt).getTime() <= now().getTime();
       if (!isExpired) {
@@ -96,11 +116,6 @@ export async function issueEd25519SignatureChallenge(
       }
       await tx.expireChallenge(active.id);
     }
-
-    const generated = generateEd25519SignatureChallenge(
-      { agentDid: input.agentDid },
-      { now: deps.now, randomBytes: deps.randomBytes },
-    );
 
     const row = await tx.insertChallenge({
       id: generated.publicPayload.challenge_id,
@@ -120,4 +135,57 @@ export async function issueEd25519SignatureChallenge(
       challengeHash: generated.challengeHash,
     };
   });
+}
+
+export async function issueCapabilityChallenge(
+  input: IssueCapabilityChallengeInput,
+  deps: IssueCapabilityChallengeDependencies,
+): Promise<IssuedChallenge> {
+  parseEd25519DidKey(input.agentDid);
+
+  if (input.trialId === TRIAL1_ID) {
+    const generated = generateEd25519SignatureChallenge(
+      { agentDid: input.agentDid },
+      { now: deps.now, randomBytes: deps.randomBytes },
+    );
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: TRIAL1_ID, trialVersion: TRIAL1_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  if (input.trialId === TRIAL2_ID) {
+    const generatorDeps: Trial2ChallengeGeneratorDependencies = {
+      now: deps.now,
+      randomBytes: deps.randomBytes,
+    };
+    const generated = generateCanonicalJsonSha256Challenge(
+      { agentDid: input.agentDid },
+      generatorDeps,
+    );
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: TRIAL2_ID, trialVersion: TRIAL2_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  throw new UnsupportedTrialError(input.trialId);
+}
+
+/**
+ * Backward-compatible Trial 1 entry point retained for accepted tests and
+ * internal verification scripts. New runtime code should use
+ * issueCapabilityChallenge so later trials share the same issuance engine.
+ */
+export async function issueEd25519SignatureChallenge(
+  input: IssueEd25519ChallengeInput,
+  deps: IssueEd25519ChallengeDependencies,
+): Promise<{ id: string; publicPayload: Trial1ChallengePayload; challengeHash: string }> {
+  const issued = await issueCapabilityChallenge(
+    { agentDid: input.agentDid, trialId: TRIAL1_ID },
+    deps,
+  );
+  return issued as { id: string; publicPayload: Trial1ChallengePayload; challengeHash: string };
 }
