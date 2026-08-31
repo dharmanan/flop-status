@@ -6,6 +6,7 @@ import {
   parseEd25519DidKey,
   restorePortableIdentity,
   serializeBackup,
+  unlockPrivateKeyBackup,
 } from "/identity-crypto.js";
 import { bindLanguageControls, onLanguageChange, t } from "/i18n.js";
 
@@ -141,12 +142,25 @@ function hideExternalSigning() {
   byId("external-signature").value = "";
 }
 
+function clearPrivateKey() {
+  byId("private-key-value").value = "";
+  byId("private-key-passphrase").value = "";
+  byId("private-key-result").hidden = true;
+}
+
+function hidePrivateKeyPanel() {
+  clearPrivateKey();
+  byId("private-key-panel").hidden = true;
+}
+
 function renderIdentity() {
   const setup = byId("identity-setup");
   const actions = byId("active-actions");
   const run = byId("run-trial");
   const download = byId("download-backup");
+  const showPrivateKey = byId("show-private-key");
   hideExternalSigning();
+  hidePrivateKeyPanel();
 
   if (!identity) {
     setup.hidden = false;
@@ -172,6 +186,7 @@ function renderIdentity() {
     byId("extractable-check").textContent = identity.privateKey.extractable ? "YES · FAIL" : "NO · PASS";
     byId("backup-check").textContent = identity.backup ? t("encrypted_ready") : t("missing_legacy");
     download.hidden = !identity.backup;
+    showPrivateKey.hidden = !identity.backup;
   } else {
     byId("identity-status").textContent = t("existing_connected");
     byId("custody").textContent = t("external_custody");
@@ -179,15 +194,16 @@ function renderIdentity() {
     byId("extractable-check").textContent = t("not_held");
     byId("backup-check").textContent = t("owned_externally");
     download.hidden = true;
+    showPrivateKey.hidden = true;
   }
 }
 
 function downloadBackup(backup) {
-  const blob = new Blob([serializeBackup(backup)], { type: "application/json" });
+  const blob = new Blob([serializeBackup(backup)], { type: "application/octet-stream" });
   const href = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = href;
-  anchor.download = "flop-identity-" + backup.did.slice(-12) + ".json";
+  anchor.download = "flop-identity-" + backup.did.slice(-12) + ".flopkey";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -233,6 +249,27 @@ async function restoreBrowserIdentity() {
     await refreshEvidence();
     setOperation(t("op_restored"));
   } finally { byId("restore-identity").disabled = false; }
+}
+
+async function revealPrivateKey() {
+  if (!identity || identity.mode !== "browser" || !identity.backup) throw new Error(t("err_identity_first"));
+  const passphrase = byId("private-key-passphrase").value;
+  byId("unlock-private-key").disabled = true;
+  try {
+    const unlocked = await unlockPrivateKeyBackup(identity.backup, passphrase);
+    if (unlocked.did !== identity.did) throw new Error("private key backup does not match the active DID");
+    byId("private-key-value").value = unlocked.privateKeyBase64Url;
+    byId("private-key-result").hidden = false;
+    byId("private-key-passphrase").value = "";
+    setOperation(t("private_key_revealed"));
+  } finally { byId("unlock-private-key").disabled = false; }
+}
+
+async function copyPrivateKey() {
+  const value = byId("private-key-value").value;
+  if (!value) return;
+  await navigator.clipboard.writeText(value);
+  setOperation(t("private_key_copied"));
 }
 
 async function connectExistingDid() {
@@ -368,6 +405,15 @@ byId("connect-existing").addEventListener("click", () => connectExistingDid().ca
 byId("run-trial").addEventListener("click", () => runTrial().catch(report));
 byId("submit-external-signature").addEventListener("click", () => submitExternalSignature().catch(report));
 byId("cancel-external-signing").addEventListener("click", hideExternalSigning);
+byId("show-private-key").addEventListener("click", () => {
+  clearPrivateKey();
+  byId("private-key-panel").hidden = false;
+  byId("private-key-passphrase").focus();
+});
+byId("unlock-private-key").addEventListener("click", () => revealPrivateKey().catch(report));
+byId("copy-private-key").addEventListener("click", () => copyPrivateKey().catch(report));
+byId("hide-private-key").addEventListener("click", clearPrivateKey);
+byId("close-private-key").addEventListener("click", hidePrivateKeyPanel);
 byId("download-backup").addEventListener("click", () => { if (identity?.backup) downloadBackup(identity.backup); });
 byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 
