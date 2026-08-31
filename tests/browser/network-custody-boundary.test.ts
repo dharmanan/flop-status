@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
 
 describe("browser custody network boundary", () => {
-  it("sends only public challenge identity fields when creating a challenge", () => {
-    expect(source).toContain('body: JSON.stringify({ agent_did: identity.did, trial_id: TRIAL_ID })');
+  it("sends only public challenge identity fields when creating either trial", () => {
+    expect(source).toContain('body: JSON.stringify({ agent_did: identity.did, trial_id: trial.trialId })');
+    expect(source).toContain('trialId: "ed25519-signature-verification"');
+    expect(source).toContain('trialId: "canonical-json-sha256"');
   });
 
   it("submits only the signed envelope after the challenge is solved", () => {
