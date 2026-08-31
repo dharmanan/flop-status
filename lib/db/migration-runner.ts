@@ -2,9 +2,10 @@ import { readFile } from "node:fs/promises";
 import type { Pool } from "pg";
 
 const MIGRATION_LOCK_KEY = "flop:migrations";
+const FOUNDATION_MIGRATION_ID = "0001_trial1_foundation";
 const MIGRATIONS = [
   {
-    id: "0001_trial1_foundation",
+    id: FOUNDATION_MIGRATION_ID,
     path: new URL("../../db/migrations/0001_trial1_foundation.sql", import.meta.url),
   },
   {
@@ -16,6 +17,35 @@ const MIGRATIONS = [
 export interface MigrationResult {
   id: string;
   status: "applied" | "already-applied";
+}
+
+async function backfillLegacyFoundationMarker(
+  client: Pick<Awaited<ReturnType<Pool["connect"]>>, "query">,
+): Promise<void> {
+  const existing = await client.query<{ id: string }>(
+    "SELECT id FROM schema_migrations WHERE id = $1",
+    [FOUNDATION_MIGRATION_ID],
+  );
+  if (existing.rows.length > 0) {
+    return;
+  }
+
+  const legacy = await client.query<{ foundation_present: boolean }>(`
+    SELECT
+      to_regclass('public.agents') IS NOT NULL
+      AND to_regclass('public.capabilities') IS NOT NULL
+      AND to_regclass('public.trial_definitions') IS NOT NULL
+      AND to_regclass('public.challenge_instances') IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'challenge_state'
+      ) AS foundation_present
+  `);
+
+  if (legacy.rows[0]?.foundation_present === true) {
+    await client.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+      FOUNDATION_MIGRATION_ID,
+    ]);
+  }
 }
 
 export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
@@ -32,6 +62,13 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
         applied_at timestamptz NOT NULL DEFAULT now()
       )
     `);
+
+    // Compatibility for the Railway database created by the original
+    // one-migration runner, which applied 0001 before schema_migrations began
+    // recording migration ids. Only backfill when the full foundation shape
+    // is already present; otherwise an empty/partial database still fails
+    // loudly instead of being falsely marked migrated.
+    await backfillLegacyFoundationMarker(client);
 
     const results: MigrationResult[] = [];
     for (const migration of MIGRATIONS) {
@@ -70,7 +107,7 @@ export async function runTrial1FoundationMigration(
   pool: Pool,
 ): Promise<"applied" | "already-applied"> {
   const results = await runMigrations(pool);
-  const foundation = results.find((result) => result.id === "0001_trial1_foundation");
+  const foundation = results.find((result) => result.id === FOUNDATION_MIGRATION_ID);
   if (!foundation) {
     throw new Error("foundation migration result missing");
   }
