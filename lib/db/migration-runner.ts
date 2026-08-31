@@ -20,6 +20,10 @@ const MIGRATIONS = [
     id: "0004_trial2_canonical_json_sha256",
     path: new URL("../../db/migrations/0004_trial2_canonical_json_sha256.sql", import.meta.url),
   },
+  {
+    id: "0005_trial3_technocore_canonical_message",
+    path: new URL("../../db/migrations/0005_trial3_technocore_canonical_message.sql", import.meta.url),
+  },
 ] as const;
 
 export interface MigrationResult {
@@ -32,9 +36,7 @@ async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void>
     "SELECT id FROM schema_migrations WHERE id = $1",
     [FOUNDATION_MIGRATION_ID],
   );
-  if (existing.rows.length > 0) {
-    return;
-  }
+  if (existing.rows.length > 0) return;
 
   const legacy = await client.query<{ foundation_present: boolean }>(`
     SELECT
@@ -48,9 +50,7 @@ async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void>
   `);
 
   if (legacy.rows[0]?.foundation_present === true) {
-    await client.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-      FOUNDATION_MIGRATION_ID,
-    ]);
+    await client.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [FOUNDATION_MIGRATION_ID]);
   }
 }
 
@@ -84,8 +84,6 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
 
       const sql = await readFile(migration.path, "utf8");
       await client.query(sql);
-      // Some historical migrations self-register inside their transaction.
-      // ON CONFLICT keeps the runner compatible with both styles.
       await client.query(
         "INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
         [migration.id],
@@ -97,9 +95,7 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
   } finally {
     if (locked) {
       try {
-        await client.query("SELECT pg_advisory_unlock(hashtextextended($1, 0))", [
-          MIGRATION_LOCK_KEY,
-        ]);
+        await client.query("SELECT pg_advisory_unlock(hashtextextended($1, 0))", [MIGRATION_LOCK_KEY]);
       } finally {
         client.release();
       }
@@ -114,8 +110,6 @@ export async function runTrial1FoundationMigration(
 ): Promise<"applied" | "already-applied"> {
   const results = await runMigrations(pool);
   const foundation = results.find((result) => result.id === FOUNDATION_MIGRATION_ID);
-  if (!foundation) {
-    throw new Error("foundation migration result missing");
-  }
+  if (!foundation) throw new Error("foundation migration result missing");
   return foundation.status;
 }
