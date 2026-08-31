@@ -8,23 +8,31 @@ import {
   type SignedPassReceipt,
   type UnsignedPassReceipt,
 } from "../receipts/receipt.js";
+import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
+import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
+import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { verifyTrial1Result } from "../trials/ed25519-signature-verification/verifier.js";
 
 export class FinalizationError extends Error {
-  constructor(readonly code: "CHALLENGE_NOT_FOUND" | "CHALLENGE_NOT_SUBMITTED", message: string) {
+  constructor(
+    readonly code: "CHALLENGE_NOT_FOUND" | "CHALLENGE_NOT_SUBMITTED" | "UNSUPPORTED_TRIAL",
+    message: string,
+  ) {
     super(message);
     this.name = "FinalizationError";
   }
 }
 
-export interface FinalizeTrial1Dependencies {
+export interface FinalizeCapabilityDependencies {
   repository: PassFinalizationRepository;
   signer: AttestationSigner;
   now?: () => Date;
   randomUuid?: () => string;
 }
 
-export type FinalizedTrial1Verification =
+export type FinalizeTrial1Dependencies = FinalizeCapabilityDependencies;
+
+export type FinalizedCapabilityVerification =
   | {
       verdict: "PASS";
       verificationRunId: string;
@@ -37,10 +45,35 @@ export type FinalizedTrial1Verification =
       reasonCode: string;
     };
 
-export async function finalizeTrial1Verification(
+export type FinalizedTrial1Verification = FinalizedCapabilityVerification;
+
+function verifyPersistedResult(context: {
+  trialId: string;
+  publicPayload: unknown;
+  hiddenContext: unknown;
+  resultPayload: unknown;
+}) {
+  if (context.trialId === TRIAL1_ID) {
+    return verifyTrial1Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL2_ID) {
+    return verifyTrial2Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  throw new FinalizationError("UNSUPPORTED_TRIAL", `no deterministic verifier registered for ${context.trialId}`);
+}
+
+export async function finalizeCapabilityVerification(
   challengeId: string,
-  deps: FinalizeTrial1Dependencies,
-): Promise<FinalizedTrial1Verification> {
+  deps: FinalizeCapabilityDependencies,
+): Promise<FinalizedCapabilityVerification> {
   const now = deps.now ?? (() => new Date());
   const uuid = deps.randomUuid ?? randomUUID;
 
@@ -57,11 +90,7 @@ export async function finalizeTrial1Verification(
     }
 
     const startedAt = now().toISOString();
-    const verification = verifyTrial1Result({
-      publicPayload: context.publicPayload,
-      hiddenContext: context.hiddenContext,
-      result: context.resultPayload,
-    });
+    const verification = verifyPersistedResult(context);
     const completedAt = now().toISOString();
 
     const verificationRunId = await tx.insertVerificationRun({
@@ -141,4 +170,12 @@ export async function finalizeTrial1Verification(
 
     return { verdict: "PASS", verificationRunId, receipt };
   });
+}
+
+/** Backward-compatible Trial 1 wrapper retained for accepted tests. */
+export async function finalizeTrial1Verification(
+  challengeId: string,
+  deps: FinalizeTrial1Dependencies,
+): Promise<FinalizedTrial1Verification> {
+  return finalizeCapabilityVerification(challengeId, deps);
 }
