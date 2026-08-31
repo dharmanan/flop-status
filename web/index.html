@@ -38,7 +38,7 @@
         <div class="label" data-i18n="restore_title">Restore browser-owned DID</div>
         <p class="muted" data-i18n="restore_desc"></p>
         <label data-i18n="encrypted_backup_file">Encrypted backup file</label>
-        <input id="restore-file" class="visually-hidden" type="file" accept="application/json,.json">
+        <input id="restore-file" class="visually-hidden" type="file" accept=".flopkey,application/json,.json">
         <button id="restore-file-button" class="secondary file-button" type="button" data-i18n="choose_backup_file">Choose backup file</button>
         <div id="restore-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
         <label for="restore-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
@@ -57,8 +57,29 @@
 
     <section id="active-actions" class="actions" hidden>
       <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
+      <button id="show-private-key" class="secondary" hidden data-i18n="show_private_key">Show my private key</button>
       <button id="download-backup" class="secondary" hidden data-i18n="download_backup">Download encrypted backup</button>
       <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
+    </section>
+
+    <section id="private-key-panel" class="panel key-panel" hidden>
+      <div class="label" data-i18n="private_key_title">Your private key</div>
+      <div class="status" data-i18n="private_key_desc">Enter your backup passphrase. The key is decrypted only in this browser.</div>
+      <label for="private-key-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
+      <input id="private-key-passphrase" type="password" autocomplete="current-password" data-i18n-placeholder="backup_passphrase" placeholder="Backup passphrase">
+      <div class="actions compact">
+        <button id="unlock-private-key" data-i18n="reveal_private_key">Reveal private key</button>
+        <button id="close-private-key" class="secondary" data-i18n="cancel">Cancel</button>
+      </div>
+      <div id="private-key-result" hidden>
+        <label for="private-key-value" data-i18n="private_key_value">Private key</label>
+        <textarea id="private-key-value" class="mono key-output" readonly></textarea>
+        <div class="actions compact">
+          <button id="copy-private-key" data-i18n="copy_private_key">Copy private key</button>
+          <button id="hide-private-key" class="secondary" data-i18n="hide_private_key">Hide private key</button>
+        </div>
+        <p class="muted" data-i18n="private_key_warning">Anyone with this key controls this DID. Keep it private.</p>
+      </div>
     </section>
 
     <section id="external-signing" class="panel" hidden>
