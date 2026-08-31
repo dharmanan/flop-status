@@ -7,20 +7,24 @@ import type { SubmissionAcceptanceRepository } from "../db/submission-repository
 import type { AttestationSigner } from "../receipts/receipt.js";
 import { acceptCapabilitySignedSubmission } from "../submissions/submission-service.js";
 import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
-import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
+  TRIAL_ID as TRIAL1_ID,
+} from "../trials/ed25519-signature-verification/constants.js";
 import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
 import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
 import {
   FinalizationUnknownError,
   finalizeTrial1WithUnknownRecovery,
 } from "../verification/finalization-unknown-recovery.js";
+import type { CapabilityProductService } from "./capability-product-service.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const createChallengeSchema = z
   .object({
     agent_did: z.string().min(1),
-    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID, TRIAL3_ID, TRIAL4_ID]),
+    trial_id: z.enum([TRIAL1_ID, TRIAL1_PRODUCTION_ID, TRIAL2_ID, TRIAL3_ID, TRIAL4_ID]),
   })
   .strict();
 
@@ -47,6 +51,7 @@ export interface CapabilityApiDependencies {
   submissionRepository: SubmissionAcceptanceRepository;
   finalizationRepository: Trial1FinalizationRepository;
   signer: AttestationSigner;
+  capabilityProduct?: CapabilityProductService;
 }
 
 export type Trial1ApiDependencies = CapabilityApiDependencies;
@@ -61,6 +66,10 @@ export class CapabilityApiService {
         "INVALID_CHALLENGE_SCHEMA",
         parsed.error.issues.map((issue) => issue.message).join("; "),
       );
+    }
+    if (parsed.data.trial_id === TRIAL1_PRODUCTION_ID) {
+      if (!this.deps.capabilityProduct) throw new Error("capability product service is required for production certification");
+      await this.deps.capabilityProduct.requireCapability1Installed(parsed.data.agent_did);
     }
     const issued = await issueCapabilityChallenge(
       { agentDid: parsed.data.agent_did, trialId: parsed.data.trial_id },
@@ -97,12 +106,14 @@ export class CapabilityApiService {
             state: "PASS" as const,
             verdict: "PASS" as const,
             receipt_id: finalized.receipt.receipt_id,
+            certificate_id: finalized.certificateId ?? null,
           }
         : {
             challenge_id: challengeId,
             state: "FAIL" as const,
             verdict: "FAIL" as const,
             receipt_id: null,
+            certificate_id: null,
           };
     } catch (error) {
       if (error instanceof FinalizationUnknownError) {
