@@ -13,6 +13,8 @@ import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants
 import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
+import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
+import { trial4SignedSubmissionEnvelopeSchema } from "../trials/signed-receipt-verification/schema.js";
 import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
 import { trial3SignedSubmissionEnvelopeSchema } from "../trials/technocore-canonical-message/schema.js";
 
@@ -64,7 +66,8 @@ type TransactionOutcome =
 type ParsedEnvelope =
   | ReturnType<typeof trial1SignedSubmissionEnvelopeSchema.parse>
   | ReturnType<typeof trial2SignedSubmissionEnvelopeSchema.parse>
-  | ReturnType<typeof trial3SignedSubmissionEnvelopeSchema.parse>;
+  | ReturnType<typeof trial3SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial4SignedSubmissionEnvelopeSchema.parse>;
 
 function assertSupportedDid(did: string): void {
   try {
@@ -97,7 +100,9 @@ function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
         ? trial2SignedSubmissionEnvelopeSchema
         : trialId === TRIAL3_ID
           ? trial3SignedSubmissionEnvelopeSchema
-          : null;
+          : trialId === TRIAL4_ID
+            ? trial4SignedSubmissionEnvelopeSchema
+            : null;
 
   if (!schema) {
     throw new SubmissionAcceptanceError(
