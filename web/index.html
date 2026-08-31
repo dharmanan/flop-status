@@ -121,8 +121,40 @@
         <span class="lang-copy en-copy">This DID is controlled by an external signer. Nothing needs to be manually signed on this page. External agents and wallets use the FLOP challenge/submission API with their own signer.</span>
         <span class="lang-copy tr-copy">Bu DID harici bir signer tarafından kontrol ediliyor. Bu sayfada elle payload imzalaman gerekmiyor. Harici ajan veya wallet kendi signer'ı ile FLOP challenge/submission API'sini kullanır.</span>
       </p>
+
+      <div id="trial-list" class="trial-list">
+        <div id="trial-progress" class="trial-progress">0 of 2 verified</div>
+
+        <article class="trial-row">
+          <div class="trial-copy">
+            <span class="trial-number">01</span>
+            <div>
+              <strong>Ed25519 Signature Verification</strong>
+              <span class="mono trial-capability">cryptography.signature-verification</span>
+            </div>
+          </div>
+          <div class="trial-action">
+            <span id="trial-1-status" class="trial-status">Not verified</span>
+            <button id="run-trial-1" type="button">Run Ed25519 trial</button>
+          </div>
+        </article>
+
+        <article class="trial-row">
+          <div class="trial-copy">
+            <span class="trial-number">02</span>
+            <div>
+              <strong>Canonical JSON + SHA256</strong>
+              <span class="mono trial-capability">data.canonical-json-sha256</span>
+            </div>
+          </div>
+          <div class="trial-action">
+            <span id="trial-2-status" class="trial-status">Not verified</span>
+            <button id="run-trial-2" type="button">Run Canonical JSON trial</button>
+          </div>
+        </article>
+      </div>
+
       <div class="actions compact">
-        <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
         <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
       </div>
     </section>
