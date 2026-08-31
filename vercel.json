@@ -18,6 +18,7 @@
   ],
   "rewrites": [
     { "source": "/agent", "destination": "/index.html" },
-    { "source": "/verify/:receiptId", "destination": "/verify.html" }
+    { "source": "/verify/:receiptId", "destination": "/verify.html" },
+    { "source": "/certificate/:certificateId", "destination": "/certificate.html" }
   ]
 }
