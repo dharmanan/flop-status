@@ -4,7 +4,7 @@ Last updated: 2026-08-31
 
 ## Current phase
 
-Trial 1 deployed acceptance is in its final browser-matrix stage. Server-side acceptance, Technocore independence, clean-database rebuild, Chrome desktop refresh persistence and separate clean-browser receipt verification have passed. Full Trial 1 acceptance is not complete yet because the remaining Safari browser matrix still needs explicit deployed evidence.
+Trial 1 deployed acceptance is in its final browser-matrix stage. Server-side acceptance, Technocore independence, clean-database rebuild, Chrome desktop acceptance, clean-browser receipt verification and Safari desktop acceptance have passed. Full Trial 1 acceptance is not complete yet because Mobile Safari on iPhone still needs explicit deployed evidence.
 
 ## Completed
 
@@ -32,10 +32,10 @@ Trial 1 deployed acceptance is in its final browser-matrix stage. Server-side ac
 * Concurrent submission race verified exactly one accepted submission and exactly one receipt.
 * Railway is backend only. Product HTML/CSS/browser JavaScript is not served by Railway.
 * Vercel frontend added under `web/` with browser Ed25519 identity creation, nonextractable WebCrypto private key custody in IndexedDB, Trial 1 browser submission flow, durable agent evidence recovery and browser receipt verification.
-* Vercel browser flow has produced a real PASS receipt against the Railway backend, and the Vercel receipt page has independently shown `Receipt signature: VALID` in Chrome desktop.
 * Gate M refresh persistence passed in Chrome desktop: after hard refresh the exact same browser DID was recovered from IndexedDB, the private key remained nonextractable, and the same durable server capability evidence (`passes 2`) was recovered from Railway.
 * Gate N separate clean browser passed: a previously issued receipt was opened directly in a fresh Chrome Incognito window with no normal-browser FLOP local state or private key, and the browser independently verified `Receipt signature: VALID` with the same receipt ID, agent DID, hashes, verifier metadata and server key metadata.
-* Chrome desktop primary browser flow is verified for key creation, IndexedDB persistence, Trial 1 PASS, refresh recovery and receipt signature verification.
+* Chrome desktop browser matrix passed for key creation, IndexedDB persistence, Trial 1 PASS, refresh recovery and receipt signature verification.
+* Safari desktop browser matrix passed for key creation, nonextractable WebCrypto private key custody, IndexedDB persistence, Trial 1 PASS, durable server evidence recovery after refresh and browser receipt signature verification (`VALID`). The same Safari DID was preserved across refresh.
 * Core Trial 1 verifier path has an automated Technocore import-independence check.
 * Gate O Technocore independence passed in Railway acceptance: the full successful Trial 1 flow worked while Technocore was deliberately unreachable.
 * Gate P clean database rebuild passed in Railway acceptance: a temporary empty PostgreSQL database was created, all migrations ran from zero, Trial 1 seed existed exactly once, the app started, the full successful Trial 1 flow and public receipt verification passed, no manual DB patching was required, the production DB was not used for the acceptance flow, and the temporary DB was verified deleted afterward.
@@ -45,14 +45,14 @@ Trial 1 deployed acceptance is in its final browser-matrix stage. Server-side ac
 
 ## In progress
 
-* Browser matrix: Chrome desktop is passed. Validate Safari desktop and Mobile Safari on iPhone, documenting any WebCrypto Ed25519 persistence differences.
+* Browser matrix: Chrome desktop and Safari desktop are passed. Validate Mobile Safari on iPhone, including key creation, Trial 1 PASS, refresh persistence and receipt verification.
 
 ## Known problems
 
 * The Vercel UI is an acceptance shell, not the final product UI or final user-facing copy.
 * `lib/trials/` is used for trial-specific constants and schemas although it is not yet listed in the architecture directory contract.
 * Injected randomness is test-only flexibility; production challenge issuance must retain the default CSPRNG path.
-* Full Trial 1 acceptance has not passed yet because the remaining Safari browser matrix still needs explicit deployed evidence.
+* Full Trial 1 acceptance has not passed yet because Mobile Safari on iPhone still needs explicit deployed evidence.
 
 ## Blocked
 
@@ -64,4 +64,4 @@ The implementation target remains only Trial 1:
 
 Identity → Challenge → DID signed Submission → Deterministic Verification → Server signed Receipt → Public Verification.
 
-The deployed backend and Vercel Chrome desktop browser flow are working, including PASS, FAIL, UNKNOWN, tamper rejection, DID binding, expiry, replay/race protection, refresh persistence, clean-browser receipt verification, Technocore independence and clean-database rebuild. Do not declare Trial 1 complete until the remaining required Safari browser matrix in `docs/acceptance/trial1-acceptance.md` has passed in the deployed acceptance environment.
+The deployed backend plus Chrome desktop and Safari desktop Vercel browser flows are working, including PASS, FAIL, UNKNOWN, tamper rejection, DID binding, expiry, replay/race protection, refresh persistence, clean-browser receipt verification, Technocore independence and clean-database rebuild. Do not declare Trial 1 complete until Mobile Safari on iPhone has passed the remaining required browser matrix evidence in `docs/acceptance/trial1-acceptance.md`.
