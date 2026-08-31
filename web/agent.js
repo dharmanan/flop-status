@@ -43,6 +43,13 @@ const TRIALS = {
     buttonId: "run-trial-3",
     statusId: "trial-3-status",
   },
+  trial4: {
+    trialId: "signed-receipt-verification",
+    trialVersion: "1",
+    capabilityId: "evidence.signed-receipt-verification",
+    buttonId: "run-trial-4",
+    statusId: "trial-4-status",
+  },
 };
 
 let identity = null;
@@ -79,6 +86,23 @@ function cleanTechnocoreLine(value, limit = 4096) {
 async function sha256(bytes) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   return "sha256:" + bytesToBase64Url(digest);
+}
+
+async function verifyReceiptWithKey(receipt, key) {
+  const { server_signature: signature, ...unsignedReceipt } = receipt;
+  const publicKey = await crypto.subtle.importKey(
+    "raw",
+    base64UrlToBytes(key.public_key),
+    { name: "Ed25519" },
+    false,
+    ["verify"],
+  );
+  return crypto.subtle.verify(
+    { name: "Ed25519" },
+    publicKey,
+    base64UrlToBytes(signature),
+    encoder.encode(canonicalize(unsignedReceipt)),
+  );
 }
 
 function request(value) {
@@ -176,14 +200,16 @@ function renderTrialState() {
   }
   const progress = byId("trial-progress");
   if (progress) {
-    progress.textContent = uiText(`${count} of 3 verified`, `3 testten ${count} doğrulandı`);
+    progress.textContent = uiText(`${count} of 4 verified`, `4 testten ${count} doğrulandı`);
   }
   const trial1Button = byId(TRIALS.trial1.buttonId);
   const trial2Button = byId(TRIALS.trial2.buttonId);
   const trial3Button = byId(TRIALS.trial3.buttonId);
+  const trial4Button = byId(TRIALS.trial4.buttonId);
   if (trial1Button) trial1Button.textContent = uiText("Run Ed25519 trial", "Ed25519 testini çalıştır");
   if (trial2Button) trial2Button.textContent = uiText("Run Canonical JSON trial", "Canonical JSON testini çalıştır");
   if (trial3Button) trial3Button.textContent = uiText("Run Technocore trial", "Technocore testini çalıştır");
+  if (trial4Button) trial4Button.textContent = uiText("Run Receipt trial", "Receipt testini çalıştır");
 }
 
 function renderEvidence(data) {
@@ -519,6 +545,28 @@ async function solveTrial3(challenge) {
   };
 }
 
+async function solveTrial4(challenge) {
+  const receipt = challenge.case.receipt;
+  const keys = challenge.case.server_keys;
+  const declared = keys.find((key) => key.key_id === receipt.server_key_id);
+  if (!declared) {
+    return { status: "UNKNOWN", reason_code: "SERVER_KEY_NOT_FOUND", key_id: null };
+  }
+
+  if (await verifyReceiptWithKey(receipt, declared)) {
+    return { status: "VALID", reason_code: "SIGNATURE_VALID", key_id: declared.key_id };
+  }
+
+  for (const key of keys) {
+    if (key.key_id === declared.key_id) continue;
+    if (await verifyReceiptWithKey(receipt, key)) {
+      return { status: "INVALID", reason_code: "KEY_ID_MISMATCH", key_id: key.key_id };
+    }
+  }
+
+  return { status: "INVALID", reason_code: "SIGNATURE_INVALID", key_id: declared.key_id };
+}
+
 async function prepareTrialPayload(trial) {
   if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   const created = await createChallenge(trial);
@@ -527,6 +575,7 @@ async function prepareTrialPayload(trial) {
   if (trial.trialId === TRIALS.trial1.trialId) result = await solveTrial1(challenge);
   else if (trial.trialId === TRIALS.trial2.trialId) result = await solveTrial2(challenge);
   else if (trial.trialId === TRIALS.trial3.trialId) result = await solveTrial3(challenge);
+  else if (trial.trialId === TRIALS.trial4.trialId) result = await solveTrial4(challenge);
   else throw new Error("unsupported browser trial");
 
   const payload = {
@@ -652,6 +701,7 @@ byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity(
 byId("run-trial-1").addEventListener("click", () => runTrial(TRIALS.trial1).catch(report));
 byId("run-trial-2").addEventListener("click", () => runTrial(TRIALS.trial2).catch(report));
 byId("run-trial-3").addEventListener("click", () => runTrial(TRIALS.trial3).catch(report));
+byId("run-trial-4").addEventListener("click", () => runTrial(TRIALS.trial4).catch(report));
 byId("download-backup").addEventListener("click", () => {
   if (identity?.backup) downloadBackup(identity.backup);
 });
