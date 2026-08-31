@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>FLOP Capability Certificate</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">FLOP Capability Certificate</p>
+    <h1 id="certificate-name">Loading certificate…</h1>
+    <section class="panel">
+      <div id="certificate-status" class="status">Loading proof…</div>
+      <div class="checks">
+        <div>Agent DID <strong id="certificate-did" class="mono"></strong></div>
+        <div>Capability <strong id="certificate-capability"></strong></div>
+        <div>Capability version <strong id="certificate-capability-version"></strong></div>
+        <div>Program version <strong id="certificate-program-version"></strong></div>
+        <div>Trial <strong id="certificate-trial"></strong></div>
+        <div>Verifier <strong id="certificate-verifier"></strong></div>
+        <div>Issued <strong id="certificate-issued"></strong></div>
+        <div>Receipt <strong id="certificate-receipt" class="mono"></strong></div>
+        <div>FLOP attestation <strong id="certificate-attestation"></strong></div>
+      </div>
+      <div class="actions compact">
+        <a id="certificate-receipt-link" class="receipt">Open signed receipt proof</a>
+        <a href="/" class="receipt">Back to Capability Lab</a>
+      </div>
+    </section>
+    <p id="certificate-error" class="operation"></p>
+  </main>
+  <script type="module" src="/certificate.js"></script>
+</body>
+</html>
