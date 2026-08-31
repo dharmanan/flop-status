@@ -2,55 +2,67 @@
 
 ## Now
 
-Close the product identity gap before adding Trial 2 or redesigning the product UI.
+Close the product identity ownership/connectivity milestone before implementing additional trials.
 
 Required outcome:
 
 * Create new Ed25519 `did:key` in browser.
-* Connect an existing supported Ed25519 `did:key` without FLOP custody.
-* Prove control of an existing DID cryptographically, not by DID text alone.
-* Keep active browser signing key nonextractable in IndexedDB.
-* Add encrypted exportable backup and restore for browser-created identities.
+* Give the user direct ownership of the portable 32-byte seed at creation time with Reveal, Copy and Download.
+* Require the user to save the seed before continuing.
+* Restore the exact same DID from seed or the downloaded identity text file in a clean browser.
+* Keep active browser signing keys nonextractable in IndexedDB.
+* Keep encrypted FLOP backup/restore as an optional additional recovery path.
+* Support externally controlled Ed25519 `did:key` through the same challenge/submission API without FLOP custody.
+* Keep manual canonical-payload signing out of normal consumer onboarding.
 * Ensure private signing/recovery material never reaches Railway, Vercel server code or PostgreSQL.
-* Keep external agent/API signers on the same challenge/submission verification protocol.
 
 Reference: `docs/references/overheard.md`.
 
+Acceptance: `docs/acceptance/identity-ownership-acceptance.md`.
+
 ## Next
 
-After the identity ownership/connectivity contract passes acceptance:
+After identity ownership/connectivity passes deployed acceptance:
 
-* implement Trial 2: Technocore Canonical Message Construction
-* implement Trial 3: Canonical JSON + SHA256
+* implement the remaining FLOP v1 deterministic capability trials defined in `docs/capability-program-v1.md`
+* preserve the existing challenge → signed submission → deterministic verification → receipt engine for every trial
 * implement CLAIM/UNTESTED product flow
-* build the real IDENTIFY → CLAIM → TRIALS → RECORD product information architecture and premium Vercel UI
-* refine public capability record UX and user-facing copy
+* build the real IDENTIFY → CLAIM → TRIALS → RECORD product information architecture
+* build the high-information public capability certificate/profile
+* add proof links, per-trial receipt verification, downloadable certificate image, copy image and X sharing
+* refine premium Vercel product UI and user-facing copy
 
-## Milestone distinction
+## FLOP v1 completion target
 
-Trial 1 protocol acceptance is complete.
+Product v1 is not complete until:
 
-Product MVP is not complete until:
+* create/restore identity ownership works as specified
+* seed portability works in a clean browser
+* optional encrypted backup/restore works
+* external signer/Agent API path works without browser custody
+* all ten deterministic v1 capability trials complete through the same evidence engine
+* public profile shows `N OF 10 VERIFIED`
+* all ten current trials produce the distinct `FLOP VERIFIED AGENT · 10 OF 10` state
+* certificate/profile has a public proof URL and independently verifiable receipts
 
-* create/connect DID works as specified
-* encrypted backup/restore works for browser-created identities
-* external signer/Agent API path is productized
-* all three initial deterministic trials complete the same end-to-end verification path
+The ten v1 trial definitions and certificate requirements live in `docs/capability-program-v1.md`.
 
 ## Later
 
 * optional Technocore evidence publication
 * peer verified evidence class
 * Deal Room seam
-* official FLOP testnet evidence when specification exists
+* official FLOP testnet integration when specification exists
+* identity-bound FLOP Capability Certificate NFT for eligible completed profiles when official testnet primitives are available
+* FLOP-denominated trial/mint/re-certification flows only when official token interfaces are known
 
-## Not planned for MVP
+## Not planned for current v1 core
 
 * messaging product
 * inbox
-* passport
-* reputation score
-* wallet or faucet
+* passport product
+* subjective reputation score
+* speculative wallet or faucet implementation before official testnet specification
 * airdrop prediction
 * LLM judge
 * generic orchestrator
