@@ -12,6 +12,8 @@ import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { verifyTrial1Result } from "../trials/ed25519-signature-verification/verifier.js";
+import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
+import { verifyTrial3Result } from "../trials/technocore-canonical-message/verifier.js";
 
 export class FinalizationError extends Error {
   constructor(
@@ -33,17 +35,8 @@ export interface FinalizeCapabilityDependencies {
 export type FinalizeTrial1Dependencies = FinalizeCapabilityDependencies;
 
 export type FinalizedCapabilityVerification =
-  | {
-      verdict: "PASS";
-      verificationRunId: string;
-      receipt: SignedPassReceipt;
-    }
-  | {
-      verdict: "FAIL";
-      verificationRunId: string;
-      receipt: null;
-      reasonCode: string;
-    };
+  | { verdict: "PASS"; verificationRunId: string; receipt: SignedPassReceipt }
+  | { verdict: "FAIL"; verificationRunId: string; receipt: null; reasonCode: string };
 
 export type FinalizedTrial1Verification = FinalizedCapabilityVerification;
 
@@ -62,6 +55,13 @@ function verifyPersistedResult(context: {
   }
   if (context.trialId === TRIAL2_ID) {
     return verifyTrial2Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL3_ID) {
+    return verifyTrial3Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
       result: context.resultPayload,
@@ -161,18 +161,12 @@ export async function finalizeCapabilityVerification(
       serverSignature: receipt.server_signature,
     });
     await tx.markChallengeFinal(context.challengeId, "PASS", completedAt);
-    await tx.upsertCapabilityRecord(
-      context.agentId,
-      context.capabilityId,
-      receiptId,
-      completedAt,
-    );
+    await tx.upsertCapabilityRecord(context.agentId, context.capabilityId, receiptId, completedAt);
 
     return { verdict: "PASS", verificationRunId, receipt };
   });
 }
 
-/** Backward-compatible Trial 1 wrapper retained for accepted tests. */
 export async function finalizeTrial1Verification(
   challengeId: string,
   deps: FinalizeTrial1Dependencies,
