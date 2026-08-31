@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const URL = new URL("../../db/migrations/0003_trial1_receipts.sql", import.meta.url);
-const sql = () => readFileSync(URL, "utf8");
+const MIGRATION_URL = new URL("../../db/migrations/0003_trial1_receipts.sql", import.meta.url);
+const sql = () => readFileSync(MIGRATION_URL, "utf8");
 
 describe("migration 0003: receipt persistence", () => {
   it("stores server public metadata but has no private key column", () => {
