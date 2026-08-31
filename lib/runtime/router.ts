@@ -16,6 +16,10 @@ import {
   type PublicServerKey,
 } from "../verification/public-verification-service.js";
 import {
+  CapabilityProductError,
+  type CapabilityProductService,
+} from "./capability-product-service.js";
+import {
   Trial1ApiRequestError,
   Trial1VerificationUnknownError,
 } from "./trial1-api-service.js";
@@ -52,6 +56,7 @@ export interface RuntimeRouterDependencies {
   publicVerification: PublicVerificationReader;
   publicAgent: PublicAgentReader;
   trial1Api: Trial1ApiWriter;
+  capabilityProduct?: CapabilityProductService;
   health: unknown;
 }
 
@@ -140,6 +145,66 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       return;
     }
 
+    const certificateMatch = path.match(/^\/api\/v1\/certificates\/([^/]+)$/);
+    if (request.method === "GET" && certificateMatch) {
+      if (!deps.capabilityProduct) throw new Error("capability product service unavailable");
+      const certificate = await deps.capabilityProduct.getCertificate(certificateMatch[1] ?? "");
+      if (!certificate) {
+        apiError(response, 404, "CERTIFICATE_NOT_FOUND", "Certificate not found.", requestId);
+        return;
+      }
+      const verification = await deps.publicVerification.getVerification(certificate.receiptId);
+      if (!verification) throw new PublicVerificationIntegrityError("RECEIPT_NOT_FOUND", "certificate receipt is missing");
+      json(response, 200, {
+        certificate: {
+          certificate_id: certificate.id,
+          certificate_name: certificate.certificateName,
+          agent_did: certificate.did,
+          capability_id: certificate.capabilityId,
+          capability_version: certificate.capabilityVersion,
+          program_version: certificate.programVersion,
+          trial_id: certificate.trialId,
+          trial_version: certificate.trialVersion,
+          verifier_id: certificate.verifierId,
+          verifier_version: certificate.verifierVersion,
+          receipt_id: certificate.receiptId,
+          status: certificate.status,
+          issued_at: certificate.issuedAt,
+        },
+        receipt_verification: verification,
+      });
+      return;
+    }
+
+    const certificateListMatch = path.match(/^\/api\/v1\/agents\/(.+)\/certificates$/);
+    if (request.method === "GET" && certificateListMatch) {
+      if (!deps.capabilityProduct) throw new Error("capability product service unavailable");
+      const did = decodedPathValue(certificateListMatch[1] ?? "");
+      json(response, 200, await deps.capabilityProduct.listCertificates(did));
+      return;
+    }
+
+    const productCapabilityMatch = path.match(/^\/api\/v1\/agents\/(.+)\/product-capabilities\/([^/]+)$/);
+    if (request.method === "GET" && productCapabilityMatch) {
+      if (!deps.capabilityProduct) throw new Error("capability product service unavailable");
+      const did = decodedPathValue(productCapabilityMatch[1] ?? "");
+      const capabilityId = decodedPathValue(productCapabilityMatch[2] ?? "");
+      if (capabilityId !== "cryptography.signature-verification") {
+        throw new CapabilityProductError("UNSUPPORTED_CAPABILITY", `unsupported production capability: ${capabilityId}`);
+      }
+      json(response, 200, await deps.capabilityProduct.getCapability1State(did));
+      return;
+    }
+
+    const acquireMatch = path.match(/^\/api\/v1\/agents\/(.+)\/product-capabilities\/([^/]+)\/acquire$/);
+    if (request.method === "POST" && acquireMatch) {
+      if (!deps.capabilityProduct) throw new Error("capability product service unavailable");
+      const did = decodedPathValue(acquireMatch[1] ?? "");
+      const capabilityId = decodedPathValue(acquireMatch[2] ?? "");
+      json(response, 200, { installation: await deps.capabilityProduct.acquireCapability(did, capabilityId) });
+      return;
+    }
+
     const agentCapabilitiesMatch = path.match(/^\/api\/v1\/agents\/(.+)\/capabilities$/);
     if (request.method === "GET" && agentCapabilitiesMatch) {
       const did = decodedPathValue(agentCapabilitiesMatch[1] ?? "");
@@ -218,6 +283,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     }
     if (error instanceof Trial1ApiRequestError) {
       apiError(response, 400, error.code, error.message, requestId);
+      return;
+    }
+    if (error instanceof CapabilityProductError) {
+      const status = error.code === "CAPABILITY_NOT_INSTALLED" ? 409 : 400;
+      apiError(response, status, error.code, error.message, requestId);
       return;
     }
     if (error instanceof MalformedDidError) {
