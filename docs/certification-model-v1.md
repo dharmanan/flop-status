@@ -2,136 +2,143 @@
 
 ## Core rule
 
-Every successfully verified capability earns its own certificate.
+Every successfully verified production capability earns its own individual certificate.
 
 FLOP does not wait for 7/7 or 10/10 before issuing certification.
 
-If an agent has passed three distinct certificate-eligible capabilities, it has three individual capability certificates.
+Capability certificate and cumulative rank are different concepts.
 
-Cumulative rank is a separate layer derived from the number and class of valid capability certificates.
+If an agent has three valid production capability certificates, it has three separate certificates and also unlocks the cumulative rank defined for three certificates.
 
-## Two separate concepts
+## Capability certificate
 
-### Capability certificate
-
-A capability certificate proves that one DID passed one named capability trial under a specific verifier/program version.
+A capability certificate proves that one DID passed one named capability through the production FLOP capability flow under specific capability, trial and verifier versions.
 
 Examples:
 
 * Ed25519 Signature Verification Certificate
 * Canonical JSON + SHA256 Certificate
+* Technocore Canonical Message Certificate
 * Signed Receipt Verification Certificate
 * Structured Data Transformation Certificate
 
-Each certificate has its own public proof surface and receipt evidence.
+Every certificate has its own public proof surface and signed receipt evidence.
 
-### Agent rank
+A certificate is issued immediately after the corresponding production verification PASS.
 
-Rank summarizes how many current capability certificates the agent has accumulated and which program requirements it has completed.
+## Sequential production journey
 
-Rank never replaces the individual certificates.
+Every user begins at Capability 1 and completes the capabilities individually.
 
-An agent at a higher rank still exposes every underlying capability certificate separately.
+The normal sequence is:
 
-## v1 capability structure
+Capability 1 → Certificate 1
 
-FLOP v1 contains ten certificate-eligible capabilities:
+Capability 2 → Certificate 2
 
-* seven deterministic Core capabilities
-* three optional LLM-backed Agentic capabilities
+Capability 3 → Certificate 3
 
-The three Agentic capabilities require explicit user opt-in to LLM usage.
+and so on through Capability 10.
 
-A user may stop after any number of certificates. Existing valid certificates remain meaningful on their own.
+There is no bulk certification, migration credit or shortcut based on development acceptance runs.
 
-## Cumulative rank model
+The same rule applies to users and DIDs that existed while the product was being developed.
 
-The semantic model is fixed; display names may be refined later without changing certificate evidence.
+## Agent rank
 
-Initial rank thresholds:
+Rank summarizes the set of valid individual certificates accumulated by the agent.
+
+Rank never replaces individual certificates.
+
+Initial thresholds:
 
 * 0 certificates: Unranked
-* 1–2 certificates: individually certified, no cumulative rank yet
+* 1–2 certificates: individually certified, no named cumulative rank yet
 * 3–4 certificates: Rookie
 * 5–6 certificates: Regular
 * 7 certificates: Core Verified
 * 8–9 certificates: Advanced
 * 10 certificates: Agentic Verified
 
-The important invariant is that rank is cumulative status, while each successful capability remains an independent certificate.
+Display names may be refined later, but the separation between individual certificate and cumulative rank is an invariant.
+
+## v1 capability classes
+
+FLOP v1 contains ten certificate-eligible capabilities:
+
+* Capabilities 1–7: deterministic Core capabilities
+* Capabilities 8–10: optional LLM-backed Agentic capabilities
+
+The three Agentic capabilities require explicit user opt-in to LLM usage.
+
+A user may stop after any number of certificates. Every already valid certificate remains independently meaningful.
 
 ## Core completion
 
-The first seven certificate-eligible capabilities are deterministic and require no LLM.
+Capabilities 1–7 require no LLM.
 
 When all seven are valid, the agent has:
 
 * seven individual capability certificates
-* the `Core Verified` cumulative rank/seal
+* `Core Verified` cumulative rank
 
-This is a complete and valid FLOP state. The user is not required to enable LLM features.
+This is a complete valid FLOP state. The user is not required to enable an LLM.
 
 ## Agentic completion
 
-Capabilities 8–10 are optional LLM-backed Agentic capabilities.
+Capabilities 8–10 are optional and require an LLM.
 
-Each successful Agentic capability also issues its own individual capability certificate.
+Each successful Agentic capability also issues its own individual certificate.
 
-Therefore an agent can have:
+When all ten are valid, the agent has:
 
-* 8 certificates
-* 9 certificates
-* 10 certificates
-
-without discarding any earlier evidence.
-
-When all ten are valid, the agent receives the highest v1 cumulative rank/seal:
-
-`Agentic Verified · 10/10`
+* ten individual capability certificates
+* `Agentic Verified · 10/10`, the highest v1 cumulative rank
 
 ## Public profile
 
-The public agent profile must show both dimensions:
+The public agent profile must show both:
 
-1. individual capability certificates
-2. cumulative rank/progress
+1. every individual capability certificate
+2. cumulative rank and progress
 
 Example:
 
 `REGULAR · 5 CERTIFICATES`
 
-followed by the five certificate cards and their proof links.
-
-A 3-certificate Rookie profile still exposes all three certificates separately.
-
-A 10/10 Agentic profile exposes all ten certificates separately.
+followed by five separate certificate cards with proof links.
 
 ## Proof requirements
 
-Every individual capability certificate must be backed by:
+Every individual production capability certificate must be backed by:
 
 * agent DID
 * capability id and name
-* capability/trial version
+* capability version
+* trial version
 * verifier version
 * PASS receipt
 * FLOP server attestation
 * verification timestamp
 * public proof URL
 
-The shareable visual certificate/card is not the source of truth. The live proof page and signed receipt are.
+The shareable visual card is not the source of truth. The live proof page and signed receipt are.
 
-## Current Trial 1–4 acceptance caveat
+## Development acceptance receipts are not certificates
 
-Existing Trial 1–4 browser auto-solvers have proven the verification protocol and receipt engine.
+Trial 1–4 browser auto-solver runs performed before the production capability runtime were internal development acceptance runs.
 
-For final product certification, FLOP must ensure that certificate-eligible results are actually produced through the FLOP agent capability runtime rather than a browser shortcut that computes the answer on behalf of the agent.
+They proved infrastructure behavior such as challenge issuance, DID-signed submission handling, deterministic verification, receipt creation, persistence and public receipt verification.
 
-Historical receipts remain valid protocol evidence and must not be deleted or rewritten.
+They are not production user capability certificates and must not be counted toward certificate totals or rank.
+
+Their receipts remain immutable historical protocol evidence and are not deleted or rewritten.
+
+A DID that participated in those runs still begins the production certificate journey at Capability 1 and completes each capability separately through the normal production flow.
 
 ## LLM boundary
 
-Only the final three Agentic capabilities may require an LLM in v1.
+Only Capabilities 8–10 may require an LLM in v1.
 
 Before enabling them, FLOP must obtain explicit user approval and disclose that LLM usage may create cost.
 
