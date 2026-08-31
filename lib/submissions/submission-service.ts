@@ -13,6 +13,8 @@ import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants
 import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
+import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
+import { trial3SignedSubmissionEnvelopeSchema } from "../trials/technocore-canonical-message/schema.js";
 
 export const MAX_SUBMISSION_BODY_BYTES = 32_768;
 
@@ -27,10 +29,7 @@ export type SubmissionErrorCode =
   | "INVALID_DID";
 
 export class SubmissionAcceptanceError extends Error {
-  constructor(
-    readonly code: SubmissionErrorCode,
-    message: string,
-  ) {
+  constructor(readonly code: SubmissionErrorCode, message: string) {
     super(message);
     this.name = "SubmissionAcceptanceError";
   }
@@ -41,14 +40,12 @@ export interface AcceptSignedSubmissionInput {
   envelope: unknown;
   bodyByteLength: number;
 }
-
 export type AcceptTrial1SubmissionInput = AcceptSignedSubmissionInput;
 
 export interface AcceptSignedSubmissionDependencies {
   repository: SubmissionAcceptanceRepository;
   now?: () => Date;
 }
-
 export type AcceptTrial1SubmissionDependencies = AcceptSignedSubmissionDependencies;
 
 export interface AcceptedSignedSubmission {
@@ -58,7 +55,6 @@ export interface AcceptedSignedSubmission {
   resultHash: string;
   receivedAt: string;
 }
-
 export type AcceptedTrial1Submission = AcceptedSignedSubmission;
 
 type TransactionOutcome =
@@ -67,7 +63,8 @@ type TransactionOutcome =
 
 type ParsedEnvelope =
   | ReturnType<typeof trial1SignedSubmissionEnvelopeSchema.parse>
-  | ReturnType<typeof trial2SignedSubmissionEnvelopeSchema.parse>;
+  | ReturnType<typeof trial2SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial3SignedSubmissionEnvelopeSchema.parse>;
 
 function assertSupportedDid(did: string): void {
   try {
@@ -98,7 +95,9 @@ function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
       ? trial1SignedSubmissionEnvelopeSchema
       : trialId === TRIAL2_ID
         ? trial2SignedSubmissionEnvelopeSchema
-        : null;
+        : trialId === TRIAL3_ID
+          ? trial3SignedSubmissionEnvelopeSchema
+          : null;
 
   if (!schema) {
     throw new SubmissionAcceptanceError(
@@ -218,7 +217,6 @@ export async function acceptCapabilitySignedSubmission(
   return outcome.value;
 }
 
-/** Backward-compatible Trial 1 wrapper retained for existing accepted tests. */
 export async function acceptTrial1SignedSubmission(
   input: AcceptTrial1SubmissionInput,
   deps: AcceptTrial1SubmissionDependencies,
