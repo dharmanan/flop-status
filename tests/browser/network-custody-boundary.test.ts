@@ -9,6 +9,7 @@ describe("browser custody network boundary", () => {
     expect(source).toContain('trialId: "ed25519-signature-verification"');
     expect(source).toContain('trialId: "canonical-json-sha256"');
     expect(source).toContain('trialId: "technocore-canonical-message"');
+    expect(source).toContain('trialId: "signed-receipt-verification"');
   });
 
   it("submits only the signed envelope after the challenge is solved", () => {
@@ -33,5 +34,11 @@ describe("browser custody network boundary", () => {
     expect(source).toContain("cleanTechnocoreLine(challenge.case.text)");
     expect(source).toContain('canonical_message: `${challenge.case.room}|${challenge.case.nonce}|${cleanedText}`');
     expect(source).not.toContain("technocore.chat");
+  });
+
+  it("solves Trial 4 locally from receipt and public-key challenge data", () => {
+    expect(source).toContain("verifyReceiptWithKey(receipt, declared)");
+    expect(source).toContain('reason_code: "SERVER_KEY_NOT_FOUND"');
+    expect(source).toContain('reason_code: "KEY_ID_MISMATCH"');
   });
 });
