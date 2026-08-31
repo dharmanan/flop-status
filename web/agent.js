@@ -28,6 +28,7 @@ let seedSavedAction = false;
 let seedRevealed = false;
 let pendingExternal = null;
 let evidenceData = null;
+let setupPath = "create";
 
 const byId = (id) => document.getElementById(id);
 const setOperation = (value) => { byId("operation-status").textContent = value; };
@@ -145,6 +146,17 @@ function hideExternalSigning() {
   byId("external-signature").value = "";
 }
 
+function chooseSetupPath(path) {
+  setupPath = path === "existing" ? "existing" : "create";
+  const create = setupPath === "create";
+  byId("create-path").hidden = !create;
+  byId("existing-path").hidden = create;
+  byId("choose-create").classList.toggle("active", create);
+  byId("choose-existing").classList.toggle("active", !create);
+  byId("choose-create").setAttribute("aria-pressed", create ? "true" : "false");
+  byId("choose-existing").setAttribute("aria-pressed", create ? "false" : "true");
+}
+
 function renderSeedGate() {
   byId("seed-gate").hidden = !pendingSeed;
   if (!pendingSeed || !identity) return;
@@ -156,17 +168,20 @@ function renderSeedGate() {
 
 function renderIdentity() {
   const setup = byId("identity-setup");
+  const summary = byId("identity-summary");
   const actions = byId("active-actions");
+  const evidencePanel = byId("evidence-panel");
+  const technical = byId("technical-details");
   const run = byId("run-trial");
   const download = byId("download-backup");
-  const restoreToggle = byId("restore-toggle-wrap");
   hideExternalSigning();
 
   if (pendingSeed && identity) {
     setup.hidden = true;
+    summary.hidden = false;
     actions.hidden = true;
-    restoreToggle.hidden = true;
-    byId("encrypted-restore").hidden = true;
+    evidencePanel.hidden = true;
+    technical.hidden = false;
     byId("identity-status").textContent = t("op_created");
     byId("did").textContent = identity.did;
     byId("custody").textContent = t("seed_warning");
@@ -180,11 +195,11 @@ function renderIdentity() {
   byId("seed-gate").hidden = true;
   if (!identity) {
     setup.hidden = false;
+    summary.hidden = true;
     actions.hidden = true;
-    restoreToggle.hidden = false;
-    byId("identity-status").textContent = t("choose_control");
-    byId("did").textContent = "";
-    byId("custody").textContent = t("not_custodian");
+    evidencePanel.hidden = true;
+    technical.hidden = true;
+    chooseSetupPath(setupPath);
     byId("identity-mode").textContent = t("none");
     byId("extractable-check").textContent = "n/a";
     byId("backup-check").textContent = "n/a";
@@ -192,9 +207,10 @@ function renderIdentity() {
   }
 
   setup.hidden = true;
+  summary.hidden = false;
   actions.hidden = false;
-  restoreToggle.hidden = true;
-  byId("encrypted-restore").hidden = true;
+  evidencePanel.hidden = false;
+  technical.hidden = false;
   run.disabled = false;
   byId("did").textContent = identity.did;
 
@@ -436,6 +452,7 @@ async function disconnectIdentity() {
   pendingSeed = null;
   seedSavedAction = false;
   seedRevealed = false;
+  setupPath = "create";
   renderIdentity();
   await refreshEvidence();
   setOperation(t("op_disconnected"));
@@ -443,6 +460,7 @@ async function disconnectIdentity() {
 
 async function boot() {
   bindLanguageControls();
+  chooseSetupPath("create");
   byId("seed-file-button").addEventListener("click", () => byId("seed-file").click());
   byId("seed-file").addEventListener("change", () => syncFileName("seed-file", "seed-file-name"));
   byId("restore-file-button").addEventListener("click", () => byId("restore-file").click());
@@ -471,15 +489,15 @@ function report(error) {
   setOperation(error instanceof Error ? error.message : String(error));
 }
 
+byId("choose-create").addEventListener("click", () => chooseSetupPath("create"));
+byId("choose-existing").addEventListener("click", () => chooseSetupPath("existing"));
 byId("create-identity").addEventListener("click", () => createBrowserIdentity().catch(report));
 byId("download-seed").addEventListener("click", downloadSeedIdentity);
 byId("copy-seed").addEventListener("click", () => copySeed().catch(report));
 byId("reveal-seed").addEventListener("click", toggleSeed);
 byId("create-backup").addEventListener("click", () => createOptionalBackup().catch(report));
 byId("confirm-seed-saved").addEventListener("click", () => confirmSeedSaved().catch(report));
-byId("seed-file-button").addEventListener("click", () => byId("seed-file").click());
 byId("signin-seed").addEventListener("click", () => signInFromSeed().catch(report));
-byId("show-encrypted-restore").addEventListener("click", () => { byId("encrypted-restore").hidden = !byId("encrypted-restore").hidden; });
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
 byId("connect-existing").addEventListener("click", () => connectExistingDid().catch(report));
 byId("run-trial").addEventListener("click", () => runTrial().catch(report));
