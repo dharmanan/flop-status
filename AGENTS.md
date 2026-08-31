@@ -31,6 +31,22 @@ Do not solve architecture problems by reflexively adding retries, longer timeout
 
 Do not broaden scope merely because adjacent work looks useful.
 
+## Reference first rule
+
+When the user provides a repository, product, screenshot or implementation as a reference, treat that reference as binding evidence for the behavior being discussed until the user explicitly approves a deviation.
+
+Before proposing or implementing an alternative:
+
+1. inspect the relevant reference source and runtime behavior
+2. state what the reference actually does
+3. separate what FLOP should preserve from what FLOP should change
+4. label any new idea clearly as a proposal that is not present in the reference
+5. do not replace the referenced behavior with an invented architecture merely because another design seems cleaner, safer or more familiar
+
+If the user says to base a flow on a reference, reproduce the reference semantics first. Improvements come only after the preserved behavior is understood and any deviation is explicit.
+
+For identity work specifically, `PranjalBoraCrypto/overheard` is the binding behavior reference for ownership and portability. Do not reinterpret its seed, backup, sign in or browser custody model from memory. Read the relevant source before changing FLOP identity behavior.
+
 ## Context routing
 
 Always read:
@@ -93,16 +109,17 @@ The product must preserve both first-class identity entry paths from `docs/produ
 
 Connecting an existing DID requires cryptographic proof of control. DID text alone is never proof.
 
-For browser-created identities, the target ownership model is:
+For browser-created identities, the ownership model must preserve the Overheard semantics recorded in `docs/project-context/DECISIONS.md` and `docs/references/overheard.md`:
 
-* active nonextractable WebCrypto signing `CryptoKey`
-* IndexedDB persistence for the unlocked active key
-* encrypted exportable backup and restore
-* private signing/recovery material never sent to Railway, Vercel server code or PostgreSQL
+* the user receives the portable 32-byte Ed25519 seed as the master identity material at creation time
+* the seed can be revealed, copied or downloaded locally before continuing
+* an encrypted backup is an additional convenience and recovery mechanism, not a substitute for user ownership of the seed
+* the unlocked active signing key is imported as a nonextractable WebCrypto `CryptoKey` and kept in IndexedDB for normal use
+* private signing or recovery material is never sent to Railway, Vercel server code or PostgreSQL
 
 External agents/signers must be able to use the same challenge/submission verification protocol without browser custody or FLOP-generated identity.
 
-Use `docs/references/overheard.md` as the explicit identity-architecture reference. FLOP must preserve or improve those ownership/portability principles while adding capability verification.
+Use `docs/references/overheard.md` as the explicit identity-architecture reference. FLOP must preserve its ownership and portability behavior while adding capability verification.
 
 Do not equate Trial 1 protocol acceptance with Product MVP completion.
 
@@ -165,7 +182,7 @@ Never say `done`, `fixed`, `working`, `final` or equivalent without verification
 
 Trial 1 is not complete until the acceptance contract in `docs/acceptance/trial1-acceptance.md` passes.
 
-Product MVP is not complete until the current requirements in `docs/product-contract.md` and `docs/project-context/ROADMAP.md` pass, including create/connect DID, encrypted browser backup/restore, external signer/API support and all three initial deterministic trials.
+Product MVP is not complete until the current requirements in `docs/product-contract.md` and `docs/project-context/ROADMAP.md` pass, including create/connect DID, user-owned portable identity recovery, external signer/API support and all three initial deterministic trials.
 
 ## Project context updates
 
