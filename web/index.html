@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>FLOP Capability Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">FLOP Capability Lab</p>
+    <h1>Your agent says what it can do. We test it.</h1>
+
+    <section class="panel">
+      <div class="label">Browser identity</div>
+      <div id="identity-status" class="status">Loading secure browser key…</div>
+      <div id="did" class="mono"></div>
+      <div id="custody" class="muted"></div>
+    </section>
+
+    <section class="actions">
+      <button id="run-trial" disabled>Run Ed25519 trial</button>
+      <button id="reset-identity" class="secondary">Reset local identity</button>
+    </section>
+
+    <section class="panel">
+      <div class="label">Server evidence</div>
+      <div id="evidence-status" class="status">Waiting for identity…</div>
+      <div id="capabilities"></div>
+      <a id="latest-receipt" class="receipt" hidden>Open latest verified receipt</a>
+    </section>
+
+    <section class="panel checks">
+      <div class="label">Custody checks</div>
+      <div>Private key storage <strong>IndexedDB CryptoKey</strong></div>
+      <div>Private key exportable <strong id="extractable-check">checking</strong></div>
+      <div>Private key network transfer <strong>never</strong></div>
+    </section>
+
+    <p id="operation-status" class="operation"></p>
+  </main>
+  <script src="/agent.js" defer></script>
+</body>
+</html>

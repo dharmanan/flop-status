@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>FLOP Receipt Verification</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">FLOP Capability Lab</p>
+    <h1>Receipt verification</h1>
+    <p class="status">Receipt signature: <strong id="signature-status">CHECKING</strong></p>
+    <dl id="receipt-fields"></dl>
+    <p class="note">This page independently verifies the server-signed receipt in this browser using the public Ed25519 key published by the Railway API.</p>
+    <p id="verification-error" class="operation"></p>
+  </main>
+  <script src="/verify.js" defer></script>
+</body>
+</html>
