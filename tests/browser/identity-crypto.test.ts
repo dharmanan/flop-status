@@ -1,59 +1,81 @@
 import { describe, expect, it } from "vitest";
 import {
+  createEncryptedBackupFromSeed,
   createPortableIdentity,
+  identityFromSeed,
   parseBackupJson,
   parseEd25519DidKey,
+  readSeed,
   restorePortableIdentity,
   serializeBackup,
+  serializeIdentitySeed,
   unlockPrivateKeyBackup,
 } from "../../web/identity-crypto.js";
 
 describe("portable browser identity custody", () => {
-  it("creates a nonextractable active key and an encrypted portable backup", async () => {
-    const created = await createPortableIdentity("correct horse battery staple");
+  it("creates a user-owned 32-byte seed and a nonextractable active key", async () => {
+    const created = await createPortableIdentity();
 
     expect(created.did.startsWith("did:key:z6Mk")).toBe(true);
+    expect(created.seedHex).toMatch(/^[0-9a-f]{64}$/);
     expect(created.privateKey.extractable).toBe(false);
-    expect(created.backup.did).toBe(created.did);
-    expect(created.backup.encryption.algorithm).toBe("AES-GCM");
-    expect(created.backup.encryption.kdf).toBe("PBKDF2-SHA256");
-
-    const serialized = serializeBackup(created.backup);
-    expect(serialized).not.toContain('"d"');
-    expect(serialized).not.toContain("correct horse battery staple");
+    expect(created.backup).toBeNull();
   });
 
-  it("reveals the private key only after the correct backup passphrase is supplied", async () => {
+  it("restores the exact same DID from the seed and from the downloaded identity text", async () => {
+    const created = await createPortableIdentity();
+    const restored = await identityFromSeed(created.seedHex);
+    const fileText = serializeIdentitySeed(created.did, created.seedHex);
+    const restoredFromFile = await identityFromSeed(fileText);
+
+    expect(restored.did).toBe(created.did);
+    expect(restoredFromFile.did).toBe(created.did);
+    expect(restored.privateKey.extractable).toBe(false);
+    expect(readSeed(fileText)).toBe(created.seedHex);
+    expect(Array.from(parseEd25519DidKey(restored.did))).toEqual(Array.from(parseEd25519DidKey(created.did)));
+  });
+
+  it("creates an optional encrypted backup from the same seed without plaintext seed or passphrase", async () => {
+    const passphrase = "correct horse battery staple";
+    const created = await createPortableIdentity();
+    const backup = await createEncryptedBackupFromSeed(created.seedHex, passphrase);
+
+    expect(backup.did).toBe(created.did);
+    expect(backup.encryption.algorithm).toBe("AES-GCM");
+    expect(backup.encryption.kdf).toBe("PBKDF2-SHA256");
+
+    const serialized = serializeBackup(backup);
+    expect(serialized).not.toContain(created.seedHex);
+    expect(serialized).not.toContain(passphrase);
+  });
+
+  it("reveals the seed from encrypted backup only after the correct passphrase is supplied", async () => {
     const passphrase = "private key reveal passphrase";
-    const created = await createPortableIdentity(passphrase);
-    const unlocked = await unlockPrivateKeyBackup(created.backup, passphrase);
+    const created = await createPortableIdentity();
+    const backup = await createEncryptedBackupFromSeed(created.seedHex, passphrase);
+    const unlocked = await unlockPrivateKeyBackup(backup, passphrase);
 
     expect(unlocked.did).toBe(created.did);
+    expect(unlocked.seedHex).toBe(created.seedHex);
     expect(unlocked.jwk.kty).toBe("OKP");
     expect(unlocked.jwk.crv).toBe("Ed25519");
-    expect(unlocked.privateKeyBase64Url).toBe(unlocked.jwk.d);
-    expect(unlocked.privateKeyBase64Url.length).toBeGreaterThan(0);
-    await expect(unlockPrivateKeyBackup(created.backup, "wrong password value")).rejects.toThrow(/could not be decrypted/i);
+    await expect(unlockPrivateKeyBackup(backup, "wrong password value")).rejects.toThrow(/could not be decrypted/i);
   });
 
-  it("restores the same DID while keeping the restored active key nonextractable", async () => {
+  it("restores the same DID from optional encrypted backup with nonextractable active key", async () => {
     const passphrase = "another sufficiently long passphrase";
-    const created = await createPortableIdentity(passphrase);
-    const backup = parseBackupJson(serializeBackup(created.backup));
+    const created = await createPortableIdentity();
+    const encrypted = await createEncryptedBackupFromSeed(created.seedHex, passphrase);
+    const backup = parseBackupJson(serializeBackup(encrypted));
     const restored = await restorePortableIdentity(backup, passphrase);
 
     expect(restored.did).toBe(created.did);
+    expect(restored.seedHex).toBe(created.seedHex);
     expect(restored.privateKey.extractable).toBe(false);
-    expect(Array.from(parseEd25519DidKey(restored.did))).toEqual(Array.from(parseEd25519DidKey(created.did)));
 
     const payload = new TextEncoder().encode("custody round trip");
     const signature = await crypto.subtle.sign({ name: "Ed25519" }, restored.privateKey, payload);
     expect(await crypto.subtle.verify({ name: "Ed25519" }, restored.publicKey, signature, payload)).toBe(true);
-  });
-
-  it("rejects a wrong backup passphrase", async () => {
-    const created = await createPortableIdentity("this is the right passphrase");
-    await expect(restorePortableIdentity(created.backup, "this is definitely wrong")).rejects.toThrow(/could not be decrypted/i);
   });
 
   it("rejects unsupported existing DID methods", () => {
