@@ -48,6 +48,18 @@ label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
 .backup-option { margin-top: 18px; border-top: 1px solid #2c2c2c; padding-top: 16px; }
 .seed-confirm { margin-top: 22px; }
 .trial-entry { margin-top: 8px; }
+.trial-list { margin-top: 22px; border: 1px solid #2c2c2c; border-radius: 16px; overflow: hidden; }
+.trial-progress { padding: 13px 16px; border-bottom: 1px solid #2c2c2c; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .58; }
+.trial-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 16px; }
+.trial-row + .trial-row { border-top: 1px solid #292929; }
+.trial-copy { display: flex; align-items: flex-start; gap: 14px; min-width: 0; }
+.trial-number { font-size: 12px; opacity: .36; padding-top: 2px; }
+.trial-copy strong { display: block; font-size: 16px; }
+.trial-capability { display: block; margin-top: 4px; font-size: 11px; opacity: .46; }
+.trial-action { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.trial-status { font-size: 12px; opacity: .5; white-space: nowrap; }
+.trial-status.verified { opacity: 1; }
+.trial-status.verified::before { content: "✓ "; }
 .identity-summary { padding-bottom: 18px; }
 .external-api-note { max-width: 720px; border: 1px solid #2d2d2d; background: #151515; border-radius: 12px; padding: 14px 16px; line-height: 1.55; opacity: .72; }
 .lang-copy { display: none; }
@@ -64,5 +76,5 @@ dt, dd { margin: 0; padding: 12px 0; border-bottom: 1px solid #292929; overflow-
 dt { opacity: .55; padding-right: 20px; }
 .note { max-width: 720px; opacity: .55; line-height: 1.55; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
-@media (max-width: 700px) { .path-switch { grid-template-columns: 1fr; } .setup-path { padding: 18px; } }
+@media (max-width: 700px) { .path-switch { grid-template-columns: 1fr; } .setup-path { padding: 18px; } .trial-row { align-items: flex-start; flex-direction: column; gap: 14px; } .trial-action { width: 100%; justify-content: space-between; } }
 @media (max-width: 640px) { main { width: min(100% - 28px, 920px); margin-top: 36px; } dl { grid-template-columns: 1fr; } dt { border-bottom: 0; padding-bottom: 2px; } dd { padding-top: 2px; } button { min-height: 44px; } .lang-button { min-height: 0; } }
