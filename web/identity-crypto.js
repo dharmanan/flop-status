@@ -137,19 +137,7 @@ function validateBackupEnvelope(backup) {
   return backup;
 }
 
-export async function createPortableIdentity(passphrase) {
-  const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
-  const rawPublic = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
-  const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
-  const did = didFromPublicKey(rawPublic);
-  const backup = await encryptPrivateJwk(did, privateJwk, passphrase);
-  const privateKey = await crypto.subtle.importKey("jwk", privateJwk, { name: "Ed25519" }, false, ["sign"]);
-  const publicKey = await crypto.subtle.importKey("raw", rawPublic, { name: "Ed25519" }, true, ["verify"]);
-  if (privateKey.extractable) throw new Error("active private key must be nonextractable");
-  return { did, privateKey, publicKey, backup };
-}
-
-export async function restorePortableIdentity(backupInput, passphrase) {
+async function decryptPrivateJwk(backupInput, passphrase) {
   const backup = validateBackupEnvelope(backupInput);
   const encryption = backup.encryption;
   const salt = base64UrlToBytes(encryption.salt);
@@ -174,6 +162,33 @@ export async function restorePortableIdentity(backupInput, passphrase) {
   if (jwk.kty !== "OKP" || jwk.crv !== "Ed25519" || typeof jwk.x !== "string" || typeof jwk.d !== "string") throw new Error("backup does not contain an Ed25519 private key");
   const rawPublic = base64UrlToBytes(jwk.x);
   if (didFromPublicKey(rawPublic) !== backup.did) throw new Error("backup public key does not match its DID");
+  return { backup, jwk, rawPublic };
+}
+
+export async function createPortableIdentity(passphrase) {
+  const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+  const rawPublic = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+  const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+  const did = didFromPublicKey(rawPublic);
+  const backup = await encryptPrivateJwk(did, privateJwk, passphrase);
+  const privateKey = await crypto.subtle.importKey("jwk", privateJwk, { name: "Ed25519" }, false, ["sign"]);
+  const publicKey = await crypto.subtle.importKey("raw", rawPublic, { name: "Ed25519" }, true, ["verify"]);
+  if (privateKey.extractable) throw new Error("active private key must be nonextractable");
+  return { did, privateKey, publicKey, backup };
+}
+
+export async function unlockPrivateKeyBackup(backupInput, passphrase) {
+  const { backup, jwk } = await decryptPrivateJwk(backupInput, passphrase);
+  return {
+    did: backup.did,
+    privateKeyBase64Url: jwk.d,
+    publicKeyBase64Url: jwk.x,
+    jwk: { kty: "OKP", crv: "Ed25519", x: jwk.x, d: jwk.d },
+  };
+}
+
+export async function restorePortableIdentity(backupInput, passphrase) {
+  const { backup, jwk, rawPublic } = await decryptPrivateJwk(backupInput, passphrase);
   const privateKey = await crypto.subtle.importKey("jwk", jwk, { name: "Ed25519" }, false, ["sign"]);
   const publicKey = await crypto.subtle.importKey("raw", rawPublic, { name: "Ed25519" }, true, ["verify"]);
   if (privateKey.extractable) throw new Error("restored active private key must be nonextractable");
