@@ -19,17 +19,20 @@ describe("consumer identity onboarding surface", () => {
     expect(html).toContain('id="confirm-seed-saved"');
   });
 
-  it("exposes Trial 1, Trial 2 and Trial 3 as distinct capability actions", () => {
+  it("exposes Trials 1 through 4 as distinct capability actions", () => {
     expect(html).toContain('id="run-trial-1"');
     expect(html).toContain('id="run-trial-2"');
     expect(html).toContain('id="run-trial-3"');
+    expect(html).toContain('id="run-trial-4"');
     expect(html).toContain("Ed25519 Signature Verification");
     expect(html).toContain("Canonical JSON + SHA256");
     expect(html).toContain("Technocore Canonical Message");
+    expect(html).toContain("Signed Receipt Verification");
     expect(html).toContain("cryptography.signature-verification");
     expect(html).toContain("data.canonical-json-sha256");
     expect(html).toContain("protocol.technocore-canonical-message");
-    expect(html).toContain("0 of 3 verified");
+    expect(html).toContain("evidence.signed-receipt-verification");
+    expect(html).toContain("0 of 4 verified");
   });
 
   it("does not expose manual canonical-payload signing in the consumer page", () => {
