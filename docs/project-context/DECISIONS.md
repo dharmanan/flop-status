@@ -4,9 +4,21 @@ Record only durable decisions that are likely to matter in future work.
 
 ## 2026-08-31
 
+### User-provided references are binding until deviation is approved
+
+When the user provides a repository, product, screenshot or implementation as the basis for a flow, inspect the relevant source and preserve its behavior before proposing alternatives. Do not replace referenced behavior with an invented architecture from memory or preference. Any deviation must be labeled as a proposal and made explicit before implementation.
+
+Status: Active
+
 ### Overheard is the identity ownership reference
 
-`https://github.com/PranjalBoraCrypto/overheard` is the explicit reference for browser identity ownership, portability, encrypted recovery and noncustodial signing. FLOP is not based on Overheard's archive/card product, but must preserve or improve the identity principles recorded in `docs/references/overheard.md`.
+`https://github.com/PranjalBoraCrypto/overheard` is the explicit reference for browser identity ownership, portability, encrypted recovery and noncustodial signing. FLOP is not based on Overheard's archive/card product, but must preserve its identity ownership semantics while adding capability verification.
+
+Status: Active
+
+### Browser-created identity ownership uses a portable seed plus optional encrypted backup
+
+For a FLOP-created Ed25519 `did:key`, the user must receive the portable 32-byte seed as the master identity material at creation time, with simple local Reveal, Copy and Download options before continuing. The encrypted backup is an additional convenience and recovery mechanism, not a substitute for the user's direct ownership of the seed. Normal active signing still uses a nonextractable WebCrypto `CryptoKey` in IndexedDB, and no private material is sent to FLOP servers.
 
 Status: Active
 
@@ -22,11 +34,11 @@ Private signing or recovery material must never be stored by Railway, Vercel ser
 
 Status: Active
 
-### Browser-created identities require ownership and recovery
+### Previous encrypted-backup-only browser ownership target is superseded
 
-The product target for identities created in FLOP is a nonextractable active signing `CryptoKey` in IndexedDB plus an encrypted exportable backup and restore path. Refresh persistence without portable encrypted recovery is not considered a complete product identity flow.
+The earlier target of treating a nonextractable active key plus encrypted exportable backup as the complete browser-created identity ownership model is superseded. The current model requires direct portable seed ownership at creation time as described above, with encrypted backup remaining optional/additional.
 
-Status: Active
+Status: Superseded by `Browser-created identity ownership uses a portable seed plus optional encrypted backup`
 
 ### External agents use the same verification protocol
 
