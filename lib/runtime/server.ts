@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { PgChallengeStateRepository } from "../db/challenge-state-repository.js";
+import { PgCertificationRepository } from "../db/certification-repository.js";
 import { PgTrial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
 import { PgPublicAgentRepository } from "../db/public-agent-repository.js";
 import { PgPublicVerificationRepository } from "../db/public-verification-repository.js";
@@ -9,6 +10,7 @@ import { runMigrations } from "../db/migration-runner.js";
 import { createPgPool, PgChallengeRepository } from "../db/pg-adapter.js";
 import { loadAttestationSignerFromEnv } from "../receipts/attestation-signer.js";
 import { PublicVerificationService } from "../verification/public-verification-service.js";
+import { CapabilityProductService } from "./capability-product-service.js";
 import { createRuntimeRequestHandler } from "./router.js";
 import { Trial1ApiService } from "./trial1-api-service.js";
 
@@ -25,14 +27,22 @@ async function main(): Promise<void> {
 
   const publicVerification = new PublicVerificationService(new PgPublicVerificationRepository(pool));
   const publicAgent = new PgPublicAgentRepository(pool);
+  const capabilityProduct = new CapabilityProductService(new PgCertificationRepository(pool));
   const trial1Api = new Trial1ApiService({
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),
     submissionRepository: new PgSubmissionRepository(pool),
     finalizationRepository: new PgTrial1FinalizationRepository(pool),
     signer,
+    capabilityProduct,
   });
-  const server = createServer(createRuntimeRequestHandler({ publicVerification, publicAgent, trial1Api, health: migrations }));
+  const server = createServer(createRuntimeRequestHandler({
+    publicVerification,
+    publicAgent,
+    trial1Api,
+    capabilityProduct,
+    health: migrations,
+  }));
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
