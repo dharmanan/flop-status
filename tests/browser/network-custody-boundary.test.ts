@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
 
 describe("browser custody network boundary", () => {
-  it("sends only public challenge identity fields when creating either trial", () => {
+  it("sends only public challenge identity fields when creating supported trials", () => {
     expect(source).toContain('body: JSON.stringify({ agent_did: identity.did, trial_id: trial.trialId })');
     expect(source).toContain('trialId: "ed25519-signature-verification"');
     expect(source).toContain('trialId: "canonical-json-sha256"');
+    expect(source).toContain('trialId: "technocore-canonical-message"');
   });
 
   it("submits only the signed envelope after the challenge is solved", () => {
@@ -26,5 +27,11 @@ describe("browser custody network boundary", () => {
     expect(source).toContain("createEncryptedBackupFromSeed(pendingSeed, passphrase)");
     expect(source).toContain("restorePortableIdentity(backup, passphrase)");
     expect(source).toContain("indexedDB.open(DB_NAME, 1)");
+  });
+
+  it("solves Trial 3 locally without a Technocore network call", () => {
+    expect(source).toContain("cleanTechnocoreLine(challenge.case.text)");
+    expect(source).toContain('canonical_message: `${challenge.case.room}|${challenge.case.nonce}|${cleanedText}`');
+    expect(source).not.toContain("technocore.chat");
   });
 });
