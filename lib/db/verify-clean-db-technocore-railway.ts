@@ -67,6 +67,20 @@ async function runVerifier(env: NodeJS.ProcessEnv): Promise<string> {
   return run.output();
 }
 
+interface AcceptanceReport {
+  temporaryEmptyDatabaseCreated: "PASS";
+  migrationsFromZero: "PASS";
+  trial1SeedExactlyOnce: "PASS";
+  applicationStartupOnCleanDatabase: "PASS";
+  persistentServerPublicKeyMetadata: "PASS";
+  fullTrial1PassOnCleanDatabase: "PASS";
+  publicReceiptVerificationOnCleanDatabase: "PASS";
+  technocoreUnreachableDuringFullFlow: "PASS";
+  manualDatabasePatchingRequired: "NO";
+  productionDatabaseModifiedByAcceptanceFlow: "NO";
+  temporaryDatabaseCleanup: "PASS";
+}
+
 async function main(): Promise<void> {
   const productionUrl = process.env.DATABASE_URL;
   if (!productionUrl) throw new Error("DATABASE_URL is required");
@@ -82,6 +96,7 @@ async function main(): Promise<void> {
   let app: ReturnType<typeof startChild> | null = null;
   let tempPool: ReturnType<typeof createPgPool> | null = null;
   let databaseCreated = false;
+  let report: Omit<AcceptanceReport, "temporaryDatabaseCleanup"> | null = null;
 
   try {
     await adminPool.query(`CREATE DATABASE ${quotedIdentifier(tempDatabase)}`);
@@ -132,8 +147,7 @@ async function main(): Promise<void> {
     }
 
     const verifierOutput = await runVerifier(isolatedEnv);
-    const parsedStart = verifierOutput.indexOf("{");
-    if (parsedStart < 0 || !verifierOutput.includes('"deterministicPassHttp": "PASS"')) {
+    if (!verifierOutput.includes('"deterministicPassHttp": "PASS"')) {
       throw new Error(`full clean database flow did not report PASS:\n${verifierOutput}`);
     }
 
@@ -146,7 +160,7 @@ async function main(): Promise<void> {
       throw new Error("clean database verifier did not clean its temporary receipt evidence");
     }
 
-    process.stdout.write(JSON.stringify({
+    report = {
       temporaryEmptyDatabaseCreated: "PASS",
       migrationsFromZero: "PASS",
       trial1SeedExactlyOnce: "PASS",
@@ -157,8 +171,7 @@ async function main(): Promise<void> {
       technocoreUnreachableDuringFullFlow: "PASS",
       manualDatabasePatchingRequired: "NO",
       productionDatabaseModifiedByAcceptanceFlow: "NO",
-      temporaryDatabaseCleanup: "PENDING",
-    }, null, 2) + "\n");
+    };
   } finally {
     if (tempPool) await tempPool.end().catch(() => undefined);
     if (app && app.child.exitCode === null) {
@@ -167,9 +180,26 @@ async function main(): Promise<void> {
     }
     if (databaseCreated) {
       await adminPool.query(`DROP DATABASE ${quotedIdentifier(tempDatabase)} WITH (FORCE)`);
+      const remaining = await adminPool.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM pg_database WHERE datname = $1",
+        [tempDatabase],
+      );
+      if (remaining.rows[0]?.count !== "0") {
+        throw new Error("temporary acceptance database still exists after DROP DATABASE");
+      }
     }
     await adminPool.end();
   }
+
+  if (!report) {
+    throw new Error("acceptance report missing after successful cleanup");
+  }
+
+  const finalReport: AcceptanceReport = {
+    ...report,
+    temporaryDatabaseCleanup: "PASS",
+  };
+  process.stdout.write(JSON.stringify(finalReport, null, 2) + "\n");
 }
 
 main().catch((error: unknown) => {
