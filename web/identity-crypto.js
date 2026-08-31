@@ -2,6 +2,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const ED25519_PREFIX = Uint8Array.of(0xed, 0x01);
+const ED25519_PKCS8_PREFIX = Uint8Array.of(0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20);
 const BACKUP_FORMAT = "flop-identity-backup";
 const BACKUP_VERSION = 1;
 const BACKUP_ITERATIONS = 310000;
@@ -17,6 +18,22 @@ export function base64UrlToBytes(value) {
   const pad = "=".repeat((4 - value.length % 4) % 4);
   const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/") + pad);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+export function bytesToHex(bytes) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(value) {
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/i.test(value)) throw new Error("Ed25519 seed must be 64 hexadecimal characters");
+  const bytes = new Uint8Array(32);
+  for (let index = 0; index < 32; index += 1) bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+  return bytes;
+}
+
+export function readSeed(text) {
+  const match = String(text ?? "").replace(/[^0-9a-fA-F]+/g, " ").match(/\b[0-9a-fA-F]{64}\b/);
+  return match ? match[0].toLowerCase() : null;
 }
 
 function base58Encode(bytes) {
@@ -161,26 +178,64 @@ async function decryptPrivateJwk(backupInput, passphrase) {
   const jwk = payload.private_jwk;
   if (jwk.kty !== "OKP" || jwk.crv !== "Ed25519" || typeof jwk.x !== "string" || typeof jwk.d !== "string") throw new Error("backup does not contain an Ed25519 private key");
   const rawPublic = base64UrlToBytes(jwk.x);
+  const seedBytes = base64UrlToBytes(jwk.d);
+  if (seedBytes.length !== 32) throw new Error("backup does not contain a 32-byte Ed25519 seed");
   if (didFromPublicKey(rawPublic) !== backup.did) throw new Error("backup public key does not match its DID");
-  return { backup, jwk, rawPublic };
+  return { backup, jwk, rawPublic, seedHex: bytesToHex(seedBytes) };
 }
 
-export async function createPortableIdentity(passphrase) {
+async function materialFromSeed(seedInput) {
+  const seedHex = readSeed(seedInput);
+  if (!seedHex) throw new Error("no 64-character Ed25519 seed was found");
+  const seedBytes = hexToBytes(seedHex);
+  const pkcs8 = new Uint8Array(ED25519_PKCS8_PREFIX.length + seedBytes.length);
+  pkcs8.set(ED25519_PKCS8_PREFIX, 0);
+  pkcs8.set(seedBytes, ED25519_PKCS8_PREFIX.length);
+  const extractablePrivate = await crypto.subtle.importKey("pkcs8", pkcs8, { name: "Ed25519" }, true, ["sign"]);
+  const jwk = await crypto.subtle.exportKey("jwk", extractablePrivate);
+  if (typeof jwk.x !== "string" || typeof jwk.d !== "string") throw new Error("could not derive Ed25519 key material from seed");
+  const rawPublic = base64UrlToBytes(jwk.x);
+  const did = didFromPublicKey(rawPublic);
+  return { did, seedHex, jwk, rawPublic };
+}
+
+async function activeIdentityFromMaterial(material) {
+  const privateKey = await crypto.subtle.importKey("jwk", material.jwk, { name: "Ed25519" }, false, ["sign"]);
+  const publicKey = await crypto.subtle.importKey("raw", material.rawPublic, { name: "Ed25519" }, true, ["verify"]);
+  if (privateKey.extractable) throw new Error("active private key must be nonextractable");
+  return { did: material.did, seedHex: material.seedHex, privateKey, publicKey };
+}
+
+export async function createPortableIdentity(passphrase = null) {
   const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
   const rawPublic = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
   const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+  if (typeof privateJwk.d !== "string") throw new Error("generated Ed25519 key did not expose a seed");
+  const seedBytes = base64UrlToBytes(privateJwk.d);
+  if (seedBytes.length !== 32) throw new Error("generated Ed25519 seed must be 32 bytes");
+  const seedHex = bytesToHex(seedBytes);
   const did = didFromPublicKey(rawPublic);
-  const backup = await encryptPrivateJwk(did, privateJwk, passphrase);
   const privateKey = await crypto.subtle.importKey("jwk", privateJwk, { name: "Ed25519" }, false, ["sign"]);
   const publicKey = await crypto.subtle.importKey("raw", rawPublic, { name: "Ed25519" }, true, ["verify"]);
   if (privateKey.extractable) throw new Error("active private key must be nonextractable");
-  return { did, privateKey, publicKey, backup };
+  const backup = passphrase ? await encryptPrivateJwk(did, privateJwk, passphrase) : null;
+  return { did, seedHex, privateKey, publicKey, backup };
+}
+
+export async function identityFromSeed(seedInput) {
+  return activeIdentityFromMaterial(await materialFromSeed(seedInput));
+}
+
+export async function createEncryptedBackupFromSeed(seedInput, passphrase) {
+  const material = await materialFromSeed(seedInput);
+  return encryptPrivateJwk(material.did, material.jwk, passphrase);
 }
 
 export async function unlockPrivateKeyBackup(backupInput, passphrase) {
-  const { backup, jwk } = await decryptPrivateJwk(backupInput, passphrase);
+  const { backup, jwk, seedHex } = await decryptPrivateJwk(backupInput, passphrase);
   return {
     did: backup.did,
+    seedHex,
     privateKeyBase64Url: jwk.d,
     publicKeyBase64Url: jwk.x,
     jwk: { kty: "OKP", crv: "Ed25519", x: jwk.x, d: jwk.d },
@@ -188,11 +243,17 @@ export async function unlockPrivateKeyBackup(backupInput, passphrase) {
 }
 
 export async function restorePortableIdentity(backupInput, passphrase) {
-  const { backup, jwk, rawPublic } = await decryptPrivateJwk(backupInput, passphrase);
+  const { backup, jwk, rawPublic, seedHex } = await decryptPrivateJwk(backupInput, passphrase);
   const privateKey = await crypto.subtle.importKey("jwk", jwk, { name: "Ed25519" }, false, ["sign"]);
   const publicKey = await crypto.subtle.importKey("raw", rawPublic, { name: "Ed25519" }, true, ["verify"]);
   if (privateKey.extractable) throw new Error("restored active private key must be nonextractable");
-  return { did: backup.did, privateKey, publicKey, backup };
+  return { did: backup.did, seedHex, privateKey, publicKey, backup };
+}
+
+export function serializeIdentitySeed(did, seedHex) {
+  parseEd25519DidKey(did);
+  hexToBytes(seedHex);
+  return `FLOP agent identity\ncreated ${new Date().toISOString()}\n\nDID  (public)\n${did}\n\nSEED (private - anyone with this controls this identity)\n${seedHex}\n\nKeep this file offline. Never paste the seed into a website you do not trust.\n`;
 }
 
 export function serializeBackup(backup) {
