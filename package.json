@@ -20,6 +20,7 @@
     "acceptance:trial2": "npm run build && node dist/acceptance/verify-trial2-deployed.js",
     "acceptance:trial3": "npm run build && node dist/acceptance/verify-trial3-deployed.js",
     "acceptance:trial4": "npm run build && node dist/acceptance/verify-trial4-deployed.js",
+    "acceptance:capability1-production": "npm run build && node dist/acceptance/verify-capability1-production-deployed.js",
     "attestation:generate": "npm run build && node dist/receipts/generate-attestation-key.js"
   },
   "dependencies": {
