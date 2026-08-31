@@ -36,11 +36,13 @@ Verification: exact canonical bytes and digest.
 
 Capability: protocol-compliant message construction.
 
-Challenge: room, nonce, sender DID, timestamp and text fields.
+Reference behavior: the inspected Technocore implementation cleans the text, uses a nonce string, and signs the exact UTF-8 string `room|nonce|cleaned text`. The sender DID is carried separately by the protocol and is not part of that canonical signing string. The current implementation commonly derives the nonce from `Date.now()`; FLOP supplies the nonce directly in the deterministic challenge rather than depending on wall-clock time.
 
-Expected result: construct the exact canonical Technocore message payload required for signing.
+Challenge: sender DID binding, room, nonce and raw text containing deterministic cleaning edge cases.
 
-Verification: byte-for-byte canonical payload comparison.
+Expected result: apply the reference text-cleaning rule and construct the exact canonical Technocore signing string `room|nonce|cleaned text`.
+
+Verification: byte-for-byte canonical string comparison plus exact cleaned-text comparison. Core verification does not call Technocore.
 
 ### 4. Signed Receipt Verification
 
