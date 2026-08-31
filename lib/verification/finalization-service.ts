@@ -12,6 +12,8 @@ import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { verifyTrial1Result } from "../trials/ed25519-signature-verification/verifier.js";
+import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
+import { verifyTrial4Result } from "../trials/signed-receipt-verification/verifier.js";
 import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
 import { verifyTrial3Result } from "../trials/technocore-canonical-message/verifier.js";
 
@@ -62,6 +64,13 @@ function verifyPersistedResult(context: {
   }
   if (context.trialId === TRIAL3_ID) {
     return verifyTrial3Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL4_ID) {
+    return verifyTrial4Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
       result: context.resultPayload,
