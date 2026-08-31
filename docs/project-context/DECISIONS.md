@@ -46,9 +46,39 @@ An externally owned DID and signer must be able to request challenges and submit
 
 Status: Active
 
+### FLOP v1 capability program targets ten deterministic trials
+
+The product target is a ten-trial deterministic capability program, not a permanent three-trial ceiling. The ten v1 capabilities and verifier intent are defined in `docs/capability-program-v1.md`. Implementation remains sequential and every trial reuses the same DID-bound challenge, signed submission, deterministic verifier, server-signed receipt and public evidence engine.
+
+Status: Active
+
+### Public certificate is a high-information shareable credential surface
+
+FLOP must produce a visually strong public capability certificate/profile inspired by the useful share behavior of Overheard's credential card, but backed by FLOP capability receipts. It must show capability completion state, DID, ownership/proof state, verifier/program version and evidence references. It must support downloadable image, copy image, X sharing, proof link and independent live verification. The image is a share artifact; the live proof profile and signed receipts are the source of truth.
+
+Status: Active
+
+### Ten-of-ten completion gets a distinct verified-agent seal
+
+A public profile may display `N OF 10 VERIFIED`. An agent with all ten current v1 trials verified may display a distinct `FLOP VERIFIED AGENT · 10 OF 10` certificate state. FLOP does not turn this into a subjective reputation score.
+
+Status: Active
+
+### Testnet certificate target is an identity-bound NFT
+
+When an official FLOP testnet specification exists, a completed ten-of-ten capability certificate must be mintable as a FLOP Capability Certificate NFT. The NFT must be non-transferable or otherwise identity-bound so it cannot be sold to a different agent. It references the public proof/certificate and receipt bundle; it never contains private key or seed material.
+
+Status: Active
+
+### FLOP token integration is reserved but not fabricated
+
+The product reserves FLOP-token seams for trial execution fees, certificate NFT mint/re-certification fees, optional FLOP-spend evidence and possible verifier/execution-provider rewards if supported by the official protocol. Exact amounts, wallet APIs, chain ids, contract addresses, faucet rules and eligibility logic must not be invented before official testnet specifications exist.
+
+Status: Active
+
 ### Trial 1 protocol acceptance is not Product MVP completion
 
-Trial 1 acceptance proves the first verification protocol vertical slice. Product MVP completion additionally requires the product contract's identity/connectivity requirements and all three initial deterministic trials. Do not equate `Trial 1 complete` with `Product MVP complete`.
+Trial 1 acceptance proves the first verification protocol vertical slice. Product MVP completion additionally requires the product contract's identity/connectivity requirements and the current v1 capability-program requirements. Do not equate `Trial 1 complete` with `Product MVP complete`.
 
 Status: Active
 
