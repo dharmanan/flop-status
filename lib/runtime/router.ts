@@ -16,6 +16,11 @@ import {
   type PublicServerKey,
 } from "../verification/public-verification-service.js";
 import {
+  PUBLIC_AGENT_CSS,
+  PUBLIC_AGENT_PAGE,
+  PUBLIC_AGENT_SCRIPT,
+} from "./agent-page.js";
+import {
   PUBLIC_VERIFICATION_CSS,
   PUBLIC_VERIFICATION_SCRIPT,
   renderPublicVerificationPage,
@@ -33,6 +38,20 @@ export interface PublicVerificationReader {
   getServerKeys(): Promise<PublicServerKey[]>;
 }
 
+export interface PublicAgentReader {
+  findAgentByDid(did: string): Promise<{
+    did: string;
+    capabilities: Array<{
+      capability_id: string;
+      evidence_type: string;
+      passed_trials: number;
+      latest_receipt_id: string | null;
+      first_verified_at: string | null;
+      last_verified_at: string | null;
+    }>;
+  } | null>;
+}
+
 export interface Trial1ApiWriter {
   createChallenge(body: unknown): Promise<unknown>;
   getChallenge(challengeId: string): Promise<unknown | null>;
@@ -41,6 +60,7 @@ export interface Trial1ApiWriter {
 
 export interface RuntimeRouterDependencies {
   publicVerification: PublicVerificationReader;
+  publicAgent: PublicAgentReader;
   trial1Api: Trial1ApiWriter;
   health: unknown;
 }
@@ -78,18 +98,30 @@ function json(response: ServerResponse, status: number, body: unknown): void {
   response.end(JSON.stringify(body));
 }
 
-function apiError(
-  response: ServerResponse,
-  status: number,
-  code: string,
-  message: string,
-  requestId: string,
-): void {
+function apiError(response: ServerResponse, status: number, code: string, message: string, requestId: string): void {
   json(response, status, { error: { code, message, request_id: requestId } });
 }
 
 function html(response: ServerResponse, status: number, body: string): void {
   response.writeHead(status, PAGE_HEADERS);
+  response.end(body);
+}
+
+function script(response: ServerResponse, body: string): void {
+  response.writeHead(200, {
+    "content-type": "text/javascript; charset=utf-8",
+    "cache-control": "public, max-age=3600",
+    "x-content-type-options": "nosniff",
+  });
+  response.end(body);
+}
+
+function css(response: ServerResponse, body: string): void {
+  response.writeHead(200, {
+    "content-type": "text/css; charset=utf-8",
+    "cache-control": "public, max-age=3600",
+    "x-content-type-options": "nosniff",
+  });
   response.end(body);
 }
 
@@ -99,23 +131,27 @@ async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise
     request.resume();
     throw new RequestBodyError("PAYLOAD_TOO_LARGE", 413, `request body exceeds ${maxBytes} bytes`);
   }
-
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     total += buffer.length;
-    if (total > maxBytes) {
-      throw new RequestBodyError("PAYLOAD_TOO_LARGE", 413, `request body exceeds ${maxBytes} bytes`);
-    }
+    if (total > maxBytes) throw new RequestBodyError("PAYLOAD_TOO_LARGE", 413, `request body exceeds ${maxBytes} bytes`);
     chunks.push(buffer);
   }
-
   const text = Buffer.concat(chunks).toString("utf8");
   try {
     return { value: JSON.parse(text), bytes: total };
   } catch {
     throw new RequestBodyError("INVALID_JSON", 400, "request body must be valid JSON");
+  }
+}
+
+function decodedPathValue(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new Trial1ApiRequestError("INVALID_CHALLENGE_SCHEMA", "path identifier is not valid URI encoding");
   }
 }
 
@@ -125,11 +161,7 @@ export function createRuntimeRequestHandler(deps: RuntimeRouterDependencies) {
   };
 }
 
-async function handleRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  deps: RuntimeRouterDependencies,
-): Promise<void> {
+async function handleRequest(request: IncomingMessage, response: ServerResponse, deps: RuntimeRouterDependencies): Promise<void> {
   const requestId = randomUUID();
   try {
     const url = new URL(request.url ?? "/", "http://runtime.local");
@@ -140,34 +172,61 @@ async function handleRequest(
       response.end();
       return;
     }
-
     if (request.method === "GET" && path === "/healthz") {
       json(response, 200, { status: "ok", database: "ready", migrations: deps.health });
       return;
     }
-
+    if (request.method === "GET" && path === "/") {
+      response.writeHead(302, { location: "/agent", "cache-control": "no-store" });
+      response.end();
+      return;
+    }
+    if (request.method === "GET" && path === "/agent") {
+      html(response, 200, PUBLIC_AGENT_PAGE);
+      return;
+    }
+    if (request.method === "GET" && path === "/assets/agent.js") {
+      script(response, PUBLIC_AGENT_SCRIPT);
+      return;
+    }
+    if (request.method === "GET" && path === "/assets/agent.css") {
+      css(response, PUBLIC_AGENT_CSS);
+      return;
+    }
     if (request.method === "GET" && path === "/assets/verify.js") {
-      response.writeHead(200, {
-        "content-type": "text/javascript; charset=utf-8",
-        "cache-control": "public, max-age=3600",
-        "x-content-type-options": "nosniff",
-      });
-      response.end(PUBLIC_VERIFICATION_SCRIPT);
+      script(response, PUBLIC_VERIFICATION_SCRIPT);
       return;
     }
-
     if (request.method === "GET" && path === "/assets/verify.css") {
-      response.writeHead(200, {
-        "content-type": "text/css; charset=utf-8",
-        "cache-control": "public, max-age=3600",
-        "x-content-type-options": "nosniff",
-      });
-      response.end(PUBLIC_VERIFICATION_CSS);
+      css(response, PUBLIC_VERIFICATION_CSS);
       return;
     }
-
     if (request.method === "GET" && path === "/api/v1/server-keys") {
       json(response, 200, { keys: await deps.publicVerification.getServerKeys() });
+      return;
+    }
+
+    const agentCapabilitiesMatch = path.match(/^\/api\/v1\/agents\/(.+)\/capabilities$/);
+    if (request.method === "GET" && agentCapabilitiesMatch) {
+      const did = decodedPathValue(agentCapabilitiesMatch[1] ?? "");
+      const agent = await deps.publicAgent.findAgentByDid(did);
+      if (!agent) {
+        apiError(response, 404, "AGENT_NOT_FOUND", "Agent not found.", requestId);
+        return;
+      }
+      json(response, 200, { did: agent.did, capabilities: agent.capabilities });
+      return;
+    }
+
+    const agentMatch = path.match(/^\/api\/v1\/agents\/(.+)$/);
+    if (request.method === "GET" && agentMatch) {
+      const did = decodedPathValue(agentMatch[1] ?? "");
+      const agent = await deps.publicAgent.findAgentByDid(did);
+      if (!agent) {
+        apiError(response, 404, "AGENT_NOT_FOUND", "Agent not found.", requestId);
+        return;
+      }
+      json(response, 200, { agent });
       return;
     }
 
@@ -176,7 +235,6 @@ async function handleRequest(
       json(response, 201, await deps.trial1Api.createChallenge(body.value));
       return;
     }
-
     const challengeMatch = path.match(/^\/api\/v1\/challenges\/([^/]+)$/);
     if (request.method === "GET" && challengeMatch) {
       const state = await deps.trial1Api.getChallenge(challengeMatch[1] ?? "");
@@ -187,18 +245,12 @@ async function handleRequest(
       json(response, 200, state);
       return;
     }
-
     const submissionMatch = path.match(/^\/api\/v1\/challenges\/([^/]+)\/submissions$/);
     if (request.method === "POST" && submissionMatch) {
       const body = await readJsonBody(request, MAX_SUBMISSION_BODY_BYTES);
-      json(
-        response,
-        200,
-        await deps.trial1Api.submitChallenge(submissionMatch[1] ?? "", body.value, body.bytes),
-      );
+      json(response, 200, await deps.trial1Api.submitChallenge(submissionMatch[1] ?? "", body.value, body.bytes));
       return;
     }
-
     const receiptMatch = path.match(/^\/api\/v1\/receipts\/([^/]+)$/);
     if (request.method === "GET" && receiptMatch) {
       const receipt = await deps.publicVerification.getReceipt(receiptMatch[1] ?? "");
@@ -209,7 +261,6 @@ async function handleRequest(
       json(response, 200, { receipt });
       return;
     }
-
     const verificationMatch = path.match(/^\/api\/v1\/verification\/([^/]+)$/);
     if (request.method === "GET" && verificationMatch) {
       const verification = await deps.publicVerification.getVerification(verificationMatch[1] ?? "");
@@ -220,7 +271,6 @@ async function handleRequest(
       json(response, 200, verification);
       return;
     }
-
     const pageMatch = path.match(/^\/verify\/([^/]+)$/);
     if (request.method === "GET" && pageMatch) {
       const verification = await deps.publicVerification.getVerification(pageMatch[1] ?? "");
@@ -231,7 +281,6 @@ async function handleRequest(
       html(response, 200, renderPublicVerificationPage(verification));
       return;
     }
-
     if (path.startsWith("/api/")) {
       apiError(response, 404, "NOT_FOUND", "Route not found.", requestId);
       return;
