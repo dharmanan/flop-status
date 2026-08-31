@@ -4,73 +4,58 @@ Last updated: 2026-08-31
 
 ## Current phase
 
-Trial 1 implementation, deployed Railway core and public verification checkpoints complete. Full Trial 1 acceptance is not complete yet.
+Trial 1 deployed Railway acceptance. The successful write/read core, deterministic PASS, deterministic FAIL and UNKNOWN semantics are verified. Full Trial 1 acceptance is not complete yet.
 
 ## Completed
 
-* Product contract defined for FLOP Capability Lab.
-* Architecture contract defined.
-* Threat model defined.
-* Receipt specification defined.
-* PostgreSQL schema defined.
-* API contract v1 defined.
-* Trial 1 vertical slice implementation specification defined.
-* Trial 1 acceptance contract defined.
-* Three deterministic trial specifications documented.
+* Product, architecture, threat model, receipt, PostgreSQL, API and Trial 1 acceptance contracts defined.
 * Persistent AI workflow rules added through root `AGENTS.md`.
-* Trial 1 foundational crypto and data contract layer implemented.
-* RFC 8785 JCS wrapper, strict base64url/base58btc helpers and project SHA-256 representation implemented.
-* Ed25519 `did:key` parsing and exact-byte signature verification implemented.
-* Strict Trial 1 challenge, result and signed submission schemas implemented.
-* Trial 1 challenge generator implemented with separate public payload and hidden verifier context.
+* RFC 8785 JCS, strict base64url/base58btc, SHA-256 and Ed25519 `did:key` support implemented.
+* Trial 1 challenge generator implemented with public payload and hidden verifier context separated.
 * VALID_SIGNATURE and INVALID_SIGNATURE cases implemented without malformed-input shortcuts.
-* Challenge id, nonce, ten minute TTL and RFC 8785 challenge hash generation implemented.
-* Trial 1 PostgreSQL foundation migration implemented for agents, capabilities, trial definitions and challenge instances.
-* Race safe issuance repository/service implemented with advisory transaction locking and expire before replace behavior.
-* Partial unique index added as defense in depth so PostgreSQL cannot store two ISSUED challenges for the same agent and trial.
-* Real `pg` adapter implemented with one checked-out connection retained across each transaction.
-* Railway runtime and migration-on-startup implemented.
-* Railway PostgreSQL connection through `DATABASE_URL` verified.
+* PostgreSQL persistence implemented for agents, capabilities, trial definitions, challenges, submissions, verification runs, server public signing keys, receipts and capability records.
+* Race-safe challenge issuance implemented with transaction advisory locking and a partial unique index.
+* Real `pg` adapter retains one checked-out PostgreSQL connection across each transaction.
 * Foundation, submission and receipt migrations verified against real Railway PostgreSQL.
-* Real Railway PostgreSQL concurrent issuance verification passed: exactly one concurrent issuance succeeds and one is rejected.
-* Real Railway PostgreSQL one-ISSUED-challenge invariant verification passed.
-* Public issuance result hidden-context leak verification passed against the real Railway-backed path.
-* DID-signed submission acceptance verified against real Railway PostgreSQL.
-* One-submission-per-challenge and sequential replay protection verified against real Railway PostgreSQL.
-* Deterministic Trial 1 verifier PASS path verified against real Railway PostgreSQL.
-* Atomic PASS finalization verified against real Railway PostgreSQL.
-* Verification run persistence, exactly one PASS receipt and capability record update verified against real Railway PostgreSQL.
-* Server-signed receipt signature and tamper rejection verified against real Railway PostgreSQL.
-* Server private attestation key is not persisted in PostgreSQL.
-* Public receipt API, public verification API and public server-key API implemented.
-* Public `/verify/:receiptId` page implemented with browser-side WebCrypto Ed25519 verification material and strict CSP.
-* Deployed Railway public verification smoke test passed: receipt API, verification API, server keys API, verification page and CSP all passed; receipt signature status was VALID; no private key leak was observed.
-* Latest GitHub CI for the public verification checkpoint passed tests, TypeScript typecheck, build and high-severity npm audit.
-* Railway `flop-status` service is online and starts successfully on the Railway-assigned port.
+* Real Railway PostgreSQL concurrent challenge issuance and one-ISSUED invariant verified.
+* DID-signed submission acceptance, canonical payload/result hashes, one submission per challenge and sequential replay protection verified against real Railway PostgreSQL.
+* Deterministic PASS verified against real Railway PostgreSQL.
+* Atomic PASS finalization, verification-run persistence, exactly one receipt and capability-record derivation verified against real Railway PostgreSQL.
+* Receipt signature validation and tamper detection verified; server private attestation key is not persisted in PostgreSQL.
+* Public receipt, verification and server-key APIs implemented.
+* Public `/verify/:receiptId` page implemented with browser WebCrypto Ed25519 verification material and strict CSP.
+* Deployed Railway public verification smoke test passed with valid receipt signature and no private-key leak.
+* Persistent Ed25519 attestation signer configured through Railway service secrets. Only derived public key metadata is persisted and published.
+* Real deployed HTTP write path implemented and verified on Railway: challenge creation, durable challenge recovery, signed submission POST, deterministic PASS, receipt generation and public receipt verification.
+* Real Railway write-path test confirmed the persistent Railway signer was used and the private key did not leak into public responses.
+* Deterministic FAIL acceptance verified on Railway: valid DID-signed but incorrect result produced a persisted FAIL verification run and challenge FAIL, with no receipt and no capability increment.
+* UNKNOWN acceptance verified on Railway with a controlled finalization fault: UNKNOWN persisted separately, was never labeled FAIL, created no receipt/capability increment and retained the accepted submission.
+* Current CI passes tests, TypeScript typecheck, build and high-severity npm audit.
+* Public deployment: `https://flop-status-production.up.railway.app`.
 
 ## In progress
 
-* Implement the actual Trial 1 HTTP write path: challenge creation, durable challenge-state recovery and signed submission POST.
-* Configure a persistent server attestation private key only through Railway secret configuration before production submission finalization is exposed.
-* Complete the remaining acceptance gates: deterministic FAIL, UNKNOWN semantics, browser key custody, separate clean-browser verification, Technocore independence and clean-database rebuild.
+* Close remaining deployed acceptance gates for signed-field tamper rejection, DID binding, expired challenge replacement and concurrent submission race.
+* Implement browser agent key custody with nonextractable WebCrypto key material and IndexedDB persistence.
+* Run refresh persistence and separate clean-browser acceptance.
+* Verify Technocore independence explicitly in the deployed acceptance environment.
+* Run a clean-database rebuild acceptance against an empty PostgreSQL database.
 
 ## Known problems
 
-* The current agent crypto implementation used by server tests is Node `node:crypto`; browser agent key custody is still unimplemented.
+* Browser agent key custody is still unimplemented; current agent test identities use Node `node:crypto`.
 * `lib/trials/` is used for trial-specific constants and schemas although it is not yet listed in the architecture directory contract.
 * Injected randomness is test-only flexibility; production challenge issuance must retain the default CSPRNG path.
-* The deployed public verification path is verified, but the end-user HTTP write flow is not exposed yet.
-* A persistent production attestation signer has not yet been wired from Railway secret configuration.
-* Full Trial 1 acceptance path has not passed yet.
+* Full Trial 1 acceptance has not passed yet.
 
 ## Blocked
 
-* Production signed-submission finalization should not be exposed until the Railway attestation signer secret is configured.
+None currently known.
 
 ## Important current state
 
-The first implementation target remains only Trial 1:
+The implementation target remains only Trial 1:
 
 Identity → Challenge → DID signed Submission → Deterministic Verification → Server signed Receipt → Public Verification.
 
-The internal/server-side core and deployed public verification read path are working, but the real external write path and remaining acceptance gates still need to pass `docs/acceptance/trial1-acceptance.md` before Trial 1 can be called complete.
+The deployed server-side core and public read/write surfaces are working, including PASS, FAIL and UNKNOWN semantics. Do not declare Trial 1 complete until every required gate in `docs/acceptance/trial1-acceptance.md` has passed in the deployed acceptance environment.
