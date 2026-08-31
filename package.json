@@ -18,6 +18,7 @@
     "db:verify-receipt": "npm run build && node dist/db/verify-receipt-railway.js",
     "acceptance:external-agent": "npm run build && node dist/acceptance/verify-external-agent-deployed.js",
     "acceptance:trial2": "npm run build && node dist/acceptance/verify-trial2-deployed.js",
+    "acceptance:trial3": "npm run build && node dist/acceptance/verify-trial3-deployed.js",
     "attestation:generate": "npm run build && node dist/receipts/generate-attestation-key.js"
   },
   "dependencies": {
