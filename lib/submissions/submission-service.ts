@@ -11,7 +11,10 @@ import {
 import { verifyEd25519DidKeySignature } from "../identity/verify-signature.js";
 import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
 import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
-import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
+  TRIAL_ID as TRIAL1_ID,
+} from "../trials/ed25519-signature-verification/constants.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
 import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
 import { trial4SignedSubmissionEnvelopeSchema } from "../trials/signed-receipt-verification/schema.js";
@@ -94,7 +97,7 @@ function trialIdFromEnvelope(envelope: unknown): string | null {
 function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
   const trialId = trialIdFromEnvelope(envelope);
   const schema =
-    trialId === TRIAL1_ID
+    trialId === TRIAL1_ID || trialId === TRIAL1_PRODUCTION_ID
       ? trial1SignedSubmissionEnvelopeSchema
       : trialId === TRIAL2_ID
         ? trial2SignedSubmissionEnvelopeSchema
@@ -226,8 +229,9 @@ export async function acceptTrial1SignedSubmission(
   input: AcceptTrial1SubmissionInput,
   deps: AcceptTrial1SubmissionDependencies,
 ): Promise<AcceptedTrial1Submission> {
-  if (trialIdFromEnvelope(input.envelope) !== TRIAL1_ID) {
-    throw new SubmissionAcceptanceError("INVALID_SUBMISSION_SCHEMA", "expected Trial 1 submission");
+  const trialId = trialIdFromEnvelope(input.envelope);
+  if (trialId !== TRIAL1_ID && trialId !== TRIAL1_PRODUCTION_ID) {
+    throw new SubmissionAcceptanceError("INVALID_SUBMISSION_SCHEMA", "expected Ed25519 signature verification submission");
   }
   return acceptCapabilitySignedSubmission(input, deps);
 }
