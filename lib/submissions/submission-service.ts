@@ -11,7 +11,7 @@ import {
 import { verifyEd25519DidKeySignature } from "../identity/verify-signature.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
 
-export const MAX_SUBMISSION_BODY_BYTES = 16_384;
+export const MAX_SUBMISSION_BODY_BYTES = 32_768;
 
 export type SubmissionErrorCode =
   | "INVALID_SUBMISSION_SCHEMA"

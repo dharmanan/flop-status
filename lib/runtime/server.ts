@@ -1,9 +1,15 @@
 import { createServer } from "node:http";
+import { PgChallengeStateRepository } from "../db/challenge-state-repository.js";
+import { PgPassFinalizationRepository } from "../db/finalization-repository.js";
 import { PgPublicVerificationRepository } from "../db/public-verification-repository.js";
+import { ensureActiveServerSigningKey } from "../db/server-key-repository.js";
+import { PgSubmissionRepository } from "../db/pg-adapter.js";
 import { runMigrations } from "../db/migration-runner.js";
-import { createPgPool } from "../db/pg-adapter.js";
+import { createPgPool, PgChallengeRepository } from "../db/pg-adapter.js";
+import { loadAttestationSignerFromEnv } from "../receipts/attestation-signer.js";
 import { PublicVerificationService } from "../verification/public-verification-service.js";
 import { createRuntimeRequestHandler } from "./router.js";
+import { Trial1ApiService } from "./trial1-api-service.js";
 
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
@@ -18,11 +24,21 @@ async function main(): Promise<void> {
 
   const pool = createPgPool(connectionString);
   const migrations = await runMigrations(pool);
+  const signer = loadAttestationSignerFromEnv();
+  await ensureActiveServerSigningKey(pool, signer, new Date().toISOString());
+
   const publicVerification = new PublicVerificationService(
     new PgPublicVerificationRepository(pool),
   );
+  const trial1Api = new Trial1ApiService({
+    challengeRepository: new PgChallengeRepository(pool),
+    challengeStateRepository: new PgChallengeStateRepository(pool),
+    submissionRepository: new PgSubmissionRepository(pool),
+    finalizationRepository: new PgPassFinalizationRepository(pool),
+    signer,
+  });
   const server = createServer(
-    createRuntimeRequestHandler({ publicVerification, health: migrations }),
+    createRuntimeRequestHandler({ publicVerification, trial1Api, health: migrations }),
   );
 
   server.listen(port, "0.0.0.0", () => {
