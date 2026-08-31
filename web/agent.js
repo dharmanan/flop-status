@@ -22,11 +22,11 @@ const STORE_NAME = "identity";
 const ACTIVE_ID = "active";
 const MASKED_SEED = "•••• •••• •••• •••• •••• •••• •••• ••••";
 const encoder = new TextEncoder();
+
 let identity = null;
 let pendingSeed = null;
 let seedSavedAction = false;
 let seedRevealed = false;
-let pendingExternal = null;
 let evidenceData = null;
 let setupPath = "create";
 
@@ -89,7 +89,11 @@ async function deleteIdentity() {
   try {
     const tx = db.transaction(STORE_NAME, "readwrite");
     await request(tx.objectStore(STORE_NAME).delete(ACTIVE_ID));
-    await new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; tx.onabort = resolve; });
+    await new Promise((resolve) => {
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+      tx.onabort = resolve;
+    });
   } finally { db.close(); }
 }
 
@@ -139,13 +143,6 @@ async function refreshEvidence() {
   renderEvidence(await getAgentEvidence(identity.did));
 }
 
-function hideExternalSigning() {
-  pendingExternal = null;
-  byId("external-signing").hidden = true;
-  byId("external-payload").value = "";
-  byId("external-signature").value = "";
-}
-
 function chooseSetupPath(path) {
   setupPath = path === "existing" ? "existing" : "create";
   const create = setupPath === "create";
@@ -173,8 +170,8 @@ function renderIdentity() {
   const evidencePanel = byId("evidence-panel");
   const technical = byId("technical-details");
   const run = byId("run-trial");
-  const download = byId("download-backup");
-  hideExternalSigning();
+  const backupRow = byId("backup-download-row");
+  const apiNote = byId("external-api-note");
 
   if (pendingSeed && identity) {
     setup.hidden = true;
@@ -182,6 +179,8 @@ function renderIdentity() {
     actions.hidden = true;
     evidencePanel.hidden = true;
     technical.hidden = false;
+    apiNote.hidden = true;
+    backupRow.hidden = true;
     byId("identity-status").textContent = t("op_created");
     byId("did").textContent = identity.did;
     byId("custody").textContent = t("seed_warning");
@@ -193,12 +192,15 @@ function renderIdentity() {
   }
 
   byId("seed-gate").hidden = true;
+
   if (!identity) {
     setup.hidden = false;
     summary.hidden = true;
     actions.hidden = true;
     evidencePanel.hidden = true;
     technical.hidden = true;
+    apiNote.hidden = true;
+    backupRow.hidden = true;
     chooseSetupPath(setupPath);
     byId("identity-mode").textContent = t("none");
     byId("extractable-check").textContent = "n/a";
@@ -211,23 +213,27 @@ function renderIdentity() {
   actions.hidden = false;
   evidencePanel.hidden = false;
   technical.hidden = false;
-  run.disabled = false;
   byId("did").textContent = identity.did;
 
   if (identity.mode === "browser") {
+    run.hidden = false;
+    run.disabled = false;
+    apiNote.hidden = true;
     byId("identity-status").textContent = t("browser_ready");
     byId("custody").textContent = t("browser_custody");
     byId("identity-mode").textContent = t("browser_owned");
     byId("extractable-check").textContent = t("nonextractable");
     byId("backup-check").textContent = identity.backup ? t("encrypted_ready") : t("optional_none");
-    download.hidden = !identity.backup;
+    backupRow.hidden = !identity.backup;
   } else {
+    run.hidden = true;
+    apiNote.hidden = false;
     byId("identity-status").textContent = t("existing_connected");
     byId("custody").textContent = t("external_custody");
     byId("identity-mode").textContent = t("external_signer_mode");
     byId("extractable-check").textContent = t("not_held");
     byId("backup-check").textContent = t("owned_externally");
-    download.hidden = true;
+    backupRow.hidden = true;
   }
 }
 
@@ -257,14 +263,23 @@ async function createBrowserIdentity() {
   setOperation(t("op_create"));
   try {
     const created = await createPortableIdentity();
-    identity = { id: ACTIVE_ID, mode: "browser", did: created.did, publicKey: created.publicKey, privateKey: created.privateKey, backup: null };
+    identity = {
+      id: ACTIVE_ID,
+      mode: "browser",
+      did: created.did,
+      publicKey: created.publicKey,
+      privateKey: created.privateKey,
+      backup: null,
+    };
     pendingSeed = created.seedHex;
     seedSavedAction = false;
     seedRevealed = false;
     renderIdentity();
     await refreshEvidence();
     setOperation(t("op_created"));
-  } finally { byId("create-identity").disabled = false; }
+  } finally {
+    byId("create-identity").disabled = false;
+  }
 }
 
 function markSeedSavedAction() {
@@ -274,7 +289,11 @@ function markSeedSavedAction() {
 
 function downloadSeedIdentity() {
   if (!identity || !pendingSeed) return;
-  downloadText(serializeIdentitySeed(identity.did, pendingSeed), "flop-identity-" + identity.did.slice(-8) + ".txt", "text/plain");
+  downloadText(
+    serializeIdentitySeed(identity.did, pendingSeed),
+    "flop-identity-" + identity.did.slice(-8) + ".txt",
+    "text/plain",
+  );
   markSeedSavedAction();
   setOperation(t("op_seed_downloaded"));
 }
@@ -325,7 +344,14 @@ async function signInFromSeed() {
   if (!source) throw new Error(t("err_seed_missing"));
   setOperation(t("op_seed_signin"));
   const restored = await identityFromSeed(source);
-  identity = { id: ACTIVE_ID, mode: "browser", did: restored.did, publicKey: restored.publicKey, privateKey: restored.privateKey, backup: null };
+  identity = {
+    id: ACTIVE_ID,
+    mode: "browser",
+    did: restored.did,
+    publicKey: restored.publicKey,
+    privateKey: restored.privateKey,
+    backup: null,
+  };
   await writeIdentity(identity);
   byId("seed-input").value = "";
   byId("seed-file").value = "";
@@ -344,7 +370,14 @@ async function restoreBrowserIdentity() {
   try {
     const backup = parseBackupJson(await file.text());
     const restored = await restorePortableIdentity(backup, passphrase);
-    identity = { id: ACTIVE_ID, mode: "browser", did: restored.did, publicKey: restored.publicKey, privateKey: restored.privateKey, backup: restored.backup };
+    identity = {
+      id: ACTIVE_ID,
+      mode: "browser",
+      did: restored.did,
+      publicKey: restored.publicKey,
+      privateKey: restored.privateKey,
+      backup: restored.backup,
+    };
     await writeIdentity(identity);
     byId("restore-passphrase").value = "";
     byId("restore-file").value = "";
@@ -352,22 +385,13 @@ async function restoreBrowserIdentity() {
     renderIdentity();
     await refreshEvidence();
     setOperation(t("op_restored"));
-  } finally { byId("restore-identity").disabled = false; }
-}
-
-async function connectExistingDid() {
-  const did = byId("existing-did").value.trim();
-  parseEd25519DidKey(did);
-  identity = { id: ACTIVE_ID, mode: "external", did };
-  await writeIdentity(identity);
-  byId("existing-did").value = "";
-  renderIdentity();
-  await refreshEvidence();
-  setOperation(t("op_connected"));
+  } finally {
+    byId("restore-identity").disabled = false;
+  }
 }
 
 async function prepareTrialPayload() {
-  if (!identity || pendingSeed) throw new Error(t("err_identity_first"));
+  if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   setOperation(t("op_challenge"));
   const challengeResponse = await fetch(API_BASE + "/api/v1/challenges", {
     method: "POST",
@@ -379,9 +403,24 @@ async function prepareTrialPayload() {
 
   const challenge = created.challenge;
   const message = base64UrlToBytes(challenge.case.message);
-  const challengePublicKey = await crypto.subtle.importKey("raw", base64UrlToBytes(challenge.case.public_key), { name: "Ed25519" }, false, ["verify"]);
-  const valid = await crypto.subtle.verify({ name: "Ed25519" }, challengePublicKey, base64UrlToBytes(challenge.case.signature), message);
-  const result = { valid, reason_code: valid ? "SIGNATURE_VALID" : "SIGNATURE_INVALID", message_hash: await sha256(message) };
+  const challengePublicKey = await crypto.subtle.importKey(
+    "raw",
+    base64UrlToBytes(challenge.case.public_key),
+    { name: "Ed25519" },
+    false,
+    ["verify"],
+  );
+  const valid = await crypto.subtle.verify(
+    { name: "Ed25519" },
+    challengePublicKey,
+    base64UrlToBytes(challenge.case.signature),
+    message,
+  );
+  const result = {
+    valid,
+    reason_code: valid ? "SIGNATURE_VALID" : "SIGNATURE_INVALID",
+    message_hash: await sha256(message),
+  };
   const payload = {
     submission_version: SUBMISSION_VERSION,
     canonicalization: CANONICALIZATION,
@@ -397,12 +436,18 @@ async function prepareTrialPayload() {
 }
 
 async function submitEnvelope(challengeId, payload, signatureValue) {
-  const envelope = { payload, signature: { algorithm: "Ed25519", encoding: "base64url", value: signatureValue } };
-  const submitResponse = await fetch(API_BASE + "/api/v1/challenges/" + challengeId + "/submissions", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(envelope),
-  });
+  const envelope = {
+    payload,
+    signature: { algorithm: "Ed25519", encoding: "base64url", value: signatureValue },
+  };
+  const submitResponse = await fetch(
+    API_BASE + "/api/v1/challenges/" + challengeId + "/submissions",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(envelope),
+    },
+  );
   const submitted = await submitResponse.json();
   if (!submitResponse.ok) throw new Error(submitted.error ? submitted.error.code : "submission failed");
   if (submitted.verdict !== "PASS" || !submitted.receipt_id) throw new Error("Trial 1 did not produce PASS");
@@ -411,39 +456,27 @@ async function submitEnvelope(challengeId, payload, signatureValue) {
 }
 
 async function runTrial() {
-  if (!identity || pendingSeed) throw new Error(t("err_identity_first"));
+  if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   byId("run-trial").disabled = true;
   try {
     const prepared = await prepareTrialPayload();
-    if (identity.mode === "external") {
-      pendingExternal = prepared;
-      byId("external-payload").value = prepared.canonicalPayload;
-      byId("external-signing").hidden = false;
-      setOperation(t("op_external_ready"));
-      return;
-    }
-    const signature = new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, identity.privateKey, encoder.encode(prepared.canonicalPayload)));
+    const signature = new Uint8Array(
+      await crypto.subtle.sign(
+        { name: "Ed25519" },
+        identity.privateKey,
+        encoder.encode(prepared.canonicalPayload),
+      ),
+    );
     setOperation(t("op_submitting"));
-    await submitEnvelope(prepared.challenge.challenge_id, prepared.payload, bytesToBase64Url(signature));
+    await submitEnvelope(
+      prepared.challenge.challenge_id,
+      prepared.payload,
+      bytesToBase64Url(signature),
+    );
     setOperation(t("op_pass"));
-  } finally { byId("run-trial").disabled = false; }
-}
-
-async function submitExternalSignature() {
-  if (!identity || identity.mode !== "external" || !pendingExternal) throw new Error(t("err_no_external"));
-  const signatureValue = byId("external-signature").value.trim();
-  const signature = base64UrlToBytes(signatureValue);
-  if (signature.length !== 64) throw new Error(t("err_signature_length"));
-  const publicKey = await crypto.subtle.importKey("raw", parseEd25519DidKey(identity.did), { name: "Ed25519" }, false, ["verify"]);
-  const locallyValid = await crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, encoder.encode(pendingExternal.canonicalPayload));
-  if (!locallyValid) throw new Error(t("err_signature_control"));
-  byId("submit-external-signature").disabled = true;
-  setOperation(t("op_external_valid"));
-  try {
-    await submitEnvelope(pendingExternal.challenge.challenge_id, pendingExternal.payload, signatureValue);
-    hideExternalSigning();
-    setOperation(t("op_external_pass"));
-  } finally { byId("submit-external-signature").disabled = false; }
+  } finally {
+    byId("run-trial").disabled = false;
+  }
 }
 
 async function disconnectIdentity() {
@@ -465,6 +498,7 @@ async function boot() {
   byId("seed-file").addEventListener("change", () => syncFileName("seed-file", "seed-file-name"));
   byId("restore-file-button").addEventListener("click", () => byId("restore-file").click());
   byId("restore-file").addEventListener("change", () => syncFileName("restore-file", "restore-file-name"));
+
   onLanguageChange(() => {
     renderIdentity();
     renderEvidence(evidenceData);
@@ -499,11 +533,10 @@ byId("create-backup").addEventListener("click", () => createOptionalBackup().cat
 byId("confirm-seed-saved").addEventListener("click", () => confirmSeedSaved().catch(report));
 byId("signin-seed").addEventListener("click", () => signInFromSeed().catch(report));
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
-byId("connect-existing").addEventListener("click", () => connectExistingDid().catch(report));
 byId("run-trial").addEventListener("click", () => runTrial().catch(report));
-byId("submit-external-signature").addEventListener("click", () => submitExternalSignature().catch(report));
-byId("cancel-external-signing").addEventListener("click", hideExternalSigning);
-byId("download-backup").addEventListener("click", () => { if (identity?.backup) downloadBackup(identity.backup); });
+byId("download-backup").addEventListener("click", () => {
+  if (identity?.backup) downloadBackup(identity.backup);
+});
 byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 
 boot();
