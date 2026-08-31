@@ -10,7 +10,13 @@ import {
 } from "../receipts/receipt.js";
 import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
-import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
+import {
+  CAPABILITY_VERSION as TRIAL1_CAPABILITY_VERSION,
+  CERTIFICATE_NAME as TRIAL1_CERTIFICATE_NAME,
+  PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
+  PROGRAM_VERSION as TRIAL1_PROGRAM_VERSION,
+  TRIAL_ID as TRIAL1_ID,
+} from "../trials/ed25519-signature-verification/constants.js";
 import { verifyTrial1Result } from "../trials/ed25519-signature-verification/verifier.js";
 import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
 import { verifyTrial4Result } from "../trials/signed-receipt-verification/verifier.js";
@@ -37,7 +43,7 @@ export interface FinalizeCapabilityDependencies {
 export type FinalizeTrial1Dependencies = FinalizeCapabilityDependencies;
 
 export type FinalizedCapabilityVerification =
-  | { verdict: "PASS"; verificationRunId: string; receipt: SignedPassReceipt }
+  | { verdict: "PASS"; verificationRunId: string; receipt: SignedPassReceipt; certificateId?: string }
   | { verdict: "FAIL"; verificationRunId: string; receipt: null; reasonCode: string };
 
 export type FinalizedTrial1Verification = FinalizedCapabilityVerification;
@@ -48,7 +54,7 @@ function verifyPersistedResult(context: {
   hiddenContext: unknown;
   resultPayload: unknown;
 }) {
-  if (context.trialId === TRIAL1_ID) {
+  if (context.trialId === TRIAL1_ID || context.trialId === TRIAL1_PRODUCTION_ID) {
     return verifyTrial1Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
@@ -169,10 +175,32 @@ export async function finalizeCapabilityVerification(
       unsignedPayload: unsignedReceipt,
       serverSignature: receipt.server_signature,
     });
+
+    let certificateId: string | undefined;
+    if (context.trialId === TRIAL1_PRODUCTION_ID) {
+      certificateId = uuid();
+      await tx.insertCapabilityCertificate({
+        id: certificateId,
+        agentId: context.agentId,
+        capabilityId: context.capabilityId,
+        certificateName: TRIAL1_CERTIFICATE_NAME,
+        capabilityVersion: TRIAL1_CAPABILITY_VERSION,
+        programVersion: TRIAL1_PROGRAM_VERSION,
+        trialId: context.trialId,
+        trialVersion: context.trialVersion,
+        verifierId: verification.verifier_id,
+        verifierVersion: verification.verifier_version,
+        receiptId,
+        issuedAt: completedAt,
+      });
+    }
+
     await tx.markChallengeFinal(context.challengeId, "PASS", completedAt);
     await tx.upsertCapabilityRecord(context.agentId, context.capabilityId, receiptId, completedAt);
 
-    return { verdict: "PASS", verificationRunId, receipt };
+    return certificateId
+      ? { verdict: "PASS", verificationRunId, receipt, certificateId }
+      : { verdict: "PASS", verificationRunId, receipt };
   });
 }
 
