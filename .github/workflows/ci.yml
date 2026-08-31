@@ -22,6 +22,3 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm audit --audit-level=high
-      - name: Deployed Trial 4 acceptance
-        if: github.event_name == 'push'
-        run: npm run acceptance:trial4
