@@ -6,21 +6,31 @@ Close the product identity gap without making FLOP a private-key custodian.
 
 This milestone is separate from the already completed Trial 1 protocol acceptance.
 
+`PranjalBoraCrypto/overheard` is the binding ownership/portability reference for this milestone.
+
 ## Required identity paths
 
-1. Browser-owned Ed25519 `did:key` created by FLOP frontend.
-2. Existing externally owned Ed25519 `did:key` connected without giving FLOP its private key.
+1. Browser-owned Ed25519 `did:key` created by FLOP frontend with direct user ownership of the portable 32-byte seed.
+2. Existing user-owned identity restored from seed or the downloaded identity text file.
+3. Optional encrypted FLOP backup restore.
+4. Existing externally controlled Ed25519 `did:key` used through the same challenge/submission API without FLOP custody.
 
-## Gate IA: browser-owned creation
+The normal consumer onboarding must not require a user to understand or manually sign canonical JSON payloads.
+
+## Gate IA: browser-owned creation and seed ownership
 
 PASS only if, in the deployed Vercel frontend:
 
 1. a fresh browser can explicitly create a new Ed25519 `did:key`
-2. an encrypted recovery backup is produced and downloadable during creation
-3. the active signing private key persisted in IndexedDB is nonextractable
-4. plaintext private JWK, seed, passphrase or recovery secret is not stored in localStorage
-5. the private key or recovery secret does not appear in network requests
-6. the new identity can complete Trial 1 through the existing Railway protocol
+2. the user is shown the portable 32-byte seed before continuing
+3. the seed can be revealed, copied and downloaded locally as an identity text file
+4. the user cannot continue until they have copied or downloaded the seed and explicitly confirmed saving it
+5. the active signing private key persisted in IndexedDB is nonextractable
+6. plaintext private JWK, seed or recovery secret is not stored in localStorage
+7. the seed/private key does not appear in network requests
+8. the new identity can complete Trial 1 through the existing Railway protocol
+
+The optional encrypted backup is not a substitute for direct seed ownership and is not required to complete creation.
 
 ## Gate IB: refresh persistence
 
@@ -33,25 +43,13 @@ After Gate IA:
 
 PASS only if all four hold.
 
-## Gate IC: encrypted backup properties
-
-PASS only if:
-
-1. backup format is versioned
-2. private key material is inside authenticated encryption rather than plaintext JSON
-3. backup uses AES-GCM
-4. backup key is derived from the user's passphrase with PBKDF2-SHA256 and an explicit work factor
-5. passphrase itself is never stored in the backup
-6. tampering or a wrong passphrase cannot restore an identity
-
-## Gate ID: clean restore and portability
+## Gate IC: seed portability
 
 Using a separate clean browser context with no FLOP identity state:
 
 1. open the deployed Vercel frontend
-2. select the encrypted backup produced in Gate IA
-3. provide its passphrase
-4. restore the identity
+2. choose `I already have one`
+3. restore from the 64-character seed or the downloaded identity text file
 
 PASS only if:
 
@@ -59,23 +57,40 @@ PASS only if:
 2. the restored active key is nonextractable
 3. the restored identity can sign and complete a new Trial 1 challenge
 4. durable evidence continues under the same DID rather than creating a new identity
-5. no private key/recovery material is transmitted to Railway or Vercel server code
+5. no seed/private key material is transmitted to Railway or Vercel server code
 
-## Gate IE: existing external DID connection
+## Gate ID: optional encrypted backup
+
+PASS only if:
+
+1. an encrypted backup can be created from the same browser-owned identity after seed ownership is established
+2. backup format is versioned
+3. private key/seed material is inside authenticated encryption rather than plaintext JSON
+4. backup uses AES-GCM
+5. backup key is derived from the user's passphrase with PBKDF2-SHA256 and an explicit work factor
+6. passphrase itself is never stored in the backup
+7. tampering or a wrong passphrase cannot restore an identity
+8. a separate clean browser can restore the exact same DID from backup plus passphrase
+9. the restored active key is nonextractable and can complete Trial 1
+
+The encrypted backup is an optional recovery convenience. The portable seed remains the master identity material.
+
+## Gate IE: external signer semantics
 
 Use an Ed25519 `did:key` whose private key is controlled outside FLOP.
 
 PASS only if:
 
-1. the deployed frontend accepts the public DID without asking for its private key, seed, mnemonic or recovery secret
-2. merely entering the DID does not claim cryptographic control
-3. FLOP creates a normal DID-bound Trial 1 challenge for that DID
-4. the frontend exposes the exact canonical submission payload that must be signed
-5. the payload is signed by the external signer outside FLOP
-6. FLOP accepts only the resulting Ed25519 signature
-7. the browser locally rejects a signature that does not match the connected DID and exact payload
-8. Railway independently verifies the same signature before deterministic verification
-9. a valid external signature can produce the normal PASS receipt and capability record
+1. FLOP accepts the public DID without asking for its private key, seed, mnemonic or recovery secret
+2. merely entering/declaring the DID does not create verified capability evidence or claim cryptographic control
+3. FLOP creates a normal DID-bound challenge for that DID
+4. the external wallet/agent/signer signs the canonical submission payload outside FLOP
+5. FLOP receives only the signed result envelope, not private key material
+6. Railway verifies the DID signature before deterministic trial verification
+7. a signature from a different key, DID or payload is rejected
+8. a valid signature can produce the normal PASS receipt and capability record
+
+Consumer UI must not make manual canonical-payload signing the normal user flow. External signer integration is an Agent API/integration concern.
 
 ## Gate IF: external agent API
 
@@ -89,28 +104,29 @@ The API must not require an identity to have been created by FLOP.
 
 PASS only if:
 
-1. FLOP PostgreSQL stores no agent private key or recovery secret
-2. Railway public/private API payloads contain no agent private key or recovery secret
+1. FLOP PostgreSQL stores no agent seed, private key, mnemonic, passphrase or recovery secret
+2. Railway public/private API payloads contain no agent seed/private key/recovery secret
 3. Vercel uses a CSP with `default-src 'none'`
 4. Vercel browser scripts are restricted to `script-src 'self'`
 5. CSP does not allow `unsafe-eval` or third-party scripts
 6. outbound browser connections are restricted to the FLOP origin and the explicit Railway API origin
 7. referrer policy is `no-referrer`
-8. browser-created active private keys remain nonextractable after create and restore
+8. browser-created/restored active private keys remain nonextractable
 
 ## Automated test minimum
 
 Before deployed acceptance, CI must cover at minimum:
 
-1. browser identity creation produces an Ed25519 `did:key`
+1. browser identity creation produces an Ed25519 `did:key` and a 32-byte seed
 2. active created key is nonextractable
-3. backup does not contain the passphrase or plaintext private JWK
-4. encrypted backup restores the same DID
-5. restored active key is nonextractable
-6. restored key signs successfully
+3. seed text export can restore the exact same DID
+4. optional encrypted backup contains neither plaintext seed nor passphrase
+5. encrypted backup restores the same DID
+6. restored active key is nonextractable and signs successfully
 7. wrong passphrase fails closed
 8. unsupported DID methods fail explicitly
 9. Vercel CSP retains the key-custody restrictions above
+10. consumer onboarding does not expose a manual canonical-payload signing form
 
 ## Completion statement
 
