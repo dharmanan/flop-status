@@ -46,6 +46,7 @@ Read only when relevant:
 
 * `docs/architecture.md` for system boundaries, data flow, interfaces or multi module changes
 * `docs/product-contract.md` for product semantics, scope or user promise
+* `docs/references/overheard.md` for browser identity ownership, portability, encrypted recovery or external DID work
 * `docs/threat-model.md` for security sensitive work
 * `docs/database-schema.md` for persistence or transaction work
 * `docs/api-contract-v1.md` for API work
@@ -79,7 +80,31 @@ Identity → Challenge → Submission → Verification → Receipt → Capabilit
 
 The first implementation milestone is one complete Trial 1 vertical slice.
 
-Do not add Trial 2, Trial 3, messaging, wallet, faucet, token logic, LLM judging, generic orchestration or broad dashboard work before Trial 1 passes its acceptance contract.
+Do not add messaging, wallet, faucet, token logic, LLM judging, generic orchestration or broad dashboard work outside the active roadmap.
+
+## Product identity invariant
+
+FLOP is not a private-key custodian.
+
+The product must preserve both first-class identity entry paths from `docs/product-contract.md`:
+
+1. create a new supported Ed25519 `did:key`
+2. connect an existing supported Ed25519 `did:key`
+
+Connecting an existing DID requires cryptographic proof of control. DID text alone is never proof.
+
+For browser-created identities, the target ownership model is:
+
+* active nonextractable WebCrypto signing `CryptoKey`
+* IndexedDB persistence for the unlocked active key
+* encrypted exportable backup and restore
+* private signing/recovery material never sent to Railway, Vercel server code or PostgreSQL
+
+External agents/signers must be able to use the same challenge/submission verification protocol without browser custody or FLOP-generated identity.
+
+Use `docs/references/overheard.md` as the explicit identity-architecture reference. FLOP must preserve or improve those ownership/portability principles while adding capability verification.
+
+Do not equate Trial 1 protocol acceptance with Product MVP completion.
 
 ## Trust semantics
 
@@ -139,6 +164,8 @@ If verification cannot be completed, state exactly what was and was not verified
 Never say `done`, `fixed`, `working`, `final` or equivalent without verification.
 
 Trial 1 is not complete until the acceptance contract in `docs/acceptance/trial1-acceptance.md` passes.
+
+Product MVP is not complete until the current requirements in `docs/product-contract.md` and `docs/project-context/ROADMAP.md` pass, including create/connect DID, encrypted browser backup/restore, external signer/API support and all three initial deterministic trials.
 
 ## Project context updates
 
