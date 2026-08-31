@@ -4,7 +4,7 @@ Last updated: 2026-08-31
 
 ## Current phase
 
-Trial 1 protocol acceptance and identity ownership/connectivity acceptance are complete.
+Trial 1 protocol acceptance, identity ownership/connectivity acceptance and Trial 2 acceptance are complete.
 
 Accepted core path:
 
@@ -14,7 +14,7 @@ Accepted identity model:
 
 Create or restore Ed25519 `did:key` → user owns portable seed → optional encrypted recovery → nonextractable active browser key → same capability protocol.
 
-Product v1 is not complete. The active milestone is implementation of the remaining deterministic capability trials, beginning with Trial 2: Canonical JSON + SHA256.
+Product v1 is not complete. The active milestone is Trial 3: Technocore Canonical Message Construction.
 
 ## Completed
 
@@ -23,6 +23,8 @@ Product v1 is not complete. The active milestone is implementation of the remain
 * User-provided references are explicitly binding until an approved deviation; Overheard is the identity ownership/portability reference.
 * RFC 8785 JCS, strict base64url/base58btc, SHA-256 and Ed25519 `did:key` support implemented.
 * Trial 1 Ed25519 Signature Verification is implemented and passed deployed acceptance.
+* Trial 2 Canonical JSON + SHA256 is implemented and passed deployed acceptance through the shared challenge/submission/receipt engine.
+* Trial 2 browser flow is wired as a second capability action for the same browser-owned DID and deployed successfully on Vercel.
 * PostgreSQL persistence implemented for agents, capabilities, trial definitions, challenges, submissions, verification runs, server public signing keys, receipts and capability records.
 * Race-safe challenge issuance and one-time challenge consumption implemented.
 * DID-signed submission acceptance and deterministic PASS/FAIL/UNKNOWN semantics verified against Railway PostgreSQL.
@@ -43,6 +45,7 @@ Product v1 is not complete. The active milestone is implementation of the remain
 * Browser network-boundary regression tests lock API bodies to public challenge fields or signed submission envelopes; seed/private key/passphrase material is not serialized into API request bodies.
 * Vercel CSP/security tests lock strict self-hosted script policy and bounded outbound API connectivity.
 * Identity ownership/connectivity acceptance result: `docs/acceptance/identity-ownership-results-2026-08-31.md` — PASS.
+* Trial 2 acceptance result: `docs/acceptance/trial2-results-2026-08-31.md` — PASS.
 * FLOP v1 capability target is ten deterministic trials defined in `docs/capability-program-v1.md`.
 * Public certificate target is a high-information shareable capability credential with `N OF 10 VERIFIED`, proof links and per-trial signed receipts.
 * Official FLOP testnet seam reserves an identity-bound 10-of-10 certificate NFT without inventing chain/token details before an official specification exists.
@@ -51,21 +54,20 @@ Product v1 is not complete. The active milestone is implementation of the remain
 
 ## In progress
 
-Trial 2: Canonical JSON + SHA256.
+Trial 3: Technocore Canonical Message Construction.
 
 Required behavior:
 
-* server issues a deterministic JCS/SHA256 challenge fixture
-* agent produces RFC 8785 canonical JSON and SHA256 result
-* submission uses the existing DID-signed envelope
+* preserve the real Technocore signing semantics from the reference implementation rather than inventing a new payload
+* challenge remains DID-bound through FLOP even where the Technocore canonical signing string itself does not contain the DID
+* agent constructs the exact canonical message string required by the reference protocol
 * verifier is deterministic only
 * PASS/FAIL/UNKNOWN semantics remain unchanged
 * PASS creates the same server-signed receipt and capability-record evidence class
-* public verification and agent capability aggregation work without a parallel evidence system
+* Technocore network availability is not required for core verification
 
 ## Next
 
-* Trial 3 Technocore Canonical Message Construction
 * Trial 4 Signed Receipt Verification
 * Trial 5 Structured Data Transformation
 * Trial 6 Tool Selection and Function Calling
@@ -81,9 +83,10 @@ Required behavior:
 ## Known problems
 
 * The current Vercel UI is still an acceptance/product-structure shell, not the final premium interface.
-* Only Trial 1 is implemented; Trials 2 through 10 are defined but not yet implemented.
+* Trials 3 through 10 are defined at program level but not yet implemented.
 * `lib/trials/` is used for trial-specific constants and schemas although it is not yet listed in the architecture directory contract.
-* The deployed external acceptance run created one test agent/receipt as evidence; the one-time CI step was removed immediately afterward.
+* The deployed external acceptance run and Trial 2 acceptance run each created test evidence records in production PostgreSQL.
+* The previous Trial 3 program summary described sender DID and a separate timestamp as canonical message fields, but the inspected Technocore reference signs exactly `room|nonce|cleaned text`. Trial 3 implementation must follow the reference and correct the program summary accordingly.
 
 ## Blocked
 
@@ -91,8 +94,8 @@ None currently known.
 
 ## Important current state
 
-Identity ownership/connectivity is complete. Product v1 is not complete.
+Identity ownership/connectivity, Trial 1 and Trial 2 are complete. Product v1 is not complete.
 
 Do not mark Product v1 complete until all ten deterministic trials, public proof profile/certificate and current product contract are met.
 
-Future work must preserve accepted Trial 1 and identity invariants unless a versioned architecture/product decision explicitly changes them.
+Future work must preserve accepted identity, Trial 1 and Trial 2 invariants unless a versioned architecture/product decision explicitly changes them.
