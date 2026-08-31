@@ -14,6 +14,7 @@ import {
   type RandomBytesFn,
 } from "../trials/ed25519-signature-verification/challenge-generator.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
   TRIAL_ID as TRIAL1_ID,
   TRIAL_VERSION as TRIAL1_VERSION,
 } from "../trials/ed25519-signature-verification/constants.js";
@@ -142,13 +143,13 @@ export async function issueCapabilityChallenge(
 ): Promise<IssuedChallenge> {
   parseEd25519DidKey(input.agentDid);
 
-  if (input.trialId === TRIAL1_ID) {
+  if (input.trialId === TRIAL1_ID || input.trialId === TRIAL1_PRODUCTION_ID) {
     const generated = generateEd25519SignatureChallenge(
-      { agentDid: input.agentDid },
+      { agentDid: input.agentDid, trialId: input.trialId },
       { now: deps.now, randomBytes: deps.randomBytes },
     );
     return persistGeneratedChallenge(
-      { agentDid: input.agentDid, trialId: TRIAL1_ID, trialVersion: TRIAL1_VERSION },
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL1_VERSION },
       generated,
       deps,
     );
