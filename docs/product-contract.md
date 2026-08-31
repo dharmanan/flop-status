@@ -1,98 +1,154 @@
-# Product Contract v0.1
+# Product Contract v0.2
 
 ## Problem
 
 Agents can publish capability claims, activity and reputation signals, but those are not proof that a specific capability was demonstrated.
 
-Capability Lab answers one question:
+FLOP answers one question:
 
-What can this agent demonstrably do?
+What can this agent demonstrably do inside FLOP?
 
 ## Target user
 
-Primary: agent builders.
+Primary: people creating and using FLOP agents, including non-technical users.
 
-Secondary: people and agents evaluating whether another agent has demonstrated a capability.
-
-Future: protocols and services that need machine readable capability evidence before selecting or hiring an agent.
+Secondary: builders and evaluators who need independently verifiable capability evidence.
 
 ## User promise
 
-Your agent says what it can do. We test it.
+Create your agent. Give it capabilities. Verify each one. Keep the proof.
 
-## 90 second demo
+## Product boundary
 
-1. Create or connect a DID.
-2. Select a deterministic capability trial.
-3. Receive a unique challenge.
-4. Submit a structured result signed by the DID.
-5. Verify the result with deterministic code.
-6. Produce PASS or FAIL.
-7. Create a server signed receipt.
-8. Update the public capability record.
-9. Open the public verification page in a separate browser and verify the same evidence.
+FLOP-managed capabilities are acquired and used inside FLOP.
 
-## Human flow
+Identity, receipts, certificates and public proof are externally viewable and independently verifiable.
 
-Connect Agent → Select Capability → Start Trial → Receive Challenge → Submit Result → Sign Submission → Verify → PASS or FAIL → Receipt → Public Capability Record
+FLOP v1 does not expose a general public endpoint that lets arbitrary third-party applications execute FLOP-managed agents.
 
-## Agent API flow
+## Identity
 
-Agents must be able to use the same verification engine without clicking through the human UI.
+A FLOP agent uses a supported Ed25519 `did:key`.
 
-Initial API surface:
+The user may create a new identity or restore/connect one already owned.
 
-GET /api/v1/capabilities
-POST /api/v1/challenges
-GET /api/v1/challenges/:id
-POST /api/v1/challenges/:id/submissions
-GET /api/v1/receipts/:id
-GET /api/v1/agents/:did
-GET /api/v1/agents/:did/capabilities
-GET /api/v1/verification/:receiptId
-GET /api/v1/server-keys
+For FLOP-created browser identities:
 
-## Trust model
+* the user owns the portable seed
+* active private signing material stays client side
+* FLOP servers never receive or store the private key or seed
 
-A DID signature proves control of the corresponding private key for the signed submission.
+## Capability journey
 
-It does not prove:
+Every production capability follows:
 
-* human identity
-* model identity
-* absence of human assistance
-* absence of another agent's assistance
-* permanent future capability
+**ACQUIRE → PRACTICE → VERIFY → CERTIFY → USE → PROVE**
 
-A Capability Lab receipt proves that a specific DID submitted a specific result for a specific challenge and that a specific verifier version produced a specific verdict.
+Every user begins the production certificate journey at Capability 1 and proceeds one capability at a time.
 
-## Evidence levels
+There is no bulk certification or migration credit from internal development acceptance runs.
 
-CLAIMED
+## ACQUIRE
 
-UNTESTED
+The user selects a capability and enables it for the FLOP agent.
 
-DETERMINISTICALLY VERIFIED
+Normal users are not expected to understand GitHub, patches, repositories or code installation.
 
-PEER VERIFIED
+FLOP attaches a reference to the versioned capability implementation.
 
-UNKNOWN
+Capability implementation code is stored once; it is not copied into the database for every agent.
 
-UNKNOWN is never equivalent to FAIL.
+## PRACTICE
 
-## Initial capability taxonomy
+Practice lets the user run the capability against bounded examples.
 
-### Cryptography
+Practice does not issue a certificate and does not affect rank.
 
-Ed25519 Signature Verification
+## VERIFY
 
-### Protocol
+FLOP creates a fresh challenge.
 
-Technocore Canonical Message Construction
+The installed capability implementation produces the result.
 
-### Data Integrity
+The same implementation used by the normal FLOP use action must be used during verification. A separate page-specific answer shortcut is not allowed for production certification.
 
-Canonical JSON + SHA256
+The browser-owned DID signs the exact submission.
+
+PASS/FAIL/UNKNOWN is determined by versioned deterministic verification.
+
+## CERTIFY
+
+Every successful production capability verification immediately issues one separate capability certificate.
+
+Certification begins with Capability 1.
+
+Examples:
+
+* Capability 1 PASS → Certificate 1
+* Capability 2 PASS → Certificate 2
+* Capability 3 PASS → Certificate 3 plus Rookie cumulative rank
+
+An individual certificate is never replaced by cumulative rank.
+
+## USE
+
+A capability that has been acquired can be used from explicit FLOP product actions.
+
+Core deterministic capabilities run inside the FLOP product environment without requiring an LLM.
+
+FLOP v1 does not run one permanent service per agent and does not expose public arbitrary third-party invocation.
+
+## PROVE
+
+Every production certificate has a public proof surface.
+
+Public proof includes the agent DID, capability identity/version, verifier version, signed PASS receipt, timestamp and FLOP attestation state.
+
+The proof page works without login.
+
+## v1 capability program
+
+FLOP v1 has ten certificate-eligible capabilities.
+
+### Core 1–7
+
+No LLM required.
+
+1. Ed25519 Signature Verification
+2. Canonical JSON + SHA256
+3. Technocore Canonical Message Construction
+4. Signed Receipt Verification
+5. Structured Data Transformation
+6. Constraint and Policy Compliance
+7. Failure Recovery and Idempotency
+
+### Optional Agentic 8–10
+
+LLM required and explicit user opt-in required.
+
+8. Goal Planning & Tool Use
+9. Grounded Research & Synthesis
+10. Autonomous Multi Step Execution
+
+LLM use may create cost. FLOP must disclose this before the user enables an Agentic capability.
+
+The LLM may perform the task, but FLOP does not use an LLM judge for certification. Verdicts remain deterministic.
+
+## Cumulative rank
+
+Rank is derived from valid individual production certificates.
+
+Initial thresholds:
+
+* 0: Unranked
+* 1–2: individually certified, no named rank
+* 3–4: Rookie
+* 5–6: Regular
+* 7: Core Verified
+* 8–9: Advanced
+* 10: Agentic Verified
+
+Rank names may be refined later without changing individual certificate evidence.
 
 ## Challenge lifecycle
 
@@ -100,153 +156,85 @@ ISSUED → SUBMITTED → PASS | FAIL | UNKNOWN
 
 ISSUED may also become EXPIRED.
 
-Every challenge is server generated, DID bound, unique, short lived and single use.
+Every certification challenge is server generated, DID bound, unique, short lived and single use.
 
-Initial default TTL: 10 minutes.
+Initial default TTL remains 10 minutes unless a versioned capability contract specifies otherwise.
 
 ## Verification semantics
 
-DETERMINISTICALLY VERIFIED requires all of the following:
+Certificate-eligible deterministic verification requires all applicable checks:
 
-* submission signature is valid
+* capability is installed for the agent
 * challenge belongs to the same DID
 * challenge is not expired
 * challenge has not been consumed
+* submission signature is valid
 * result matches the required schema
+* production capability/trial/program versions are certificate eligible
 * deterministic verifier returns PASS
 
 ## PASS semantics
 
-PASS means the signed result satisfied the deterministic criteria for this challenge under this verifier version.
+PASS means the signed production result satisfied the deterministic criteria for the exact challenge and verifier version.
 
-PASS does not mean the agent has general intelligence, permanent expertise, known model provenance or guaranteed future performance.
+PASS creates a signed receipt.
 
-## FAIL semantics
+A certificate is created only when the PASS belongs to the production certificate-eligible flow.
 
-FAIL is only produced when a cryptographically and structurally valid submission is deterministically wrong.
+## FAIL and UNKNOWN
 
-Infrastructure errors, database errors, network errors and Technocore failures must not become FAIL.
+FAIL is produced only when a cryptographically and structurally valid result is deterministically wrong.
 
-## Retry rules
+Infrastructure errors, database errors, network uncertainty and unavailable optional services do not become FAIL.
 
-The same challenge cannot be reused.
+UNKNOWN is never equivalent to FAIL.
 
-A retry after FAIL or EXPIRED requires a new challenge.
+## Historical development acceptance evidence
 
-Initial rules:
+Trial 1–4 browser auto-solver runs performed before the production capability runtime are internal development acceptance evidence.
 
-* one active challenge per DID per trial
-* default maximum 10 trial starts per DID per day
-* UNKNOWN does not consume the success or failure record and should not consume the user retry quota
+Their signed receipts remain immutable and publicly verifiable as historical protocol evidence.
 
-## Anti cheating boundary
+They do not count as production user capability certificates and do not increase cumulative rank.
 
-The MVP prevents or reduces replay, result substitution, expired challenge reuse, DID substitution and receipt forgery.
+A DID used in those runs still starts the production certificate journey at Capability 1.
 
-The MVP does not claim to prove that the DID holder solved the challenge without human help or without another agent.
+## Public profile
 
-Capability evidence is performance evidence submitted by a DID, not model provenance evidence.
+The public agent profile aggregates:
 
-## DID signing requirement
+* public DID
+* all individual production capability certificates
+* cumulative rank
+* certificate count
+* capability slots and states
+* proof links and receipt evidence
 
-Every submission eligible for verification must be signed by the DID private key.
+A user with four production certificates has four separate certificate cards and the corresponding rank state.
 
-The private key must never be sent to the server.
+## Cost model
 
-## Server signing requirement
+Creating or keeping an idle agent must not create a permanently running compute workload.
 
-Every PASS receipt is signed by a Capability Lab server attestation key.
+Core deterministic capability execution should run with bounded cost and no LLM requirement.
 
-Receipts include a server key identifier and remain verifiable after key rotation.
+Agentic capability cost occurs only after explicit user approval to use an LLM.
 
-## Database model
+Arbitrary third-party applications cannot invoke FLOP-managed agents and create uncontrolled execution cost in v1.
 
-PostgreSQL is the durable product state.
+## Testnet seam
 
-Expected entities:
+Official FLOP testnet integration may later be initiated from inside FLOP.
 
-agents
-capabilities
-capability_claims
-trial_definitions
-challenge_instances
-submissions
-verification_runs
-receipts
-capability_records
-technocore_references
-audit_events
-server_signing_keys
+No wallet, token, chain, contract, faucet or eligibility behavior is invented before an official specification exists.
 
-Receipts are append oriented and immutable.
-
-## Technocore role
-
-Technocore may be used for public announcements, signed activity, receipt references, discovery and future ecosystem interoperability.
-
-Core challenge, verification, receipt and capability record state must not depend on Technocore availability or readback.
-
-## What Technocore is not trusted for
-
-Ordinary notes are not identity proof.
-
-Ordinary notes are not canonical capability state.
-
-Mailbox names are not identity.
-
-Health status is not proof that room reads are stable.
-
-Signed write readback is not an onboarding requirement.
-
-Technocore is not the product database.
-
-## Browser key custody
-
-Target model:
-
-* Browser WebCrypto
-* non extractable signing CryptoKey where practical
-* IndexedDB for unlocked key material
-* encrypted exportable backup
-* private key never sent to the server
-
-## Public profile model
-
-Public profiles separate claims from verified evidence.
-
-Verified results must have stronger visual and semantic weight than claims.
-
-Individual FAIL attempts are stored internally but are not listed as a public score in MVP.
-
-## Verification page
-
-Every PASS receipt gets a public URL showing at minimum:
-
-agent DID
-capability
-trial
-verdict
-challenge hash
-result hash
-verifier version
-timestamp
-receipt ID
-Capability Lab receipt signature status
-optional Technocore reference
-
-The page must work without login.
-
-## Future Deal Room seam
-
-Capability receipts should be reusable later as evidence when one agent evaluates another for a signed job or transaction workflow.
-
-## Future FLOP testnet seam
-
-Future evidence may include inference sessions, provider usage, FLOP spent, task results and network execution.
-
-No speculative chain, wallet, endpoint or eligibility fields are included before official specifications exist.
+Any future identity-bound certificate/rank artifact references the live proof and signed receipt evidence rather than replacing them.
 
 ## Explicit non goals
+
+Public arbitrary third-party invocation of FLOP-managed agents
+
+Permanent per-agent services
 
 Messaging
 
@@ -254,49 +242,30 @@ Inbox
 
 Passport
 
-Reputation score
+Subjective reputation score
 
 Human identity verification
 
-Wallet
-
-Faucet
-
-Token accounting
+Speculative wallet or faucet
 
 Airdrop prediction
 
-FLOP eligibility scoring
-
-Generic autonomous runtime
-
-Bounty board
-
-Generic orchestrator
-
 LLM judge
 
-Arbitrary code execution
+Arbitrary user code execution
 
-## MVP success criteria
+## v1 success criteria
 
-A fresh browser can create or connect a DID, receive a unique challenge, submit a DID signed result, obtain a deterministic PASS, persist state in PostgreSQL, produce a server signed receipt and verify that receipt from a separate browser.
+A normal non-technical user can:
 
-All three initial trials must complete this same end to end path.
+1. create or restore an agent identity
+2. start at Capability 1
+3. acquire the capability without code installation
+4. practice it
+5. run a fresh production verification
+6. receive Certificate 1 on PASS
+7. open and independently verify its public proof
+8. use the same installed capability inside FLOP
+9. continue one-by-one through the remaining capabilities
 
-The core path must continue to work while Technocore is unavailable.
-
-## Stop conditions
-
-Feature work stops if any of the following is true:
-
-* PASS is not deterministic
-* receipt cannot be independently signature verified
-* DID signature is not bound to the exact submission
-* challenge replay is possible
-* private key leaves the browser
-* Technocore availability blocks the core flow
-* challenge values are predictably generated
-* verifier behavior changes without versioning
-* evidence classes are visually or semantically conflated
-* a proposed feature does not strengthen the answer to: What can this agent demonstrably do?
+Product v1 is not complete until all ten capability paths, individual certificates, cumulative rank and public proof profile meet their active contracts.
