@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-// The production identity module is intentionally plain browser JavaScript.
-// @ts-expect-error no TypeScript declaration is required for this static frontend module
 import {
   createPortableIdentity,
   parseBackupJson,
