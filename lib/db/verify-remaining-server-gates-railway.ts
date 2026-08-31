@@ -129,10 +129,17 @@ async function main(): Promise<void> {
     if (didState.state !== "ISSUED") throw new Error("DID binding consumed challenge");
     await pool.query("UPDATE challenge_instances SET state='EXPIRED', completed_at=now() WHERE id=$1", [didChallenge.challenge.challenge_id]);
 
-    // Gate I: expire in DB, reject valid submission, then allow replacement challenge.
+    // Gate I: use a controlled DB fixture to move the complete ten-minute
+    // validity window into the past without violating expires_at > issued_at.
     const expiryChallenge = await createChallenge(base, a.did);
     challengeIds.push(expiryChallenge.challenge.challenge_id);
-    await pool.query("UPDATE challenge_instances SET expires_at = now() - interval '1 second' WHERE id=$1", [expiryChallenge.challenge.challenge_id]);
+    await pool.query(
+      `UPDATE challenge_instances
+       SET issued_at = now() - interval '10 minutes 1 second',
+           expires_at = now() - interval '1 second'
+       WHERE id=$1`,
+      [expiryChallenge.challenge.challenge_id],
+    );
     const expiryEnvelope = envelope(a, expiryChallenge);
     const expiryResponse = await fetch(`${base}/api/v1/challenges/${expiryChallenge.challenge.challenge_id}/submissions`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(expiryEnvelope),
