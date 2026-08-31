@@ -24,6 +24,10 @@ const MIGRATIONS = [
     id: "0005_trial3_technocore_canonical_message",
     path: new URL("../../db/migrations/0005_trial3_technocore_canonical_message.sql", import.meta.url),
   },
+  {
+    id: "0006_trial4_signed_receipt_verification",
+    path: new URL("../../db/migrations/0006_trial4_signed_receipt_verification.sql", import.meta.url),
+  },
 ] as const;
 
 export interface MigrationResult {
