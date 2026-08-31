@@ -1,5 +1,6 @@
 :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: #111; color: #f4f4f4; }
 main { width: min(920px, calc(100% - 40px)); margin: 64px auto; }
 .eyebrow, .label { opacity: .55; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
@@ -9,9 +10,18 @@ h1 { max-width: 820px; font-size: clamp(40px, 7vw, 78px); line-height: .96; marg
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; line-height: 1.45; }
 .muted, .operation { opacity: .62; line-height: 1.5; }
 .actions { display: flex; gap: 10px; margin: 10px 0 34px; flex-wrap: wrap; }
+.actions.compact { margin: 14px 0 0; }
 button { appearance: none; border: 1px solid #eee; background: #eee; color: #111; padding: 12px 16px; border-radius: 999px; cursor: pointer; font: inherit; }
 button:disabled { opacity: .35; cursor: default; }
 button.secondary { background: transparent; color: #eee; border-color: #444; }
+input, textarea { width: 100%; border: 1px solid #3a3a3a; background: #171717; color: #f4f4f4; border-radius: 10px; padding: 12px 13px; font: inherit; }
+input:focus, textarea:focus { outline: 1px solid #777; border-color: #777; }
+label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
+.identity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.identity-card { border: 1px solid #292929; border-radius: 14px; padding: 18px; min-width: 0; }
+.identity-card .muted { min-height: 88px; font-size: 14px; }
+.identity-card button { width: 100%; margin-top: 14px; }
+.payload-box { min-height: 220px; resize: vertical; font-size: 12px; }
 .capability { padding: 12px 0; border-bottom: 1px solid #292929; overflow-wrap: anywhere; }
 .receipt { display: inline-block; margin-top: 18px; color: inherit; }
 .checks > div:not(.label) { padding: 7px 0; }
@@ -20,4 +30,5 @@ dl { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; margin: 28p
 dt, dd { margin: 0; padding: 12px 0; border-bottom: 1px solid #292929; overflow-wrap: anywhere; }
 dt { opacity: .55; padding-right: 20px; }
 .note { max-width: 720px; opacity: .55; line-height: 1.55; }
-@media (max-width: 640px) { dl { grid-template-columns: 1fr; } dt { border-bottom: 0; padding-bottom: 2px; } dd { padding-top: 2px; } }
+@media (max-width: 820px) { .identity-grid { grid-template-columns: 1fr; } .identity-card .muted { min-height: 0; } }
+@media (max-width: 640px) { main { width: min(100% - 28px, 920px); margin-top: 36px; } dl { grid-template-columns: 1fr; } dt { border-bottom: 0; padding-bottom: 2px; } dd { padding-top: 2px; } button { min-height: 44px; } }
