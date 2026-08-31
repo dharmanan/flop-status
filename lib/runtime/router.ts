@@ -154,7 +154,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
         return;
       }
       const verification = await deps.publicVerification.getVerification(certificate.receiptId);
-      if (!verification) throw new PublicVerificationIntegrityError("RECEIPT_NOT_FOUND", "certificate receipt is missing");
+      if (!verification) throw new PublicVerificationIntegrityError("STORED_RECEIPT_INVALID");
       json(response, 200, {
         certificate: {
           certificate_id: certificate.id,
