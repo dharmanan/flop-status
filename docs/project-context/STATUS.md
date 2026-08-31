@@ -4,42 +4,46 @@ Last updated: 2026-08-31
 
 ## Current phase
 
-Trial 1 deployed protocol acceptance is complete.
+Trial 1 protocol acceptance and identity ownership/connectivity acceptance are complete.
 
-The accepted protocol milestone is:
+Accepted core path:
 
 Identity → Challenge → DID signed Submission → Deterministic Verification → Server signed Receipt → Public Verification.
 
-Product v1 is not complete. Identity ownership/connectivity is the active milestone and must pass deployed acceptance before additional trials are implemented.
+Accepted identity model:
+
+Create or restore Ed25519 `did:key` → user owns portable seed → optional encrypted recovery → nonextractable active browser key → same capability protocol.
+
+Product v1 is not complete. The active milestone is implementation of the remaining deterministic capability trials, beginning with Trial 2: Canonical JSON + SHA256.
 
 ## Completed
 
 * Product, architecture, threat model, receipt, PostgreSQL, API and Trial 1 acceptance contracts defined.
 * Persistent AI workflow rules added through root `AGENTS.md`.
-* User-provided references are now explicitly binding until an approved deviation; Overheard is the identity ownership/portability reference.
+* User-provided references are explicitly binding until an approved deviation; Overheard is the identity ownership/portability reference.
 * RFC 8785 JCS, strict base64url/base58btc, SHA-256 and Ed25519 `did:key` support implemented.
-* Trial 1 challenge generator implemented with public payload and hidden verifier context separated.
+* Trial 1 Ed25519 Signature Verification is implemented and passed deployed acceptance.
 * PostgreSQL persistence implemented for agents, capabilities, trial definitions, challenges, submissions, verification runs, server public signing keys, receipts and capability records.
 * Race-safe challenge issuance and one-time challenge consumption implemented.
 * DID-signed submission acceptance and deterministic PASS/FAIL/UNKNOWN semantics verified against Railway PostgreSQL.
 * Atomic PASS finalization, receipt generation, receipt signature verification and public verification implemented.
 * Railway is backend only; Vercel hosts the browser product surface.
-* Chrome desktop, Safari desktop and Mobile Safari Trial 1 browser matrix passed for the original Trial 1 acceptance shell.
+* Chrome desktop, Safari desktop and Mobile Safari Trial 1 browser matrix passed.
 * Clean-browser public receipt verification passed.
 * Technocore independence passed while Technocore was deliberately unavailable.
-* Browser-created identity now exposes a portable 32-byte Ed25519 seed directly to the user before continuation.
-* Seed can be revealed, copied or downloaded as a local identity text file.
-* Identity can be reconstructed locally from the seed or downloaded text file to the exact same DID.
+* Browser-created identity exposes the portable 32-byte Ed25519 seed directly to the user before continuation.
+* Seed Reveal, Copy and Download work and continuation is gated on saving it.
+* Seed or downloaded identity text restores the exact same DID in a clean browser.
 * Active browser signing keys are nonextractable WebCrypto `CryptoKey` objects persisted in IndexedDB.
-* Optional encrypted backup/restore uses AES-GCM with PBKDF2-SHA256 and does not replace direct seed ownership.
-* Consumer onboarding is now reduced to two primary paths: create a new identity or use an identity already owned.
-* Optional encrypted recovery is nested under the existing-identity path.
-* Manual canonical-payload signing controls and raw external-signature fields have been removed from the normal consumer onboarding surface.
-* External agent/signer support remains an API/integration requirement using the same DID-bound challenge/submission verification protocol.
-* Vercel CSP/security headers constrain scripts and outbound connectivity for browser key custody.
-* Automated identity tests cover seed ownership, same-DID restore, nonextractable keys, optional encrypted backup, wrong-passphrase failure and unsupported DID rejection.
-* Automated onboarding regression test locks the absence of manual canonical-payload signing controls from the consumer page.
-* FLOP v1 capability target is now ten deterministic trials defined in `docs/capability-program-v1.md`.
+* Optional encrypted backup/restore uses AES-GCM with PBKDF2-SHA256 and passed clean-browser deployed restore acceptance.
+* Consumer onboarding has two primary paths: create a new identity or use an identity already owned.
+* Manual canonical-payload signing controls are absent from normal consumer onboarding.
+* External agent/signer support passed deployed public Railway API acceptance without FLOP browser custody.
+* Wrong external signer rejection, correct signer acceptance, deterministic PASS and public receipt validation were verified in GitHub Actions run `33432048802`.
+* Browser network-boundary regression tests lock API bodies to public challenge fields or signed submission envelopes; seed/private key/passphrase material is not serialized into API request bodies.
+* Vercel CSP/security tests lock strict self-hosted script policy and bounded outbound API connectivity.
+* Identity ownership/connectivity acceptance result: `docs/acceptance/identity-ownership-results-2026-08-31.md` — PASS.
+* FLOP v1 capability target is ten deterministic trials defined in `docs/capability-program-v1.md`.
 * Public certificate target is a high-information shareable capability credential with `N OF 10 VERIFIED`, proof links and per-trial signed receipts.
 * Official FLOP testnet seam reserves an identity-bound 10-of-10 certificate NFT without inventing chain/token details before an official specification exists.
 * Railway backend deployment: `https://flop-status-production.up.railway.app`.
@@ -47,36 +51,39 @@ Product v1 is not complete. Identity ownership/connectivity is the active milest
 
 ## In progress
 
-Identity ownership/connectivity deployed acceptance:
+Trial 2: Canonical JSON + SHA256.
 
-* Gate IA browser-created identity + direct seed ownership + Trial 1
-* Gate IB refresh persistence
-* Gate IC clean-browser same-DID restore from seed/text file
-* Gate ID optional encrypted backup properties and clean restore
-* Gate IE external signer semantics without exposing manual signing as consumer UX
-* Gate IF direct external Agent API path
-* Gate IG deployed custody/CSP/no-secret-leak boundary
+Required behavior:
 
-Acceptance source of truth: `docs/acceptance/identity-ownership-acceptance.md`.
+* server issues a deterministic JCS/SHA256 challenge fixture
+* agent produces RFC 8785 canonical JSON and SHA256 result
+* submission uses the existing DID-signed envelope
+* verifier is deterministic only
+* PASS/FAIL/UNKNOWN semantics remain unchanged
+* PASS creates the same server-signed receipt and capability-record evidence class
+* public verification and agent capability aggregation work without a parallel evidence system
 
-Reference architecture: `docs/references/overheard.md`.
+## Next
 
-## Next after identity milestone
-
-* Implement the remaining deterministic trials toward the ten-trial v1 program.
-* Reuse the same challenge → signed submission → deterministic verifier → server-signed receipt engine.
-* Implement CLAIM/UNTESTED flow.
-* Build the real IDENTIFY → CLAIM → TRIALS → RECORD information architecture.
-* Build the public capability certificate/profile and proof-link experience.
-* Build the premium product UI after protocol/identity acceptance is stable.
+* Trial 3 Technocore Canonical Message Construction
+* Trial 4 Signed Receipt Verification
+* Trial 5 Structured Data Transformation
+* Trial 6 Tool Selection and Function Calling
+* Trial 7 Multi-step Workflow Execution
+* Trial 8 Retrieval and Grounded Evidence
+* Trial 9 Constraint and Policy Compliance
+* Trial 10 Failure Recovery and Idempotency
+* CLAIM/UNTESTED product flow
+* real IDENTIFY → CLAIM → TRIALS → RECORD information architecture
+* public capability certificate/profile and proof-link experience
+* premium product UI after the protocol surfaces are stable
 
 ## Known problems
 
-* The Vercel UI is still an acceptance/product-structure shell, not the final premium product interface.
-* Identity ownership/connectivity has automated coverage but the revised seed-first onboarding still needs deployed browser acceptance evidence.
-* External signer/API semantics remain valid in the backend protocol, but a productized external integration surface/API guide still needs acceptance.
-* Only Trial 1 is implemented; the other nine v1 deterministic trials are planned but not yet implemented.
+* The current Vercel UI is still an acceptance/product-structure shell, not the final premium interface.
+* Only Trial 1 is implemented; Trials 2 through 10 are defined but not yet implemented.
 * `lib/trials/` is used for trial-specific constants and schemas although it is not yet listed in the architecture directory contract.
+* The deployed external acceptance run created one test agent/receipt as evidence; the one-time CI step was removed immediately afterward.
 
 ## Blocked
 
@@ -84,10 +91,8 @@ None currently known.
 
 ## Important current state
 
-Trial 1 protocol acceptance is complete, but identity ownership/connectivity and Product v1 are not complete.
+Identity ownership/connectivity is complete. Product v1 is not complete.
 
-Do not mark identity ownership/connectivity complete until `docs/acceptance/identity-ownership-acceptance.md` passes with deployed evidence.
+Do not mark Product v1 complete until all ten deterministic trials, public proof profile/certificate and current product contract are met.
 
-Do not mark Product v1 complete until the active identity requirements, external Agent API path, all ten deterministic trials, public proof profile/certificate and current product contract are met.
-
-Future work must preserve accepted Trial 1 protocol invariants unless a versioned architecture/product decision explicitly changes them.
+Future work must preserve accepted Trial 1 and identity invariants unless a versioned architecture/product decision explicitly changes them.
