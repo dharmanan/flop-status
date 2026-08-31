@@ -2,30 +2,37 @@
 
 ## Now
 
-Close the product identity ownership/connectivity milestone before implementing additional trials.
+Implement Trial 2: Canonical JSON + SHA256.
 
 Required outcome:
 
-* Create new Ed25519 `did:key` in browser.
-* Give the user direct ownership of the portable 32-byte seed at creation time with Reveal, Copy and Download.
-* Require the user to save the seed before continuing.
-* Restore the exact same DID from seed or the downloaded identity text file in a clean browser.
-* Keep active browser signing keys nonextractable in IndexedDB.
-* Keep encrypted FLOP backup/restore as an optional additional recovery path.
-* Support externally controlled Ed25519 `did:key` through the same challenge/submission API without FLOP custody.
-* Keep manual canonical-payload signing out of normal consumer onboarding.
-* Ensure private signing/recovery material never reaches Railway, Vercel server code or PostgreSQL.
+* reuse the accepted Identity → Challenge → Signed Submission → Deterministic Verification → Receipt → Capability Record engine
+* issue a versioned deterministic challenge containing structured JSON with nested objects, arrays, Unicode and numeric edge cases
+* require the agent to return RFC 8785 JCS canonical output and SHA256 digest
+* verify canonical bytes and digest deterministically
+* preserve PASS/FAIL/UNKNOWN semantics
+* preserve one-time challenge and DID-binding rules
+* create the normal server-signed receipt and capability evidence on PASS
+* expose Trial 2 evidence through the existing public agent/receipt APIs
+* do not create a parallel verification or receipt architecture
 
-Reference: `docs/references/overheard.md`.
-
-Acceptance: `docs/acceptance/identity-ownership-acceptance.md`.
+Acceptance for Trial 2 must be defined before declaring it complete.
 
 ## Next
 
-After identity ownership/connectivity passes deployed acceptance:
+Implement the remaining FLOP v1 deterministic capability trials from `docs/capability-program-v1.md` in order:
 
-* implement the remaining FLOP v1 deterministic capability trials defined in `docs/capability-program-v1.md`
-* preserve the existing challenge → signed submission → deterministic verification → receipt engine for every trial
+1. Trial 3: Technocore Canonical Message Construction
+2. Trial 4: Signed Receipt Verification
+3. Trial 5: Structured Data Transformation
+4. Trial 6: Tool Selection and Function Calling
+5. Trial 7: Multi-step Workflow Execution
+6. Trial 8: Retrieval and Grounded Evidence
+7. Trial 9: Constraint and Policy Compliance
+8. Trial 10: Failure Recovery and Idempotency
+
+After the trial engine supports the broader program:
+
 * implement CLAIM/UNTESTED product flow
 * build the real IDENTIFY → CLAIM → TRIALS → RECORD product information architecture
 * build the high-information public capability certificate/profile
@@ -36,16 +43,32 @@ After identity ownership/connectivity passes deployed acceptance:
 
 Product v1 is not complete until:
 
-* create/restore identity ownership works as specified
-* seed portability works in a clean browser
-* optional encrypted backup/restore works
-* external signer/Agent API path works without browser custody
+* accepted identity ownership and seed portability remain intact
+* external signer/Agent API path remains usable without browser custody
 * all ten deterministic v1 capability trials complete through the same evidence engine
 * public profile shows `N OF 10 VERIFIED`
 * all ten current trials produce the distinct `FLOP VERIFIED AGENT · 10 OF 10` state
 * certificate/profile has a public proof URL and independently verifiable receipts
 
 The ten v1 trial definitions and certificate requirements live in `docs/capability-program-v1.md`.
+
+## Completed milestone
+
+Identity ownership/connectivity passed acceptance on 2026-08-31.
+
+Accepted identity model:
+
+* create a new Ed25519 `did:key`
+* direct user ownership of portable 32-byte seed
+* seed Reveal, Copy and Download before continuation
+* same-DID clean-browser restore from seed/text file
+* optional encrypted backup/restore
+* nonextractable active browser key in IndexedDB
+* no browser secret material sent to FLOP backend
+* externally controlled Ed25519 `did:key` supported through the same public challenge/submission API
+* manual canonical-payload signing excluded from normal consumer onboarding
+
+Evidence: `docs/acceptance/identity-ownership-results-2026-08-31.md`.
 
 ## Later
 
