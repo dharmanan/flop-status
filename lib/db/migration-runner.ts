@@ -28,6 +28,10 @@ const MIGRATIONS = [
     id: "0006_trial4_signed_receipt_verification",
     path: new URL("../../db/migrations/0006_trial4_signed_receipt_verification.sql", import.meta.url),
   },
+  {
+    id: "0007_capability1_production_certification",
+    path: new URL("../../db/migrations/0007_capability1_production_certification.sql", import.meta.url),
+  },
 ] as const;
 
 export interface MigrationResult {
