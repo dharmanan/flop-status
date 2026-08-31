@@ -2,6 +2,46 @@
 
 Record only durable decisions that are likely to matter in future work.
 
+## 2026-09-01
+
+### Every production capability PASS issues its own certificate
+
+FLOP does not wait for 7/7 or 10/10 before issuing certification. Each certificate-eligible production capability PASS creates one separate capability certificate for the agent DID. Cumulative rank is a different layer derived from the set of valid individual certificates.
+
+Initial rank thresholds are: 0 Unranked, 1–2 individually certified with no named rank, 3–4 Rookie, 5–6 Regular, 7 Core Verified, 8–9 Advanced, 10 Agentic Verified. Rank names may be refined later without changing the individual certificate invariant.
+
+Status: Active
+
+### Production certificate journey always starts at Capability 1 and proceeds one by one
+
+Every user, including a DID used during development, begins the production certificate journey at Capability 1 and completes each capability individually. There is no bulk activation, migration credit, `verify previous four` action or other shortcut based on internal development acceptance runs.
+
+Status: Active
+
+### Trial 1–4 browser auto-solver receipts are development acceptance evidence, not production certificates
+
+The existing Trial 1–4 browser auto-solver runs proved the verification infrastructure. Their signed receipts remain immutable historical protocol evidence, but they do not count toward production certificate totals or rank. Production capability certificates require the normal FLOP capability runtime path.
+
+Status: Active
+
+### FLOP v1 capability structure is seven deterministic Core plus three optional Agentic
+
+Capabilities 1–7 require no LLM. Capabilities 8–10 require an LLM, are optional, require explicit user opt-in and may create usage cost. Each of all ten capabilities has its own individual certificate when passed. The LLM may perform Agentic tasks, but FLOP PASS/FAIL remains deterministic and FLOP does not use an LLM judge.
+
+Status: Active
+
+### FLOP-managed capability execution is contained inside FLOP
+
+FLOP-created capability modules are acquired, practiced, verified and used through explicit user-initiated FLOP product actions. FLOP v1 does not expose a general public hosted-agent invocation endpoint for arbitrary third-party applications. Identity, receipts, certificates and proof are public/portable; FLOP-managed execution is not.
+
+Status: Active
+
+### Idle agents are metadata, not permanent services
+
+Creating an agent must not create a dedicated Railway service or permanently running process. Capability implementations are stored once in a versioned FLOP registry, while agent profiles store references and state. Execution cost should occur only from explicit user actions.
+
+Status: Active
+
 ## 2026-08-31
 
 ### User-provided references are binding until deviation is approved
@@ -46,39 +86,39 @@ An externally owned DID and signer must be able to request challenges and submit
 
 Status: Active
 
-### FLOP v1 capability program targets ten deterministic trials
+### Previous ten-deterministic-trial program is superseded
 
-The product target is a ten-trial deterministic capability program, not a permanent three-trial ceiling. The ten v1 capabilities and verifier intent are defined in `docs/capability-program-v1.md`. Implementation remains sequential and every trial reuses the same DID-bound challenge, signed submission, deterministic verifier, server-signed receipt and public evidence engine.
+The former target of ten deterministic trials is superseded by the 2026-09-01 decision defining seven deterministic Core capabilities plus three optional LLM-backed Agentic capabilities. The shared deterministic verification/receipt engine remains required.
 
-Status: Active
+Status: Superseded by `FLOP v1 capability structure is seven deterministic Core plus three optional Agentic`
 
 ### Public certificate is a high-information shareable credential surface
 
-FLOP must produce a visually strong public capability certificate/profile inspired by the useful share behavior of Overheard's credential card, but backed by FLOP capability receipts. It must show capability completion state, DID, ownership/proof state, verifier/program version and evidence references. It must support downloadable image, copy image, X sharing, proof link and independent live verification. The image is a share artifact; the live proof profile and signed receipts are the source of truth.
+FLOP must produce visually strong public capability certificate surfaces backed by FLOP capability receipts. Each production capability PASS has its own certificate/proof surface, and the public agent profile aggregates all certificates plus cumulative rank. Share images are artifacts; live proof pages and signed receipts are the source of truth.
 
 Status: Active
 
-### Ten-of-ten completion gets a distinct verified-agent seal
+### Previous single ten-of-ten certificate framing is superseded
 
-A public profile may display `N OF 10 VERIFIED`. An agent with all ten current v1 trials verified may display a distinct `FLOP VERIFIED AGENT · 10 OF 10` certificate state. FLOP does not turn this into a subjective reputation score.
+The earlier framing of certification as a special certificate state obtained only at ten of ten is superseded. Each capability PASS issues an individual certificate. Ten of ten now represents the highest cumulative `Agentic Verified` rank while preserving all ten underlying certificates.
 
-Status: Active
+Status: Superseded by `Every production capability PASS issues its own certificate`
 
-### Testnet certificate target is an identity-bound NFT
+### Testnet certificate target is identity-bound
 
-When an official FLOP testnet specification exists, a completed ten-of-ten capability certificate must be mintable as a FLOP Capability Certificate NFT. The NFT must be non-transferable or otherwise identity-bound so it cannot be sold to a different agent. It references the public proof/certificate and receipt bundle; it never contains private key or seed material.
+When an official FLOP testnet specification exists, certificate or cumulative rank state may be represented using identity-bound primitives supported by that official specification. Any on-chain artifact references live proof and receipt evidence; it never contains private key or seed material.
 
 Status: Active
 
 ### FLOP token integration is reserved but not fabricated
 
-The product reserves FLOP-token seams for trial execution fees, certificate NFT mint/re-certification fees, optional FLOP-spend evidence and possible verifier/execution-provider rewards if supported by the official protocol. Exact amounts, wallet APIs, chain ids, contract addresses, faucet rules and eligibility logic must not be invented before official testnet specifications exist.
+The product reserves FLOP-token seams for future official testnet operations if supported by the official protocol. Exact amounts, wallet APIs, chain ids, contract addresses, faucet rules and eligibility logic must not be invented before official testnet specifications exist.
 
 Status: Active
 
 ### Trial 1 protocol acceptance is not Product MVP completion
 
-Trial 1 acceptance proves the first verification protocol vertical slice. Product MVP completion additionally requires the product contract's identity/connectivity requirements and the current v1 capability-program requirements. Do not equate `Trial 1 complete` with `Product MVP complete`.
+Trial 1 acceptance proves the first verification protocol vertical slice. Product completion additionally requires the current capability runtime, certificate and product requirements. Do not equate `Trial 1 complete` with Product completion.
 
 Status: Active
 
@@ -108,15 +148,9 @@ Technocore may later publish or reference completed evidence. Core challenge, su
 
 Status: Active
 
-### Deterministic MVP only
+### Deterministic verification remains mandatory
 
-The initial MVP uses deterministic verifiers. LLM judging and subjective capability evaluation are outside the first milestone.
-
-Status: Active
-
-### Trial 1 is the only first implementation target
-
-No Trial 2, Trial 3 or broad product shell should be implemented before the complete Trial 1 vertical slice passes acceptance.
+Even when optional Agentic capabilities use an LLM to perform a task, certification verdicts must remain deterministic. Subjective LLM judging is not used for PASS/FAIL.
 
 Status: Active
 
