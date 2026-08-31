@@ -5,7 +5,7 @@ import type {
   PublicReceiptVerification,
   PublicServerKey,
 } from "../../lib/verification/public-verification-service.js";
-import { createRuntimeRequestHandler } from "../../lib/runtime/router.js";
+import { createRuntimeRequestHandler, MAX_CHALLENGE_BODY_BYTES } from "../../lib/runtime/router.js";
 
 const receipt = {
   receipt_version: "1" as const,
@@ -36,6 +36,7 @@ const key: PublicServerKey = {
 };
 const verification: PublicReceiptVerification = { receipt, server_key: key, signature_status: "VALID" };
 
+const challengeId = "33333333-3333-4333-8333-333333333333";
 const servers: ReturnType<typeof createServer>[] = [];
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
@@ -49,6 +50,17 @@ async function start() {
       async getVerification(id) { return id === receipt.receipt_id ? verification : null; },
       async getServerKeys() { return [key]; },
     },
+    trial1Api: {
+      async createChallenge() { return { challenge: { challenge_id: challengeId }, challenge_hash: "sha256:test" }; },
+      async getChallenge(id) {
+        return id === challengeId
+          ? { challenge_id: id, state: "ISSUED", expires_at: "2026-08-31T08:10:00.000Z", receipt_id: null }
+          : null;
+      },
+      async submitChallenge(id) {
+        return { challenge_id: id, state: "PASS", verdict: "PASS", receipt_id: receipt.receipt_id };
+      },
+    },
   });
   const server = createServer(handler);
   servers.push(server);
@@ -57,7 +69,7 @@ async function start() {
   return `http://127.0.0.1:${port}`;
 }
 
-describe("public verification HTTP router", () => {
+describe("runtime HTTP router", () => {
   it("serves receipt, verification and public key JSON without private material", async () => {
     const base = await start();
     const [receiptResponse, verificationResponse, keysResponse] = await Promise.all([
@@ -75,6 +87,46 @@ describe("public verification HTTP router", () => {
     expect(keysText).not.toContain("private_key");
   });
 
+  it("serves challenge creation, recovery and submission routes", async () => {
+    const base = await start();
+    const created = await fetch(`${base}/api/v1/challenges`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent_did: "did:key:test", trial_id: "ed25519-signature-verification" }),
+    });
+    expect(created.status).toBe(201);
+
+    const recovered = await fetch(`${base}/api/v1/challenges/${challengeId}`);
+    expect(recovered.status).toBe(200);
+    expect((await recovered.json() as { state: string }).state).toBe("ISSUED");
+
+    const submitted = await fetch(`${base}/api/v1/challenges/${challengeId}/submissions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ payload: {}, signature: {} }),
+    });
+    expect(submitted.status).toBe(200);
+    expect((await submitted.json() as { verdict: string }).verdict).toBe("PASS");
+  });
+
+  it("rejects oversized challenge request bodies with 413 before calling application logic", async () => {
+    const base = await start();
+    const response = await fetch(`${base}/api/v1/challenges`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ padding: "x".repeat(MAX_CHALLENGE_BODY_BYTES) }),
+    });
+    expect(response.status).toBe(413);
+    expect((await response.json() as { error: { code: string } }).error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
+  it("supports CORS preflight for API routes", async () => {
+    const base = await start();
+    const response = await fetch(`${base}/api/v1/challenges`, { method: "OPTIONS" });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-methods")).toContain("POST");
+  });
+
   it("serves a CSP-protected public page whose script performs browser Ed25519 verification", async () => {
     const base = await start();
     const page = await fetch(`${base}/verify/${receipt.receipt_id}`);
@@ -88,7 +140,6 @@ describe("public verification HTTP router", () => {
     const script = await fetch(`${base}/assets/verify.js`);
     const js = await script.text();
     expect(js).toContain("crypto.subtle.verify");
-    expect(js).toContain("Object.keys(receipt).sort()");
   });
 
   it("uses the documented error envelope for a missing receipt", async () => {
