@@ -9,6 +9,9 @@ import {
   parseEd25519DidKey,
 } from "../identity/did-key.js";
 import { verifyEd25519DidKeySignature } from "../identity/verify-signature.js";
+import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
+import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
+import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
 
 export const MAX_SUBMISSION_BODY_BYTES = 32_768;
@@ -33,18 +36,22 @@ export class SubmissionAcceptanceError extends Error {
   }
 }
 
-export interface AcceptTrial1SubmissionInput {
+export interface AcceptSignedSubmissionInput {
   challengeId: string;
   envelope: unknown;
   bodyByteLength: number;
 }
 
-export interface AcceptTrial1SubmissionDependencies {
+export type AcceptTrial1SubmissionInput = AcceptSignedSubmissionInput;
+
+export interface AcceptSignedSubmissionDependencies {
   repository: SubmissionAcceptanceRepository;
   now?: () => Date;
 }
 
-export interface AcceptedTrial1Submission {
+export type AcceptTrial1SubmissionDependencies = AcceptSignedSubmissionDependencies;
+
+export interface AcceptedSignedSubmission {
   id: string;
   challengeId: string;
   payloadHash: string;
@@ -52,9 +59,15 @@ export interface AcceptedTrial1Submission {
   receivedAt: string;
 }
 
+export type AcceptedTrial1Submission = AcceptedSignedSubmission;
+
 type TransactionOutcome =
-  | { kind: "accepted"; value: AcceptedTrial1Submission }
+  | { kind: "accepted"; value: AcceptedSignedSubmission }
   | { kind: "expired" };
+
+type ParsedEnvelope =
+  | ReturnType<typeof trial1SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial2SignedSubmissionEnvelopeSchema.parse>;
 
 function assertSupportedDid(did: string): void {
   try {
@@ -70,10 +83,44 @@ function assertSupportedDid(did: string): void {
   }
 }
 
-export async function acceptTrial1SignedSubmission(
-  input: AcceptTrial1SubmissionInput,
-  deps: AcceptTrial1SubmissionDependencies,
-): Promise<AcceptedTrial1Submission> {
+function trialIdFromEnvelope(envelope: unknown): string | null {
+  if (!envelope || typeof envelope !== "object") return null;
+  const payload = (envelope as { payload?: unknown }).payload;
+  if (!payload || typeof payload !== "object") return null;
+  const trialId = (payload as { trial_id?: unknown }).trial_id;
+  return typeof trialId === "string" ? trialId : null;
+}
+
+function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
+  const trialId = trialIdFromEnvelope(envelope);
+  const schema =
+    trialId === TRIAL1_ID
+      ? trial1SignedSubmissionEnvelopeSchema
+      : trialId === TRIAL2_ID
+        ? trial2SignedSubmissionEnvelopeSchema
+        : null;
+
+  if (!schema) {
+    throw new SubmissionAcceptanceError(
+      "INVALID_SUBMISSION_SCHEMA",
+      "submission trial_id is missing or unsupported",
+    );
+  }
+
+  const parsed = schema.safeParse(envelope);
+  if (!parsed.success) {
+    throw new SubmissionAcceptanceError(
+      "INVALID_SUBMISSION_SCHEMA",
+      parsed.error.issues.map((issue) => issue.message).join("; "),
+    );
+  }
+  return parsed.data as ParsedEnvelope;
+}
+
+export async function acceptCapabilitySignedSubmission(
+  input: AcceptSignedSubmissionInput,
+  deps: AcceptSignedSubmissionDependencies,
+): Promise<AcceptedSignedSubmission> {
   if (!Number.isInteger(input.bodyByteLength) || input.bodyByteLength < 0) {
     throw new SubmissionAcceptanceError(
       "INVALID_SUBMISSION_SCHEMA",
@@ -87,15 +134,7 @@ export async function acceptTrial1SignedSubmission(
     );
   }
 
-  const parsed = trial1SignedSubmissionEnvelopeSchema.safeParse(input.envelope);
-  if (!parsed.success) {
-    throw new SubmissionAcceptanceError(
-      "INVALID_SUBMISSION_SCHEMA",
-      parsed.error.issues.map((issue) => issue.message).join("; "),
-    );
-  }
-
-  const envelope = parsed.data;
+  const envelope = parseSupportedEnvelope(input.envelope);
   const payload = envelope.payload;
   if (input.challengeId !== payload.challenge_id) {
     throw new SubmissionAcceptanceError(
@@ -177,4 +216,15 @@ export async function acceptTrial1SignedSubmission(
     throw new SubmissionAcceptanceError("CHALLENGE_EXPIRED", "challenge has expired");
   }
   return outcome.value;
+}
+
+/** Backward-compatible Trial 1 wrapper retained for existing accepted tests. */
+export async function acceptTrial1SignedSubmission(
+  input: AcceptTrial1SubmissionInput,
+  deps: AcceptTrial1SubmissionDependencies,
+): Promise<AcceptedTrial1Submission> {
+  if (trialIdFromEnvelope(input.envelope) !== TRIAL1_ID) {
+    throw new SubmissionAcceptanceError("INVALID_SUBMISSION_SCHEMA", "expected Trial 1 submission");
+  }
+  return acceptCapabilitySignedSubmission(input, deps);
 }
