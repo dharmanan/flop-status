@@ -1,6 +1,9 @@
 import { createServer } from "node:http";
-import { runTrial1FoundationMigration } from "../db/migration-runner.js";
+import { PgPublicVerificationRepository } from "../db/public-verification-repository.js";
+import { runMigrations } from "../db/migration-runner.js";
 import { createPgPool } from "../db/pg-adapter.js";
+import { PublicVerificationService } from "../verification/public-verification-service.js";
+import { createRuntimeRequestHandler } from "./router.js";
 
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
@@ -14,18 +17,13 @@ async function main(): Promise<void> {
   }
 
   const pool = createPgPool(connectionString);
-  const migration = await runTrial1FoundationMigration(pool);
-
-  const server = createServer((request, response) => {
-    if (request.method === "GET" && request.url === "/healthz") {
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ status: "ok", database: "ready", migration }));
-      return;
-    }
-
-    response.writeHead(404, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "not_found" }));
-  });
+  const migrations = await runMigrations(pool);
+  const publicVerification = new PublicVerificationService(
+    new PgPublicVerificationRepository(pool),
+  );
+  const server = createServer(
+    createRuntimeRequestHandler({ publicVerification, health: migrations }),
+  );
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
