@@ -16,6 +16,10 @@ const MIGRATIONS = [
     id: "0003_trial1_receipts",
     path: new URL("../../db/migrations/0003_trial1_receipts.sql", import.meta.url),
   },
+  {
+    id: "0004_trial2_canonical_json_sha256",
+    path: new URL("../../db/migrations/0004_trial2_canonical_json_sha256.sql", import.meta.url),
+  },
 ] as const;
 
 export interface MigrationResult {
