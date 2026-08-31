@@ -2,36 +2,35 @@
 
 ## Now
 
-Implement Trial 3: Technocore Canonical Message Construction.
+Implement Trial 4: Signed Receipt Verification.
 
 Required outcome:
 
 * reuse the accepted Identity → Challenge → Signed Submission → Deterministic Verification → Receipt → Capability Record engine
-* preserve the actual Technocore canonical signing behavior from the inspected reference implementation
-* construct the exact canonical string `room|nonce|cleaned text`
-* keep FLOP challenge binding to the agent DID without falsely adding the DID to the Technocore signing string
-* apply the same deterministic text-cleaning semantics used by the reference before canonical construction
-* verify byte-for-byte canonical payload equality
+* issue a deterministic FLOP-style signed receipt challenge with a bounded public-key set
+* cover valid receipt, tampered receipt, key-binding mismatch and unknown-key cases deterministically
+* require a strict result containing validity, selected key id when applicable, status and reason code
+* verify the receipt signature over canonical unsigned receipt fields
+* enforce receipt `server_key_id` binding rather than accepting a signature under an unrelated key
 * preserve PASS/FAIL/UNKNOWN semantics
 * preserve one-time challenge and DID-binding rules
 * create the normal server-signed receipt and capability evidence on PASS
-* expose Trial 3 evidence through the existing public agent/receipt APIs
-* keep Technocore network availability optional and outside the verifier path
-* do not create a parallel verification or receipt architecture
+* expose Trial 4 evidence through the existing public agent/receipt APIs
+* keep verification self-contained; no external network service is required
+* do not create a parallel receipt or evidence architecture
 
-Acceptance for Trial 3 must be defined before declaring it complete.
+Acceptance for Trial 4 must be defined before declaring it complete.
 
 ## Next
 
 Implement the remaining FLOP v1 deterministic capability trials from `docs/capability-program-v1.md` in order:
 
-1. Trial 4: Signed Receipt Verification
-2. Trial 5: Structured Data Transformation
-3. Trial 6: Tool Selection and Function Calling
-4. Trial 7: Multi-step Workflow Execution
-5. Trial 8: Retrieval and Grounded Evidence
-6. Trial 9: Constraint and Policy Compliance
-7. Trial 10: Failure Recovery and Idempotency
+1. Trial 5: Structured Data Transformation
+2. Trial 6: Tool Selection and Function Calling
+3. Trial 7: Multi-step Workflow Execution
+4. Trial 8: Retrieval and Grounded Evidence
+5. Trial 9: Constraint and Policy Compliance
+6. Trial 10: Failure Recovery and Idempotency
 
 After the trial engine supports the broader program:
 
@@ -84,6 +83,20 @@ Accepted Trial 2 behavior:
 * browser-owned identity flow exposed as a second capability action
 
 Evidence: `docs/acceptance/trial2-results-2026-08-31.md`.
+
+Trial 3 Technocore Canonical Message Construction passed deployed and browser acceptance on 2026-08-31.
+
+Accepted Trial 3 behavior:
+
+* exact inspected Technocore canonical form `room|nonce|cleaned text`
+* DID remains FLOP challenge binding but is not inserted into the Technocore canonical string
+* deterministic text cleaning and byte-for-byte canonical comparison
+* no Technocore network dependency in verifier path
+* deterministic mismatch produces FAIL without receipt
+* PASS produces normal server-signed receipt and durable capability evidence
+* same browser-owned DID reached 3 of 3 verified across Trials 1–3
+
+Evidence: `docs/acceptance/trial3-results-2026-08-31.md` plus deployed browser verification.
 
 ## Later
 
