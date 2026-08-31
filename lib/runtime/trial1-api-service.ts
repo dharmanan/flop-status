@@ -8,6 +8,7 @@ import type { AttestationSigner } from "../receipts/receipt.js";
 import { acceptCapabilitySignedSubmission } from "../submissions/submission-service.js";
 import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
 import { TRIAL_ID as TRIAL1_ID } from "../trials/ed25519-signature-verification/constants.js";
+import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
 import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
 import {
   FinalizationUnknownError,
@@ -19,7 +20,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const createChallengeSchema = z
   .object({
     agent_did: z.string().min(1),
-    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID, TRIAL3_ID]),
+    trial_id: z.enum([TRIAL1_ID, TRIAL2_ID, TRIAL3_ID, TRIAL4_ID]),
   })
   .strict();
 
