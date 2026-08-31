@@ -7,6 +7,7 @@ import {
   restorePortableIdentity,
   serializeBackup,
 } from "/identity-crypto.js";
+import { bindLanguageControls, onLanguageChange, t } from "/i18n.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const TRIAL_ID = "ed25519-signature-verification";
@@ -19,6 +20,7 @@ const ACTIVE_ID = "active";
 const encoder = new TextEncoder();
 let identity = null;
 let pendingExternal = null;
+let evidenceData = null;
 
 const byId = (id) => document.getElementById(id);
 const setOperation = (value) => { byId("operation-status").textContent = value; };
@@ -102,19 +104,20 @@ async function getAgentEvidence(did) {
 }
 
 function renderEvidence(data) {
+  evidenceData = data;
   const container = byId("capabilities");
   const link = byId("latest-receipt");
   container.replaceChildren();
   link.hidden = true;
   if (!data || !data.agent || data.agent.capabilities.length === 0) {
-    byId("evidence-status").textContent = "No verified capability evidence yet.";
+    byId("evidence-status").textContent = t("no_evidence");
     return;
   }
-  byId("evidence-status").textContent = "Durable server evidence recovered.";
+  byId("evidence-status").textContent = t("durable_evidence");
   for (const capability of data.agent.capabilities) {
     const item = document.createElement("div");
     item.className = "capability";
-    item.textContent = capability.capability_id + " · " + capability.evidence_type + " · passes " + capability.passed_trials;
+    item.textContent = capability.capability_id + " · " + capability.evidence_type + " · " + t("passes") + " " + capability.passed_trials;
     container.appendChild(item);
     if (capability.latest_receipt_id) {
       link.href = "/verify/" + capability.latest_receipt_id;
@@ -148,10 +151,10 @@ function renderIdentity() {
   if (!identity) {
     setup.hidden = false;
     actions.hidden = true;
-    byId("identity-status").textContent = "Choose how this agent identity is controlled.";
+    byId("identity-status").textContent = t("choose_control");
     byId("did").textContent = "";
-    byId("custody").textContent = "FLOP is not a private-key custodian.";
-    byId("identity-mode").textContent = "none";
+    byId("custody").textContent = t("not_custodian");
+    byId("identity-mode").textContent = t("none");
     byId("extractable-check").textContent = "n/a";
     byId("backup-check").textContent = "n/a";
     return;
@@ -163,18 +166,18 @@ function renderIdentity() {
   byId("did").textContent = identity.did;
 
   if (identity.mode === "browser") {
-    byId("identity-status").textContent = "Browser-owned identity ready.";
-    byId("custody").textContent = "Active signing key is a nonextractable CryptoKey in IndexedDB. Recovery is an encrypted portable backup.";
-    byId("identity-mode").textContent = "browser-owned";
+    byId("identity-status").textContent = t("browser_ready");
+    byId("custody").textContent = t("browser_custody");
+    byId("identity-mode").textContent = t("browser_owned");
     byId("extractable-check").textContent = identity.privateKey.extractable ? "YES · FAIL" : "NO · PASS";
-    byId("backup-check").textContent = identity.backup ? "encrypted · ready" : "missing · legacy identity";
+    byId("backup-check").textContent = identity.backup ? t("encrypted_ready") : t("missing_legacy");
     download.hidden = !identity.backup;
   } else {
-    byId("identity-status").textContent = "Existing DID connected.";
-    byId("custody").textContent = "FLOP holds no private key for this DID. Control is proven only by a valid signed submission from its external signer.";
-    byId("identity-mode").textContent = "external signer";
-    byId("extractable-check").textContent = "not held by FLOP";
-    byId("backup-check").textContent = "owned externally";
+    byId("identity-status").textContent = t("existing_connected");
+    byId("custody").textContent = t("external_custody");
+    byId("identity-mode").textContent = t("external_signer_mode");
+    byId("extractable-check").textContent = t("not_held");
+    byId("backup-check").textContent = t("owned_externally");
     download.hidden = true;
   }
 }
@@ -191,10 +194,15 @@ function downloadBackup(backup) {
   setTimeout(() => URL.revokeObjectURL(href), 0);
 }
 
+function syncFileName() {
+  const file = byId("restore-file").files[0];
+  byId("restore-file-name").textContent = file ? file.name : t("no_file_selected");
+}
+
 async function createBrowserIdentity() {
   const passphrase = byId("create-passphrase").value;
   byId("create-identity").disabled = true;
-  setOperation("Creating browser-owned Ed25519 identity and encrypted backup…");
+  setOperation(t("op_create"));
   try {
     const created = await createPortableIdentity(passphrase);
     identity = { id: ACTIVE_ID, mode: "browser", did: created.did, publicKey: created.publicKey, privateKey: created.privateKey, backup: created.backup };
@@ -203,16 +211,16 @@ async function createBrowserIdentity() {
     byId("create-passphrase").value = "";
     renderIdentity();
     await refreshEvidence();
-    setOperation("Identity created. Encrypted recovery backup downloaded. Keep that file and its passphrase separately.");
+    setOperation(t("op_created"));
   } finally { byId("create-identity").disabled = false; }
 }
 
 async function restoreBrowserIdentity() {
   const file = byId("restore-file").files[0];
-  if (!file) throw new Error("choose an encrypted FLOP identity backup first");
+  if (!file) throw new Error(t("err_choose_backup"));
   const passphrase = byId("restore-passphrase").value;
   byId("restore-identity").disabled = true;
-  setOperation("Decrypting backup locally and restoring a nonextractable active key…");
+  setOperation(t("op_restore"));
   try {
     const backup = parseBackupJson(await file.text());
     const restored = await restorePortableIdentity(backup, passphrase);
@@ -220,9 +228,10 @@ async function restoreBrowserIdentity() {
     await writeIdentity(identity);
     byId("restore-passphrase").value = "";
     byId("restore-file").value = "";
+    syncFileName();
     renderIdentity();
     await refreshEvidence();
-    setOperation("Identity restored locally. The active private key is nonextractable.");
+    setOperation(t("op_restored"));
   } finally { byId("restore-identity").disabled = false; }
 }
 
@@ -234,12 +243,12 @@ async function connectExistingDid() {
   byId("existing-did").value = "";
   renderIdentity();
   await refreshEvidence();
-  setOperation("Existing DID connected. FLOP has no private key. Run a trial to prove control with your external signer.");
+  setOperation(t("op_connected"));
 }
 
 async function prepareTrialPayload() {
-  if (!identity) throw new Error("connect or create an identity first");
-  setOperation("Creating DID-bound challenge…");
+  if (!identity) throw new Error(t("err_identity_first"));
+  setOperation(t("op_challenge"));
   const challengeResponse = await fetch(API_BASE + "/api/v1/challenges", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -282,7 +291,7 @@ async function submitEnvelope(challengeId, payload, signatureValue) {
 }
 
 async function runTrial() {
-  if (!identity) throw new Error("identity is not ready");
+  if (!identity) throw new Error(t("err_identity_first"));
   byId("run-trial").disabled = true;
   try {
     const prepared = await prepareTrialPayload();
@@ -290,31 +299,31 @@ async function runTrial() {
       pendingExternal = prepared;
       byId("external-payload").value = prepared.canonicalPayload;
       byId("external-signing").hidden = false;
-      setOperation("Challenge ready. Sign the exact canonical payload with the external DID signer, then paste its base64url Ed25519 signature.");
+      setOperation(t("op_external_ready"));
       return;
     }
 
     const signature = new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, identity.privateKey, encoder.encode(prepared.canonicalPayload)));
-    setOperation("Submitting browser-signed result…");
+    setOperation(t("op_submitting"));
     await submitEnvelope(prepared.challenge.challenge_id, prepared.payload, bytesToBase64Url(signature));
-    setOperation("PASS. Receipt persisted on Railway and is publicly verifiable.");
+    setOperation(t("op_pass"));
   } finally { byId("run-trial").disabled = false; }
 }
 
 async function submitExternalSignature() {
-  if (!identity || identity.mode !== "external" || !pendingExternal) throw new Error("no external signing request is pending");
+  if (!identity || identity.mode !== "external" || !pendingExternal) throw new Error(t("err_no_external"));
   const signatureValue = byId("external-signature").value.trim();
   const signature = base64UrlToBytes(signatureValue);
-  if (signature.length !== 64) throw new Error("Ed25519 signature must decode to 64 bytes");
+  if (signature.length !== 64) throw new Error(t("err_signature_length"));
   const publicKey = await crypto.subtle.importKey("raw", parseEd25519DidKey(identity.did), { name: "Ed25519" }, false, ["verify"]);
   const locallyValid = await crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, encoder.encode(pendingExternal.canonicalPayload));
-  if (!locallyValid) throw new Error("signature does not prove control of the connected DID for this exact payload");
+  if (!locallyValid) throw new Error(t("err_signature_control"));
   byId("submit-external-signature").disabled = true;
-  setOperation("External DID signature is valid locally. Submitting to Capability Lab…");
+  setOperation(t("op_external_valid"));
   try {
     await submitEnvelope(pendingExternal.challenge.challenge_id, pendingExternal.payload, signatureValue);
     hideExternalSigning();
-    setOperation("PASS. External DID control was proven by signature; FLOP never received its private key.");
+    setOperation(t("op_external_pass"));
   } finally { byId("submit-external-signature").disabled = false; }
 }
 
@@ -323,16 +332,25 @@ async function disconnectIdentity() {
   identity = null;
   renderIdentity();
   await refreshEvidence();
-  setOperation("Local identity connection removed. No server-side private key existed to delete.");
+  setOperation(t("op_disconnected"));
 }
 
 async function boot() {
+  bindLanguageControls();
+  byId("restore-file-button").addEventListener("click", () => byId("restore-file").click());
+  byId("restore-file").addEventListener("change", syncFileName);
+  onLanguageChange(() => {
+    renderIdentity();
+    renderEvidence(evidenceData);
+    syncFileName();
+  });
+
   try {
     const stored = await readIdentity();
     identity = normalizedIdentity(stored);
     renderIdentity();
     await refreshEvidence();
-    if (identity) setOperation("Identity recovered from this browser.");
+    if (identity) setOperation(t("op_recovered"));
   } catch (error) {
     identity = null;
     renderIdentity();
@@ -348,11 +366,9 @@ byId("create-identity").addEventListener("click", () => createBrowserIdentity().
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
 byId("connect-existing").addEventListener("click", () => connectExistingDid().catch(report));
 byId("run-trial").addEventListener("click", () => runTrial().catch(report));
-byId("download-backup").addEventListener("click", () => {
-  if (identity && identity.mode === "browser" && identity.backup) downloadBackup(identity.backup);
-});
-byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 byId("submit-external-signature").addEventListener("click", () => submitExternalSignature().catch(report));
-byId("cancel-external-signing").addEventListener("click", () => { hideExternalSigning(); setOperation("External signing request cancelled locally."); });
+byId("cancel-external-signing").addEventListener("click", hideExternalSigning);
+byId("download-backup").addEventListener("click", () => { if (identity?.backup) downloadBackup(identity.backup); });
+byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 
 boot();
