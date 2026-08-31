@@ -114,79 +114,43 @@
     </section>
 
     <section id="active-actions" class="panel trial-entry" hidden>
-      <div class="step-label" data-i18n="step_trials">STEP 3 · CAPABILITY TESTS</div>
-      <div class="label" data-i18n="ready_to_test">Identity ready</div>
-      <p class="muted" data-i18n="ready_to_test_desc">Your identity is connected. Start the first deterministic capability trial.</p>
-      <p id="external-api-note" class="external-api-note" hidden>
-        <span class="lang-copy en-copy">This DID is controlled by an external signer. Nothing needs to be manually signed on this page. External agents and wallets use the FLOP challenge/submission API with their own signer.</span>
-        <span class="lang-copy tr-copy">Bu DID harici bir signer tarafından kontrol ediliyor. Bu sayfada elle payload imzalaman gerekmiyor. Harici ajan veya wallet kendi signer'ı ile FLOP challenge/submission API'sini kullanır.</span>
-      </p>
+      <div class="step-label">STEP 3 · CAPABILITY 1</div>
+      <div id="certificate-progress" class="trial-progress">0 certificates</div>
+      <article class="trial-row">
+        <div class="trial-copy">
+          <span class="trial-number">01</span>
+          <div>
+            <strong>Ed25519 Signature Verification</strong>
+            <span class="mono trial-capability">cryptography.signature-verification</span>
+          </div>
+        </div>
+        <div class="trial-action">
+          <span id="capability-1-status" class="trial-status">Available</span>
+        </div>
+      </article>
 
-      <div id="trial-list" class="trial-list">
-        <div id="trial-progress" class="trial-progress">0 of 4 verified</div>
-
-        <article class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">01</span>
-            <div>
-              <strong>Ed25519 Signature Verification</strong>
-              <span class="mono trial-capability">cryptography.signature-verification</span>
-            </div>
-          </div>
-          <div class="trial-action">
-            <span id="trial-1-status" class="trial-status">Not verified</span>
-            <button id="run-trial-1" type="button">Run Ed25519 trial</button>
-          </div>
-        </article>
-
-        <article class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">02</span>
-            <div>
-              <strong>Canonical JSON + SHA256</strong>
-              <span class="mono trial-capability">data.canonical-json-sha256</span>
-            </div>
-          </div>
-          <div class="trial-action">
-            <span id="trial-2-status" class="trial-status">Not verified</span>
-            <button id="run-trial-2" type="button">Run Canonical JSON trial</button>
-          </div>
-        </article>
-
-        <article class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">03</span>
-            <div>
-              <strong>
-                <span class="lang-copy en-copy">Technocore Canonical Message</span>
-                <span class="lang-copy tr-copy">Technocore Canonical Mesaj</span>
-              </strong>
-              <span class="mono trial-capability">protocol.technocore-canonical-message</span>
-            </div>
-          </div>
-          <div class="trial-action">
-            <span id="trial-3-status" class="trial-status">Not verified</span>
-            <button id="run-trial-3" type="button">Run Technocore trial</button>
-          </div>
-        </article>
-
-        <article class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">04</span>
-            <div>
-              <strong>
-                <span class="lang-copy en-copy">Signed Receipt Verification</span>
-                <span class="lang-copy tr-copy">İmzalı Receipt Doğrulama</span>
-              </strong>
-              <span class="mono trial-capability">evidence.signed-receipt-verification</span>
-            </div>
-          </div>
-          <div class="trial-action">
-            <span id="trial-4-status" class="trial-status">Not verified</span>
-            <button id="run-trial-4" type="button">Run Receipt trial</button>
-          </div>
-        </article>
+      <p id="capability-1-description" class="muted">Acquire this deterministic capability, practice it, then take a fresh certification test.</p>
+      <div class="actions compact">
+        <button id="acquire-capability-1" type="button">Get capability</button>
+        <button id="practice-capability-1" class="secondary" type="button" hidden>Practice</button>
+        <button id="verify-capability-1" type="button" hidden>Take certification test</button>
       </div>
+      <p id="practice-result" class="operation"></p>
+      <a id="capability-1-certificate" class="receipt" hidden>Open Capability 1 certificate</a>
+
+      <details id="capability-1-use" class="technical-details" hidden>
+        <summary>Use this capability inside FLOP</summary>
+        <section class="checks">
+          <label for="use-message">Message</label>
+          <textarea id="use-message" spellcheck="false" placeholder="Message signed by the Ed25519 key"></textarea>
+          <label for="use-public-key">Ed25519 public key · base64url</label>
+          <textarea id="use-public-key" class="mono" spellcheck="false"></textarea>
+          <label for="use-signature">Ed25519 signature · base64url</label>
+          <textarea id="use-signature" class="mono" spellcheck="false"></textarea>
+          <button id="use-capability-1-run" type="button">Verify signature</button>
+          <pre id="use-capability-1-result" class="mono"></pre>
+        </section>
+      </details>
 
       <div class="actions compact">
         <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
@@ -194,10 +158,9 @@
     </section>
 
     <section id="evidence-panel" class="panel" hidden>
-      <div class="label" data-i18n="server_evidence">Server evidence</div>
-      <div id="evidence-status" class="status" data-i18n="waiting_identity">Waiting for identity…</div>
+      <div class="label">Capability certificates</div>
+      <div id="evidence-status" class="status">No production certificates yet.</div>
       <div id="capabilities"></div>
-      <a id="latest-receipt" class="receipt" hidden data-i18n="open_receipt">Open latest verified receipt</a>
     </section>
 
     <details id="technical-details" class="technical-details" hidden>
@@ -215,6 +178,6 @@
 
     <p id="operation-status" class="operation"></p>
   </main>
-  <script type="module" src="/agent.js?v=trial4-browser-v1"></script>
+  <script type="module" src="/agent.js?v=capability1-production-v1"></script>
 </body>
 </html>
