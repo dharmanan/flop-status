@@ -9,75 +9,83 @@
 </head>
 <body>
   <main>
-    <p class="eyebrow">FLOP Capability Lab</p>
-    <h1>Your agent says what it can do. We test it.</h1>
+    <div class="topbar">
+      <p class="eyebrow" data-i18n="app_name">FLOP Capability Lab</p>
+      <div class="language-switch" aria-label="Language">
+        <button class="lang-button" data-lang="en" type="button">EN</button>
+        <button class="lang-button" data-lang="tr" type="button">TR</button>
+      </div>
+    </div>
+    <h1 data-i18n="hero">Your agent says what it can do. We test it.</h1>
 
     <section class="panel">
-      <div class="label">Identify</div>
-      <div id="identity-status" class="status">Choose how this agent identity is controlled.</div>
+      <div class="label" data-i18n="identify">Identify</div>
+      <div id="identity-status" class="status" data-i18n="choose_control">Choose how this agent identity is controlled.</div>
       <div id="did" class="mono"></div>
-      <div id="custody" class="muted"></div>
+      <div id="custody" class="muted" data-i18n="not_custodian">FLOP is not a private-key custodian.</div>
     </section>
 
     <section id="identity-setup" class="panel identity-grid">
       <div class="identity-card">
-        <div class="label">Create browser-owned DID</div>
-        <p class="muted">FLOP creates an Ed25519 identity in this browser. The active key becomes nonextractable. You keep an encrypted recovery file.</p>
-        <label for="create-passphrase">Backup passphrase</label>
-        <input id="create-passphrase" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters">
-        <button id="create-identity">Create identity + encrypted backup</button>
+        <div class="label" data-i18n="create_title">Create browser-owned DID</div>
+        <p class="muted" data-i18n="create_desc"></p>
+        <label for="create-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
+        <input id="create-passphrase" type="password" autocomplete="new-password" minlength="10" data-i18n-placeholder="passphrase_min" placeholder="At least 10 characters">
+        <button id="create-identity" data-i18n="create_button">Create identity + encrypted backup</button>
       </div>
 
       <div class="identity-card">
-        <div class="label">Restore browser-owned DID</div>
-        <p class="muted">Restore from a FLOP encrypted identity backup. The decrypted private key stays in this browser and is re-imported as nonextractable.</p>
-        <label for="restore-file">Encrypted backup file</label>
-        <input id="restore-file" type="file" accept="application/json,.json">
-        <label for="restore-passphrase">Backup passphrase</label>
-        <input id="restore-passphrase" type="password" autocomplete="current-password" placeholder="Backup passphrase">
-        <button id="restore-identity" class="secondary">Restore identity</button>
+        <div class="label" data-i18n="restore_title">Restore browser-owned DID</div>
+        <p class="muted" data-i18n="restore_desc"></p>
+        <label data-i18n="encrypted_backup_file">Encrypted backup file</label>
+        <input id="restore-file" class="visually-hidden" type="file" accept="application/json,.json">
+        <button id="restore-file-button" class="secondary file-button" type="button" data-i18n="choose_backup_file">Choose backup file</button>
+        <div id="restore-file-name" class="file-name" data-i18n="no_file_selected">No file selected</div>
+        <label for="restore-passphrase" data-i18n="backup_passphrase">Backup passphrase</label>
+        <input id="restore-passphrase" type="password" autocomplete="current-password" data-i18n-placeholder="backup_passphrase" placeholder="Backup passphrase">
+        <button id="restore-identity" class="secondary" data-i18n="restore_button">Restore identity</button>
       </div>
 
       <div class="identity-card">
-        <div class="label">Connect existing DID</div>
-        <p class="muted">Use an Ed25519 did:key controlled by another wallet, agent or signer. FLOP stores only the public DID. Control is proven when its signer signs the trial submission.</p>
-        <label for="existing-did">Existing DID</label>
+        <div class="label" data-i18n="connect_title">Connect existing DID</div>
+        <p class="muted" data-i18n="connect_desc"></p>
+        <label for="existing-did" data-i18n="existing_did">Existing DID</label>
         <input id="existing-did" class="mono" type="text" spellcheck="false" placeholder="did:key:z6Mk…">
-        <button id="connect-existing" class="secondary">Connect existing DID</button>
+        <button id="connect-existing" class="secondary" data-i18n="connect_button">Connect existing DID</button>
       </div>
     </section>
 
     <section id="active-actions" class="actions" hidden>
-      <button id="run-trial" disabled>Run Ed25519 trial</button>
-      <button id="download-backup" class="secondary" hidden>Download encrypted backup</button>
-      <button id="reset-identity" class="secondary">Disconnect local identity</button>
+      <button id="run-trial" disabled data-i18n="run_trial">Run Ed25519 trial</button>
+      <button id="download-backup" class="secondary" hidden data-i18n="download_backup">Download encrypted backup</button>
+      <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
     </section>
 
     <section id="external-signing" class="panel" hidden>
-      <div class="label">External signer</div>
-      <div class="status">Sign this exact canonical payload with the private key for the connected DID.</div>
+      <div class="label" data-i18n="external_signer">External signer</div>
+      <div class="status" data-i18n="external_signer_desc"></div>
       <textarea id="external-payload" class="mono payload-box" readonly></textarea>
-      <label for="external-signature">Ed25519 signature, base64url</label>
-      <input id="external-signature" class="mono" type="text" spellcheck="false" placeholder="Signature from your wallet / agent / signer">
+      <label for="external-signature" data-i18n="external_signature">Ed25519 signature, base64url</label>
+      <input id="external-signature" class="mono" type="text" spellcheck="false" data-i18n-placeholder="external_signature_placeholder">
       <div class="actions compact">
-        <button id="submit-external-signature">Submit signed result</button>
-        <button id="cancel-external-signing" class="secondary">Cancel</button>
+        <button id="submit-external-signature" data-i18n="submit_signed_result">Submit signed result</button>
+        <button id="cancel-external-signing" class="secondary" data-i18n="cancel">Cancel</button>
       </div>
     </section>
 
     <section class="panel">
-      <div class="label">Server evidence</div>
-      <div id="evidence-status" class="status">Waiting for identity…</div>
+      <div class="label" data-i18n="server_evidence">Server evidence</div>
+      <div id="evidence-status" class="status" data-i18n="waiting_identity">Waiting for identity…</div>
       <div id="capabilities"></div>
-      <a id="latest-receipt" class="receipt" hidden>Open latest verified receipt</a>
+      <a id="latest-receipt" class="receipt" hidden data-i18n="open_receipt">Open latest verified receipt</a>
     </section>
 
     <section class="panel checks">
-      <div class="label">Custody checks</div>
-      <div>Identity mode <strong id="identity-mode">none</strong></div>
-      <div>Private key exportable <strong id="extractable-check">n/a</strong></div>
-      <div>Encrypted recovery backup <strong id="backup-check">n/a</strong></div>
-      <div>Private key network transfer <strong>never</strong></div>
+      <div class="label" data-i18n="custody_checks">Custody checks</div>
+      <div><span data-i18n="identity_mode">Identity mode</span> <strong id="identity-mode">none</strong></div>
+      <div><span data-i18n="private_exportable">Private key exportable</span> <strong id="extractable-check">n/a</strong></div>
+      <div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div>
+      <div><span data-i18n="network_transfer">Private key network transfer</span> <strong data-i18n="never">never</strong></div>
     </section>
 
     <p id="operation-status" class="operation"></p>
