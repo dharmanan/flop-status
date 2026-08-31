@@ -7,6 +7,7 @@ import {
   CANONICALIZATION_ID,
   CAPABILITY_ID,
   CHALLENGE_VERSION,
+  PRODUCTION_TRIAL_ID,
   SUBMISSION_VERSION,
   TRIAL_ID,
   TRIAL_VERSION,
@@ -55,6 +56,9 @@ const sha256HashSchema = z.string().refine(isSha256Hash, {
   message: "must be a sha256:<base64url> hash",
 });
 
+export const trial1IdSchema = z.enum([TRIAL_ID, PRODUCTION_TRIAL_ID]);
+export type Trial1Id = z.infer<typeof trial1IdSchema>;
+
 export const trial1ChallengeCaseSchema = z
   .object({
     algorithm: z.literal("Ed25519"),
@@ -72,7 +76,7 @@ export const trial1ChallengePayloadSchema = z
     challenge_id: uuidSchema,
     agent_did: ed25519DidKeySchema,
     capability_id: z.literal(CAPABILITY_ID),
-    trial_id: z.literal(TRIAL_ID),
+    trial_id: trial1IdSchema,
     trial_version: z.literal(TRIAL_VERSION),
     nonce: base64UrlSchema(),
     case: trial1ChallengeCaseSchema,
@@ -101,10 +105,8 @@ export const trial1SignedSubmissionPayloadSchema = z
     canonicalization: z.literal(CANONICALIZATION_ID),
     challenge_id: uuidSchema,
     challenge_hash: sha256HashSchema,
-    // DID syntax and supported key type are intentionally checked after
-    // challenge binding and expiry, matching the validation order contract.
     agent_did: z.string().min(1),
-    trial_id: z.literal(TRIAL_ID),
+    trial_id: trial1IdSchema,
     trial_version: z.literal(TRIAL_VERSION),
     result: trial1ResultSchema,
     submitted_at: rfc3339TimestampSchema,
