@@ -1,11 +1,24 @@
 import { readFile } from "node:fs/promises";
 import type { Pool } from "pg";
 
-const MIGRATION_ID = "0001_trial1_foundation";
 const MIGRATION_LOCK_KEY = "flop:migrations";
-const MIGRATION_PATH = new URL("../../db/migrations/0001_trial1_foundation.sql", import.meta.url);
+const MIGRATIONS = [
+  {
+    id: "0001_trial1_foundation",
+    path: new URL("../../db/migrations/0001_trial1_foundation.sql", import.meta.url),
+  },
+  {
+    id: "0002_trial1_submissions",
+    path: new URL("../../db/migrations/0002_trial1_submissions.sql", import.meta.url),
+  },
+] as const;
 
-export async function runTrial1FoundationMigration(pool: Pool): Promise<"applied" | "already-applied"> {
+export interface MigrationResult {
+  id: string;
+  status: "applied" | "already-applied";
+}
+
+export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
   const client = await pool.connect();
   let locked = false;
 
@@ -20,18 +33,24 @@ export async function runTrial1FoundationMigration(pool: Pool): Promise<"applied
       )
     `);
 
-    const existing = await client.query<{ id: string }>(
-      "SELECT id FROM schema_migrations WHERE id = $1",
-      [MIGRATION_ID],
-    );
+    const results: MigrationResult[] = [];
+    for (const migration of MIGRATIONS) {
+      const existing = await client.query<{ id: string }>(
+        "SELECT id FROM schema_migrations WHERE id = $1",
+        [migration.id],
+      );
+      if (existing.rows.length > 0) {
+        results.push({ id: migration.id, status: "already-applied" });
+        continue;
+      }
 
-    if (existing.rows.length > 0) {
-      return "already-applied";
+      const sql = await readFile(migration.path, "utf8");
+      await client.query(sql);
+      await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [migration.id]);
+      results.push({ id: migration.id, status: "applied" });
     }
 
-    const sql = await readFile(MIGRATION_PATH, "utf8");
-    await client.query(sql);
-    return "applied";
+    return results;
   } finally {
     if (locked) {
       try {
@@ -45,4 +64,15 @@ export async function runTrial1FoundationMigration(pool: Pool): Promise<"applied
       client.release();
     }
   }
+}
+
+export async function runTrial1FoundationMigration(
+  pool: Pool,
+): Promise<"applied" | "already-applied"> {
+  const results = await runMigrations(pool);
+  const foundation = results.find((result) => result.id === "0001_trial1_foundation");
+  if (!foundation) {
+    throw new Error("foundation migration result missing");
+  }
+  return foundation.status;
 }

@@ -101,7 +101,9 @@ export const trial1SignedSubmissionPayloadSchema = z
     canonicalization: z.literal(CANONICALIZATION_ID),
     challenge_id: uuidSchema,
     challenge_hash: sha256HashSchema,
-    agent_did: ed25519DidKeySchema,
+    // DID syntax and supported key type are intentionally checked after
+    // challenge binding and expiry, matching the validation order contract.
+    agent_did: z.string().min(1),
     trial_id: z.literal(TRIAL_ID),
     trial_version: z.literal(TRIAL_VERSION),
     result: trial1ResultSchema,
@@ -130,8 +132,6 @@ export const trial1SignedSubmissionEnvelopeSchema = z
 
 export type Trial1SignedSubmissionEnvelope = z.infer<typeof trial1SignedSubmissionEnvelopeSchema>;
 
-// Hidden verifier context: generated alongside the public challenge payload,
-// persisted separately, and never exposed through any public challenge API.
 export const trial1CaseClassSchema = z.enum(["VALID_SIGNATURE", "INVALID_SIGNATURE"]);
 
 export type Trial1CaseClass = z.infer<typeof trial1CaseClassSchema>;
