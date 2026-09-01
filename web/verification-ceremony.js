@@ -1,85 +1,65 @@
 const STEPS = ["challenge", "execute", "result", "sign", "verify", "verdict", "certificate"];
 
-const STEP_COPY = {
-  challenge: ["Challenge", "Challenge"],
-  execute: ["Capability", "Capability"],
-  result: ["Output", "Output"],
-  sign: ["DID", "DID"],
-  verify: ["FLOP", "FLOP"],
-  verdict: ["Decision", "Karar"],
-  certificate: ["Certificate", "Sertifika"],
+const STEP_LABELS = {
+  challenge: ["Fresh challenge received", "Fresh challenge geldi"],
+  execute: ["Capability executed", "Capability çalıştı"],
+  result: ["Agent output created", "Ajan çıktısı oluştu"],
+  sign: ["DID signature attached", "DID imzası bağlandı"],
+  verify: ["FLOP verified independently", "FLOP bağımsız doğruladı"],
+  verdict: ["Decision recorded", "Karar kaydedildi"],
+  certificate: ["Certificate issued", "Certificate üretildi"],
 };
 
-const VISUALS = {
+const CAPABILITY_VISUALS = {
   1: {
-    inputs: [["public_key", "Public key"], ["message", "Message bytes"], ["signature", "Ed25519 signature"]],
-    checks: [
-      ["Key decoded", "Anahtar çözüldü"],
-      ["Signature parsed", "İmza ayrıştırıldı"],
-      ["Message bound", "Mesaj bağlandı"],
-      ["Signature verdict", "İmza kararı"],
-    ],
+    parts: [["public_key", "PUBLIC KEY"], ["message", "MESSAGE"], ["signature", "SIGNATURE"]],
+    checks: [["Decode key", "Anahtarı çöz"], ["Bind message", "Mesajı bağla"], ["Check signature", "İmzayı doğrula"]],
   },
   2: {
-    inputs: [["document", "JSON document"], ["canonical", "RFC 8785"], ["utf8", "UTF-8 bytes"], ["sha256", "SHA256"]],
-    checks: [
-      ["JSON normalized", "JSON normalize edildi"],
-      ["Canonical form built", "Canonical biçim üretildi"],
-      ["UTF-8 bytes fixed", "UTF-8 byte'ları sabitlendi"],
-      ["Digest calculated", "Digest hesaplandı"],
-    ],
+    parts: [["document", "JSON"], ["canonical", "CANONICAL"], ["utf8", "UTF 8"], ["sha256", "SHA256"]],
+    checks: [["Normalize JSON", "JSON normalize et"], ["Build canonical form", "Canonical biçimi üret"], ["Encode bytes", "Byte dizisini üret"], ["Calculate digest", "Digest hesapla"]],
   },
   3: {
-    inputs: [["room", "Room"], ["nonce", "Nonce"], ["text", "Raw message"], ["canonical", "room|nonce|text"]],
-    checks: [
-      ["Text cleaned", "Metin temizlendi"],
-      ["Room preserved", "Room korundu"],
-      ["Nonce preserved", "Nonce korundu"],
-      ["Canonical message built", "Canonical mesaj üretildi"],
-    ],
+    parts: [["room", "ROOM"], ["nonce", "NONCE"], ["text", "MESSAGE"], ["canonical", "CANONICAL"]],
+    checks: [["Clean text", "Metni temizle"], ["Bind room", "Room bağla"], ["Bind nonce", "Nonce bağla"], ["Build message", "Mesajı üret"]],
   },
   4: {
-    inputs: [["receipt", "Signed receipt"], ["signature", "Receipt signature"], ["key_id", "Server key id"], ["server_keys", "Server key set"]],
-    checks: [
-      ["Key id matched", "Key ID eşleşti"],
-      ["Signature checked", "İmza doğrulandı"],
-      ["Payload integrity", "Payload bütünlüğü"],
-      ["Receipt classified", "Receipt sınıflandırıldı"],
-    ],
+    parts: [["receipt", "RECEIPT"], ["signature", "SIGNATURE"], ["key_id", "KEY ID"], ["server_keys", "SERVER KEYS"]],
+    checks: [["Match key id", "Key ID eşleştir"], ["Check signature", "İmzayı doğrula"], ["Check payload", "Payload kontrol et"], ["Classify receipt", "Receipt sınıflandır"]],
   },
 };
 
-function lang() {
-  return document.documentElement.lang === "tr" ? "tr" : "en";
+function isTr() {
+  return document.documentElement.lang === "tr";
 }
 
-function c(en, tr) {
-  return lang() === "tr" ? tr : en;
+function copy(en, tr) {
+  return isTr() ? tr : en;
 }
 
-function el(tag, className, text) {
+function el(tag, className, value) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text !== undefined && text !== null) node.textContent = String(text);
+  if (value !== undefined && value !== null) node.textContent = String(value);
   return node;
 }
 
 function short(value, max = 34) {
   const text = String(value ?? "");
   if (text.length <= max) return text;
-  return `${text.slice(0, Math.max(9, max - 9))}…${text.slice(-8)}`;
+  return `${text.slice(0, Math.max(8, max - 9))}…${text.slice(-8)}`;
 }
 
-function pretty(value, max = 540) {
+function pretty(value, max = 520) {
   let text;
-  try { text = JSON.stringify(value, null, 2); }
+  try { text = typeof value === "string" ? value : JSON.stringify(value, null, 2); }
   catch { text = String(value ?? ""); }
   return text.length > max ? `${text.slice(0, max)}\n…` : text;
 }
 
-function inputValue(caseData, key) {
+function valueFor(caseData, key) {
   if (!caseData || typeof caseData !== "object") return "";
-  if (key in caseData) return caseData[key];
+  if (Object.prototype.hasOwnProperty.call(caseData, key)) return caseData[key];
   if (key === "signature") {
     const receipt = caseData.receipt ?? caseData.signed_receipt;
     return receipt?.server_signature ?? receipt?.signature ?? "";
@@ -94,604 +74,602 @@ function inputValue(caseData, key) {
   return "";
 }
 
-function createProgress() {
-  const wrap = el("div", "ceremony-progress");
-  const items = new Map();
-  STEPS.forEach((id, index) => {
-    const item = el("div", "ceremony-progress-item");
-    item.dataset.step = id;
-    item.dataset.state = "pending";
-    const marker = el("span", "ceremony-progress-marker", index + 1);
-    const copy = el("span", "ceremony-progress-copy");
-    const title = el("strong", "", c(STEP_COPY[id][0], STEP_COPY[id][1]));
-    const state = el("small", "", c("waiting", "bekliyor"));
-    copy.append(title, state);
-    item.append(marker, copy);
-    wrap.appendChild(item);
-    items.set(id, { item, marker, title, state });
-  });
-  return { wrap, items };
+function safeFinished(animation) {
+  return animation?.finished?.catch(() => undefined) ?? Promise.resolve();
 }
 
-function artifactTile(key, label) {
-  const tile = el("div", "ceremony-artifact-tile");
-  tile.dataset.key = key;
-  const icon = el("span", "ceremony-artifact-icon");
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = key === "signature" ? "∿" : key.includes("key") ? "⌁" : key.includes("sha") ? "#" : "▱";
-  const body = el("div", "ceremony-artifact-body");
-  const title = el("strong", "", label);
-  const value = el("span", "mono", c("waiting for fresh input", "fresh input bekleniyor"));
-  body.append(title, value);
-  tile.append(icon, body);
-  return { tile, title, value };
+function animate(element, keyframes, options, reduced) {
+  if (!element || reduced || typeof element.animate !== "function") return Promise.resolve();
+  return safeFinished(element.animate(keyframes, { fill: "both", ...options }));
 }
 
-function createChallengePane(number) {
-  const visual = VISUALS[number] ?? VISUALS[4];
-  const pane = el("section", "ceremony-pane ceremony-challenge-pane");
-  pane.dataset.node = "challenge";
-  const label = el("div", "ceremony-kicker", c("FRESH CHALLENGE", "FRESH CHALLENGE"));
-  const head = el("div", "ceremony-mini-head");
-  head.append(el("strong", "", c("Unseen test input", "Daha önce görülmemiş test girdisi")), el("span", "ceremony-fresh", "FRESH"));
-  const id = el("div", "ceremony-meta-line");
-  const hash = el("div", "ceremony-meta-line");
-  id.append(el("span", "", "Challenge ID"), el("code", "mono", "—"));
-  hash.append(el("span", "", "SHA256"), el("code", "mono", "—"));
-  const list = el("div", "ceremony-artifact-list");
-  const artifacts = new Map();
-  for (const [key, artifactLabel] of visual.inputs) {
-    const tile = artifactTile(key, artifactLabel);
-    list.appendChild(tile.tile);
-    artifacts.set(key, tile);
-  }
-  pane.append(label, head, id, hash, list);
-  return { pane, idValue: id.querySelector("code"), hashValue: hash.querySelector("code"), artifacts };
-}
-
-function createAgentPane(number, name) {
-  const visual = VISUALS[number] ?? VISUALS[4];
-  const pane = el("section", "ceremony-pane ceremony-agent-pane");
-  pane.dataset.node = "execute";
-  pane.appendChild(el("div", "ceremony-kicker", c("AGENT CORE", "AJAN CORE")));
-  const did = el("div", "ceremony-agent-did mono", "DID · —");
-  const visualWrap = el("div", "ceremony-agent-visual");
+function createOrbCanvas(className) {
   const canvas = document.createElement("canvas");
-  canvas.className = "ceremony-orb-canvas";
-  canvas.width = 360;
-  canvas.height = 300;
-  const module = el("div", "ceremony-capability-module");
-  module.append(el("span", "ceremony-module-glyph", "◇"), el("strong", "", `Capability ${number}`), el("small", "", name), el("em", "", c("ACTIVE", "AKTİF")));
-  visualWrap.append(canvas, module);
-  const checks = el("div", "ceremony-check-list");
-  const checkRows = [];
-  visual.checks.forEach(([en, tr]) => {
-    const row = el("div", "ceremony-check-row");
-    row.dataset.state = "pending";
-    row.append(el("span", "ceremony-check-dot", "·"), el("span", "", c(en, tr)));
-    checks.appendChild(row);
-    checkRows.push(row);
-  });
-  pane.append(did, visualWrap, checks);
-  return { pane, did, canvas, module, checkRows };
+  canvas.className = className;
+  canvas.width = 420;
+  canvas.height = 420;
+  return canvas;
 }
 
-function createOutputPane() {
-  const pane = el("section", "ceremony-pane ceremony-output-pane");
-  pane.dataset.node = "result";
-  pane.append(el("div", "ceremony-kicker", "OUTPUT"), el("strong", "ceremony-pane-title", c("Capability result", "Capability sonucu")));
-  const code = el("pre", "ceremony-output-code mono", c("Waiting for capability execution…", "Capability çalışması bekleniyor…"));
-  const hash = el("div", "ceremony-result-hash");
-  hash.append(el("span", "", "Result hash"), el("code", "mono", "—"));
-  pane.append(code, hash);
-  return { pane, code, hashValue: hash.querySelector("code") };
-}
-
-function createSealPane() {
-  const pane = el("section", "ceremony-pane ceremony-seal-pane");
-  pane.dataset.node = "sign";
-  pane.append(el("div", "ceremony-kicker", c("DID SEAL", "DID İMZASI")));
-  const seal = el("div", "ceremony-seal-object");
-  seal.innerHTML = '<span class="seal-top">◇</span><span class="seal-mid">DID</span><span class="seal-bottom">SIGN</span>';
-  const did = el("code", "ceremony-seal-did mono", "—");
-  const signature = el("code", "ceremony-seal-signature mono", c("signature pending", "imza bekleniyor"));
-  pane.append(seal, did, signature);
-  return { pane, seal, did, signature };
-}
-
-function createVerifierPane() {
-  const pane = el("section", "ceremony-pane ceremony-verifier-pane");
-  pane.dataset.node = "verify";
-  pane.append(el("div", "ceremony-kicker", "FLOP VERIFIER"));
-  const canvas = document.createElement("canvas");
-  canvas.className = "ceremony-verifier-canvas";
-  canvas.width = 260;
-  canvas.height = 230;
-  const verifier = el("code", "ceremony-verifier-id mono", "verifier · —");
-  const compare = el("div", "ceremony-compare");
-  const left = el("div", "ceremony-compare-side");
-  left.append(el("span", "", c("Agent result", "Ajan sonucu")), el("code", "mono", "—"));
-  const right = el("div", "ceremony-compare-side");
-  right.append(el("span", "", c("FLOP result", "FLOP sonucu")), el("code", "mono", "—"));
-  const match = el("div", "ceremony-match", c("WAITING", "BEKLİYOR"));
-  compare.append(left, right, match);
-  pane.append(canvas, verifier, compare);
-  return { pane, canvas, verifier, agentResult: left.querySelector("code"), flopResult: right.querySelector("code"), match };
-}
-
-function createVerdictPane() {
-  const pane = el("section", "ceremony-pane ceremony-verdict-pane");
-  pane.dataset.node = "verdict";
-  pane.append(el("div", "ceremony-kicker", c("DECISION", "KARAR")));
-  const verdict = el("div", "ceremony-verdict-word", "—");
-  const ring = el("div", "ceremony-verdict-ring", "✓");
-  const reason = el("p", "ceremony-verdict-reason", c("No decision recorded yet.", "Henüz karar kaydedilmedi."));
-  pane.append(verdict, ring, reason);
-  return { pane, verdict, ring, reason };
-}
-
-function createCertificatePane(number, name) {
-  const pane = el("section", "ceremony-pane ceremony-certificate-pane");
-  pane.dataset.node = "certificate";
-  pane.append(el("div", "ceremony-kicker", c("CERTIFICATE", "SERTİFİKA")));
-  const card = el("article", "ceremony-certificate-card");
-  const brand = el("div", "ceremony-certificate-brand");
-  brand.append(el("span", "ceremony-certificate-mark", "◇"), el("strong", "", "FLOP"));
-  const type = el("div", "ceremony-certificate-type", c("CAPABILITY CERTIFICATE", "CAPABILITY CERTIFICATE"));
-  const cap = el("strong", "ceremony-certificate-capability", `Capability ${number}`);
-  const capName = el("span", "ceremony-certificate-name", name);
-  const did = el("div", "ceremony-certificate-field");
-  did.append(el("span", "", "DID"), el("code", "mono", "—"));
-  const cert = el("div", "ceremony-certificate-field");
-  cert.append(el("span", "", "Certificate ID"), el("code", "mono", "—"));
-  const receipt = el("div", "ceremony-certificate-field");
-  receipt.append(el("span", "", "Receipt ID"), el("code", "mono", "—"));
-  const seal = el("div", "ceremony-certificate-seal", "◇");
-  card.append(brand, type, cap, capName, did, cert, receipt, seal);
-  pane.appendChild(card);
-  return { pane, card, did: did.querySelector("code"), cert: cert.querySelector("code"), receipt: receipt.querySelector("code") };
-}
-
-function proofItem(icon, title, desc) {
-  const item = el("div", "ceremony-proof-item");
-  item.dataset.state = "pending";
-  const glyph = el("span", "ceremony-proof-glyph", icon);
-  const body = el("div", "ceremony-proof-copy");
-  const strong = el("strong", "", title);
-  const span = el("span", "", desc);
-  const code = el("code", "mono", "—");
-  body.append(strong, span, code);
-  item.append(glyph, body, el("span", "ceremony-proof-check", "✓"));
-  return { item, code };
-}
-
-function createBottom() {
-  const bottom = el("div", "ceremony-bottom");
-  const proof = el("section", "ceremony-bottom-panel ceremony-proof-package");
-  proof.append(el("div", "ceremony-kicker", c("PROOF PACKAGE · PORTABLE", "KANIT PAKETİ · TAŞINABİLİR")));
-  const proofGrid = el("div", "ceremony-proof-grid");
-  const certificate = proofItem("◇", c("Capability certificate", "Capability certificate"), c("Individual verified capability proof", "Capability'ye özel doğrulanmış kanıt"));
-  const receipt = proofItem("▤", c("Signed receipt", "İmzalı receipt"), c("Immutable verification evidence", "Değiştirilemez doğrulama kanıtı"));
-  const publicProof = proofItem("◎", c("Public proof", "Public proof"), c("Shareable proof URL", "Paylaşılabilir proof adresi"));
-  const profile = proofItem("⬡", c("Capability profile", "Capability profili"), c("Public capability state", "Public capability durumu"));
-  proofGrid.append(certificate.item, receipt.item, publicProof.item, profile.item);
-  proof.appendChild(proofGrid);
-
-  const boundary = el("section", "ceremony-bottom-panel ceremony-boundary");
-  boundary.append(el("div", "ceremony-kicker", "EXECUTION BOUNDARY"));
-  const split = el("div", "ceremony-boundary-split");
-  const inside = el("div", "ceremony-boundary-side ceremony-boundary-private");
-  inside.append(el("strong", "", c("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")), el("div", "ceremony-boundary-core", "●  ◇"));
-  const insideList = el("ul", "");
-  [c("Agent core", "Ajan core"), c("Capability module", "Capability modülü"), c("Execution tools", "Çalıştırma araçları")].forEach((x) => insideList.appendChild(el("li", "", x)));
-  inside.appendChild(insideList);
-  const outside = el("div", "ceremony-boundary-side ceremony-boundary-public");
-  outside.append(el("strong", "", c("PORTABLE OUTSIDE", "DIŞARI TAŞINABİLİR")), el("div", "ceremony-boundary-icons", "◇  ▤  ◎"));
-  const outsideList = el("ul", "");
-  ["DID", "Certificate", "Receipt", "Public proof"].forEach((x) => outsideList.appendChild(el("li", "", x)));
-  outside.appendChild(outsideList);
-  split.append(inside, outside);
-  boundary.appendChild(split);
-  bottom.append(proof, boundary);
-  return { bottom, proof: { certificate, receipt, publicProof, profile } };
-}
-
-function drawOrb(canvas, time, intensity, accent) {
+function drawCore(canvas, time, energy, rgb, verifier = false) {
   const ctx = canvas.getContext("2d");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const cssW = canvas.clientWidth || 360;
-  const cssH = canvas.clientHeight || 300;
-  const w = Math.max(1, Math.round(cssW * dpr));
-  const h = Math.max(1, Math.round(cssH * dpr));
-  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const cssW = canvas.clientWidth || 320;
+  const cssH = canvas.clientHeight || 320;
+  const width = Math.max(1, Math.round(cssW * dpr));
+  const height = Math.max(1, Math.round(cssH * dpr));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
-  const cx = cssW * .47;
-  const cy = cssH * .50;
-  const r = Math.min(cssW, cssH) * .26;
 
-  const halo = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r * 1.65);
-  halo.addColorStop(0, `rgba(${accent},${.18 + intensity * .16})`);
-  halo.addColorStop(.45, `rgba(${accent},${.08 + intensity * .08})`);
-  halo.addColorStop(1, `rgba(${accent},0)`);
+  const cx = cssW / 2;
+  const cy = cssH / 2;
+  const radius = Math.min(cssW, cssH) * (verifier ? .22 : .255);
+  const halo = ctx.createRadialGradient(cx, cy, radius * .05, cx, cy, radius * 1.85);
+  halo.addColorStop(0, `rgba(${rgb},${.28 + energy * .18})`);
+  halo.addColorStop(.35, `rgba(${rgb},${.09 + energy * .12})`);
+  halo.addColorStop(1, `rgba(${rgb},0)`);
   ctx.fillStyle = halo;
-  ctx.beginPath(); ctx.arc(cx, cy, r * 1.65, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 1.85, 0, Math.PI * 2);
+  ctx.fill();
 
-  const body = ctx.createRadialGradient(cx - r * .28, cy - r * .35, r * .08, cx, cy, r * 1.05);
-  body.addColorStop(0, "#253a50");
-  body.addColorStop(.34, "#101a27");
-  body.addColorStop(.72, "#071019");
-  body.addColorStop(1, "#020609");
-  ctx.fillStyle = body;
-  ctx.strokeStyle = `rgba(${accent},${.28 + intensity * .38})`;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const sphere = ctx.createRadialGradient(cx - radius * .34, cy - radius * .35, radius * .03, cx, cy, radius);
+  sphere.addColorStop(0, verifier ? "#183b59" : "#342767");
+  sphere.addColorStop(.28, verifier ? "#0b2034" : "#171331");
+  sphere.addColorStop(.72, "#070b12");
+  sphere.addColorStop(1, "#020407");
+  ctx.fillStyle = sphere;
+  ctx.strokeStyle = `rgba(${rgb},${.34 + energy * .46})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 
-  const speed = .00022 + intensity * .00032;
-  for (let i = 0; i < 4; i++) {
-    const rr = r * (.72 + i * .16);
-    const a = time * speed * (i % 2 ? -1 : 1) + i * .9;
-    ctx.strokeStyle = `rgba(${accent},${.17 + i * .045 + intensity * .13})`;
-    ctx.lineWidth = i === 0 ? 2 : 1;
+  for (let i = 0; i < 5; i += 1) {
+    const ring = radius * (.72 + i * .19);
+    const direction = i % 2 ? -1 : 1;
+    const start = time * .00018 * direction + i * .62;
+    ctx.strokeStyle = `rgba(${rgb},${.13 + energy * .12})`;
+    ctx.lineWidth = i === 0 ? 1.7 : .8;
     ctx.beginPath();
-    ctx.arc(cx, cy, rr, a, a + Math.PI * (1.0 + i * .17));
+    ctx.arc(cx, cy, ring, start, start + Math.PI * (1.05 + i * .12));
     ctx.stroke();
   }
+
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * .45);
+  core.addColorStop(0, `rgba(${rgb},.98)`);
+  core.addColorStop(.22, `rgba(${rgb},${.68 + energy * .22})`);
+  core.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * .46, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(time * .00012);
-  for (let i = 0; i < 12; i++) {
-    const a = i * Math.PI * 2 / 12;
-    const inner = r * .52;
-    const outer = r * .78;
-    ctx.strokeStyle = `rgba(${accent},${.10 + intensity * .12})`;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
-    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * .42);
-  core.addColorStop(0, `rgba(${accent},${.9})`);
-  core.addColorStop(.22, `rgba(${accent},${.46 + intensity * .25})`);
-  core.addColorStop(1, `rgba(${accent},0)`);
-  ctx.fillStyle = core;
-  ctx.beginPath(); ctx.arc(cx, cy, r * .43, 0, Math.PI * 2); ctx.fill();
-
-  ctx.strokeStyle = `rgba(${accent},${.72 + intensity * .25})`;
+  ctx.rotate(Math.PI / 4 + time * .00012 * (verifier ? -1 : 1));
+  ctx.strokeStyle = `rgba(${rgb},${.8 + energy * .18})`;
   ctx.lineWidth = 1.5;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.PI / 4 + time * .00008);
-  ctx.strokeRect(-r * .18, -r * .18, r * .36, r * .36);
+  ctx.strokeRect(-radius * .18, -radius * .18, radius * .36, radius * .36);
   ctx.restore();
 }
 
-function cubicPoint(a, b, t) {
-  const dx = Math.max(28, Math.abs(b.x - a.x) * .42);
-  const p0 = a;
-  const p1 = { x: a.x + dx, y: a.y };
-  const p2 = { x: b.x - dx, y: b.y };
-  const p3 = b;
-  const mt = 1 - t;
-  return {
-    x: mt ** 3 * p0.x + 3 * mt ** 2 * t * p1.x + 3 * mt * t ** 2 * p2.x + t ** 3 * p3.x,
-    y: mt ** 3 * p0.y + 3 * mt ** 2 * t * p1.y + 3 * mt * t ** 2 * p2.y + t ** 3 * p3.y,
-  };
+function createActor({ className, kicker, title, canvasClass, rgb, verifier = false }) {
+  const actor = el("section", `ceremony-actor ${className}`);
+  actor.dataset.state = "idle";
+  const label = el("div", "ceremony-actor-label");
+  label.append(el("span", "ceremony-kicker", kicker), el("strong", "ceremony-actor-title", title));
+  const canvas = createOrbCanvas(canvasClass);
+  actor.append(label, canvas);
+  actor.dataset.rgb = rgb;
+  actor.dataset.verifier = verifier ? "true" : "false";
+  return { actor, canvas, label };
 }
 
-function drawField(canvas, shell, nodeMap, states, time, reduced) {
-  const ctx = canvas.getContext("2d");
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const rect = shell.getBoundingClientRect();
-  const cssW = rect.width;
-  const cssH = rect.height;
-  const w = Math.max(1, Math.round(cssW * dpr));
-  const h = Math.max(1, Math.round(cssH * dpr));
-  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
-
-  const bg = ctx.createRadialGradient(cssW * .46, cssH * .38, 20, cssW * .46, cssH * .38, cssW * .58);
-  bg.addColorStop(0, "rgba(50,72,122,.10)");
-  bg.addColorStop(.42, "rgba(16,35,60,.05)");
-  bg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, cssW, cssH);
-
-  for (let i = 0; i < STEPS.length - 1; i++) {
-    const aEl = nodeMap.get(STEPS[i]);
-    const bEl = nodeMap.get(STEPS[i + 1]);
-    if (!aEl || !bEl || aEl.hidden || bEl.hidden) continue;
-    const ar = aEl.getBoundingClientRect();
-    const br = bEl.getBoundingClientRect();
-    const a = { x: ar.right - rect.left - 3, y: ar.top + ar.height * .48 - rect.top };
-    const b = { x: br.left - rect.left + 3, y: br.top + br.height * .48 - rect.top };
-    const stateA = states.get(STEPS[i]) ?? "pending";
-    const stateB = states.get(STEPS[i + 1]) ?? "pending";
-    const lit = stateA === "done" || stateA === "active" || stateB === "active" || stateB === "done";
-    const active = stateB === "active";
-
-    ctx.lineWidth = lit ? 1.35 : .75;
-    ctx.strokeStyle = lit ? "rgba(94,151,255,.42)" : "rgba(86,99,120,.16)";
-    ctx.beginPath();
-    const dx = Math.max(28, Math.abs(b.x - a.x) * .42);
-    ctx.moveTo(a.x, a.y);
-    ctx.bezierCurveTo(a.x + dx, a.y, b.x - dx, b.y, b.x, b.y);
-    ctx.stroke();
-
-    if (active && !reduced) {
-      for (let p = 0; p < 3; p++) {
-        const t = ((time * .00034) + p / 3) % 1;
-        const pt = cubicPoint(a, b, t);
-        const glow = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, 7);
-        glow.addColorStop(0, "rgba(134,182,255,.95)");
-        glow.addColorStop(1, "rgba(134,182,255,0)");
-        ctx.fillStyle = glow;
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 7, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-  }
+function createPart(key, label) {
+  const part = el("div", "ceremony-part");
+  part.dataset.key = key;
+  part.dataset.state = "hidden";
+  const glyph = el("span", "ceremony-part-glyph", key === "signature" ? "∿" : key.includes("key") ? "⌁" : key.includes("sha") ? "#" : "▱");
+  const body = el("span", "ceremony-part-copy");
+  const title = el("strong", "", label);
+  const value = el("small", "mono", "—");
+  body.append(title, value);
+  part.append(glyph, body);
+  return { part, title, value };
 }
 
-export function createVerificationCeremony(container, config) {
+function createChallenge(number) {
+  const visual = CAPABILITY_VISUALS[number] ?? CAPABILITY_VISUALS[4];
+  const node = el("section", "ceremony-object ceremony-challenge");
+  node.dataset.state = "hidden";
+  const top = el("div", "ceremony-object-top");
+  top.append(el("span", "ceremony-kicker", "FRESH CHALLENGE"), el("span", "ceremony-fresh-badge", "FRESH"));
+  const title = el("strong", "ceremony-object-title", copy("Unseen test input", "Daha önce görülmemiş test girdisi"));
+  const meta = el("div", "ceremony-object-meta");
+  const id = el("code", "mono", "ID  —");
+  const hash = el("code", "mono", "SHA256  —");
+  meta.append(id, hash);
+  const partsWrap = el("div", "ceremony-parts");
+  const parts = new Map();
+  visual.parts.forEach(([key, label]) => {
+    const item = createPart(key, label);
+    partsWrap.appendChild(item.part);
+    parts.set(key, item);
+  });
+  node.append(top, title, meta, partsWrap);
+  return { node, title, id, hash, parts, visual };
+}
+
+function createCapabilityModule(number, name, checks) {
+  const module = el("div", "ceremony-module");
+  module.dataset.state = "installed";
+  const head = el("div", "ceremony-module-head");
+  head.append(el("span", "ceremony-module-mark", "◇"), el("div", "", ""));
+  head.lastElementChild.append(el("strong", "", `Capability ${number}`), el("small", "", name));
+  const state = el("span", "ceremony-module-state", copy("INSTALLED", "YÜKLÜ"));
+  const list = el("div", "ceremony-module-checks");
+  const rows = [];
+  checks.forEach(([en, tr]) => {
+    const row = el("div", "ceremony-module-check");
+    row.dataset.state = "pending";
+    row.append(el("span", "ceremony-check-mark", "·"), el("span", "", copy(en, tr)));
+    list.appendChild(row);
+    rows.push(row);
+  });
+  module.append(head, state, list);
+  return { module, state, rows };
+}
+
+function createResult() {
+  const node = el("section", "ceremony-object ceremony-result");
+  node.dataset.state = "hidden";
+  const top = el("div", "ceremony-object-top");
+  top.append(el("span", "ceremony-kicker", "AGENT OUTPUT"), el("span", "ceremony-output-state", copy("CREATED", "OLUŞTU")));
+  const title = el("strong", "ceremony-object-title", copy("Capability result", "Capability sonucu"));
+  const data = el("pre", "ceremony-result-data mono", "—");
+  const hash = el("code", "ceremony-result-hash mono", "result hash  —");
+  node.append(top, title, data, hash);
+  return { node, data, hash };
+}
+
+function createDidSeal() {
+  const seal = el("div", "ceremony-did-seal");
+  seal.dataset.state = "hidden";
+  seal.append(el("span", "ceremony-seal-symbol", "◇"), el("strong", "", "DID"), el("small", "", "SIGN"));
+  const detail = el("code", "ceremony-seal-detail mono", "—");
+  seal.appendChild(detail);
+  return { seal, detail };
+}
+
+function createVerifierPanel(verifierActor) {
+  const panel = el("div", "ceremony-verifier-panel");
+  panel.dataset.state = "hidden";
+  const id = el("code", "ceremony-verifier-id mono", "verifier  —");
+  const compare = el("div", "ceremony-compare");
+  const agent = el("div", "ceremony-compare-value");
+  agent.append(el("span", "", copy("AGENT RESULT", "AJAN SONUCU")), el("code", "mono", "—"));
+  const flop = el("div", "ceremony-compare-value");
+  flop.append(el("span", "", copy("FLOP RESULT", "FLOP SONUCU")), el("code", "mono", "—"));
+  const lock = el("div", "ceremony-match-lock", copy("WAITING", "BEKLİYOR"));
+  compare.append(agent, lock, flop);
+  panel.append(id, compare);
+  verifierActor.actor.appendChild(panel);
+  return { panel, id, agent: agent.querySelector("code"), flop: flop.querySelector("code"), lock };
+}
+
+function createCertificate(number, name) {
+  const node = el("article", "ceremony-certificate");
+  node.dataset.state = "hidden";
+  const brand = el("div", "ceremony-certificate-brand");
+  brand.append(el("span", "ceremony-certificate-mark", "◇"), el("strong", "", "FLOP"));
+  const type = el("span", "ceremony-certificate-type", "VERIFIED CAPABILITY");
+  const cap = el("strong", "ceremony-certificate-cap", `Capability ${number}`);
+  const capName = el("span", "ceremony-certificate-name", name);
+  const fields = el("div", "ceremony-certificate-fields");
+  const did = el("code", "mono", "DID  —");
+  const receipt = el("code", "mono", "RECEIPT  —");
+  const cert = el("code", "mono", "CERTIFICATE  —");
+  fields.append(did, receipt, cert);
+  const seal = el("div", "ceremony-certificate-seal", "◇");
+  node.append(brand, type, cap, capName, fields, seal);
+  return { node, did, receipt, cert };
+}
+
+function createProofDock() {
+  const dock = el("section", "ceremony-proof-dock");
+  dock.dataset.state = "hidden";
+  const intro = el("div", "ceremony-proof-intro");
+  intro.append(el("span", "ceremony-kicker", copy("PROOF CAN LEAVE FLOP", "KANIT FLOP DIŞINA ÇIKABİLİR")), el("strong", "", copy("Execution stays. Proof travels.", "Çalıştırma kalır. Kanıt taşınır.")));
+  const split = el("div", "ceremony-proof-split");
+  const inside = el("div", "ceremony-boundary-side ceremony-boundary-inside");
+  inside.append(el("span", "", copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")), el("strong", "", copy("Agent Core + Capability", "Ajan Core + Capability")));
+  const outside = el("div", "ceremony-boundary-side ceremony-boundary-outside");
+  outside.append(el("span", "", copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")), el("strong", "", "DID · Certificate · Receipt · Public proof"));
+  split.append(inside, outside);
+  dock.append(intro, split);
+  return dock;
+}
+
+function createEventStrip() {
+  const strip = el("div", "ceremony-event-strip");
+  const dot = el("span", "ceremony-event-dot", "");
+  const kind = el("span", "ceremony-event-kind", copy("SYSTEM EVENT", "SİSTEM EVENTİ"));
+  const text = el("strong", "ceremony-event-text", copy("Waiting for verification to start", "Doğrulamanın başlaması bekleniyor"));
+  strip.append(dot, kind, text);
+  return { strip, dot, kind, text };
+}
+
+export function createVerificationCeremony(container, config = {}) {
   const number = Number(config.number ?? 4);
   const name = config.name ?? `Capability ${number}`;
   const capabilityId = config.capabilityId ?? "";
+  const visual = CAPABILITY_VISUALS[number] ?? CAPABILITY_VISUALS[4];
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const states = new Map(STEPS.map((step) => [step, "pending"]));
-  const summaries = new Map();
-  let mode = config.mode ?? "live";
-  let frame = 0;
+  let visualTail = Promise.resolve();
+  let frameId = 0;
   let disposed = false;
-  let reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let currentResult = null;
+  let decision = {};
 
-  const shell = el("section", "ceremony-shell");
-  shell.dataset.mode = mode;
-  shell.dataset.phase = "pending";
-  const field = document.createElement("canvas");
-  field.className = "ceremony-field-canvas";
-  field.setAttribute("aria-hidden", "true");
-
+  const shell = el("section", "ceremony-shell ceremony-hidden-until-run");
+  shell.dataset.phase = "idle";
   const head = el("header", "ceremony-head");
   const headCopy = el("div", "ceremony-head-copy");
-  const breadcrumb = el("div", "ceremony-breadcrumb", c("MY AGENT  /  CAPABILITIES  /  VERIFICATION", "AJANIM  /  CAPABILITY  /  DOĞRULAMA"));
-  const title = el("h3", "ceremony-title", `Capability ${number} · ${name}`);
-  const subtitle = el("p", "ceremony-subtitle", c("A fresh challenge proves what this installed capability can actually do.", "Fresh challenge, yüklü capability'nin gerçekten ne yapabildiğini kanıtlar."));
-  headCopy.append(breadcrumb, title, subtitle);
-  const badge = el("div", "ceremony-live-badge");
-  badge.append(el("span", "ceremony-live-dot", ""), el("span", "", mode === "proof" ? c("VERIFIED", "DOĞRULANDI") : c("VERIFICATION LIVE", "CANLI DOĞRULAMA")));
-  head.append(headCopy, badge);
+  headCopy.append(
+    el("span", "ceremony-breadcrumb", copy("MY AGENT  /  LIVE VERIFICATION", "AJANIM  /  CANLI DOĞRULAMA")),
+    el("h3", "ceremony-title", `Capability ${number} · ${name}`),
+    el("p", "ceremony-subtitle", copy("Watch the proof form from real verification events.", "Kanıtın gerçek doğrulama eventlerinden nasıl oluştuğunu izle.")),
+  );
+  const live = el("div", "ceremony-live");
+  live.append(el("span", "ceremony-live-dot", ""), el("span", "", copy("REAL EVENTS", "GERÇEK EVENTLER")));
+  head.append(headCopy, live);
 
-  const progress = createProgress();
-  const scene = el("div", "ceremony-scene");
-  const challenge = createChallengePane(number);
-  const agent = createAgentPane(number, name);
-  const output = createOutputPane();
-  const seal = createSealPane();
-  const verifier = createVerifierPane();
-  const verdict = createVerdictPane();
-  const certificate = createCertificatePane(number, name);
-  scene.append(challenge.pane, agent.pane, output.pane, seal.pane, verifier.pane, verdict.pane, certificate.pane);
-  const bottom = createBottom();
-  shell.append(field, head, progress.wrap, scene, bottom.bottom);
+  const stage = el("div", "ceremony-stage");
+  const field = document.createElement("canvas");
+  field.className = "ceremony-field";
+  field.setAttribute("aria-hidden", "true");
+  const challenge = createChallenge(number);
+  const agent = createActor({ className: "ceremony-agent", kicker: copy("YOUR FLOP AGENT", "FLOP AJANIN"), title: copy("Agent Core", "Ajan Core"), canvasClass: "ceremony-core-canvas", rgb: "137,108,255" });
+  const module = createCapabilityModule(number, name, visual.checks);
+  agent.actor.appendChild(module.module);
+  const result = createResult();
+  const didSeal = createDidSeal();
+  const verifier = createActor({ className: "ceremony-verifier", kicker: "FLOP", title: copy("Independent verifier", "Bağımsız verifier"), canvasClass: "ceremony-verifier-canvas", rgb: "64,162,255", verifier: true });
+  const verifierPanel = createVerifierPanel(verifier);
+  const certificate = createCertificate(number, name);
+  const pass = el("div", "ceremony-pass");
+  pass.dataset.state = "hidden";
+  pass.append(el("span", "ceremony-pass-small", copy("RESULTS MATCH", "SONUÇLAR EŞLEŞTİ")), el("strong", "", "PASS"));
+  stage.append(field, challenge.node, agent.actor, result.node, didSeal.seal, verifier.actor, certificate.node, pass);
+
+  const eventStrip = createEventStrip();
+  const proofDock = createProofDock();
+  shell.append(head, stage, eventStrip.strip, proofDock);
   container.replaceChildren(shell);
-  container.hidden = false;
+  container.hidden = true;
 
-  const nodeMap = new Map([
-    ["challenge", challenge.pane], ["execute", agent.pane], ["result", output.pane], ["sign", seal.pane], ["verify", verifier.pane], ["verdict", verdict.pane], ["certificate", certificate.pane],
-  ]);
-
-  function stateIntensity(id) {
-    const state = states.get(id);
-    return state === "active" ? 1 : state === "done" ? .72 : state === "fail" ? .85 : .18;
+  function actorEnergy(step) {
+    const state = states.get(step);
+    if (state === "active") return 1;
+    if (state === "done") return .68;
+    return .2;
   }
 
-  function animate(time) {
+  function render(time) {
     if (disposed) return;
-    drawField(field, shell, nodeMap, states, time, reduced);
-    drawOrb(agent.canvas, time, stateIntensity("execute"), "119,102,255");
-    drawOrb(verifier.canvas, time * .87, stateIntensity("verify"), "66,156,255");
-    frame = requestAnimationFrame(animate);
+    drawCore(agent.canvas, time, actorEnergy("execute"), "137,108,255", false);
+    drawCore(verifier.canvas, time * .91, actorEnergy("verify"), "64,162,255", true);
+    frameId = requestAnimationFrame(render);
   }
-  frame = requestAnimationFrame(animate);
+  frameId = requestAnimationFrame(render);
 
-  function setProgress(step, state) {
-    const item = progress.items.get(step);
-    if (!item) return;
-    item.item.dataset.state = state;
-    item.state.textContent = state === "active" ? c("working", "çalışıyor") : state === "done" ? c("done", "tamam") : state === "fail" ? "FAIL" : state === "unknown" ? "UNKNOWN" : c("waiting", "bekliyor");
-    if (state === "done") item.marker.textContent = "✓";
-    else if (state === "fail") item.marker.textContent = "×";
-    else if (state === "unknown") item.marker.textContent = "?";
-    else item.marker.textContent = STEPS.indexOf(step) + 1;
+  function queue(task) {
+    visualTail = visualTail.then(() => task()).catch(() => undefined);
+    return visualTail;
   }
 
-  function syncPaneState(step, state) {
-    const pane = nodeMap.get(step);
-    if (pane) pane.dataset.state = state;
-    if (step === "execute") {
-      agent.module.dataset.state = state;
-      agent.checkRows.forEach((row, index) => {
-        const done = state === "done" || (state === "active" && index < 2);
-        row.dataset.state = done ? "done" : state === "fail" ? "fail" : "pending";
-        row.querySelector(".ceremony-check-dot").textContent = done ? "✓" : state === "fail" ? "×" : "·";
-      });
-    }
-    if (step === "verdict") {
-      if (state === "done") {
-        verdict.verdict.textContent = "PASS";
-        verdict.pane.dataset.verdict = "pass";
-        verdict.reason.textContent = c("Agent result matched FLOP's independent result.", "Ajan sonucu FLOP'un bağımsız sonucuyla eşleşti.");
-        verifier.match.textContent = "MATCH ✓";
-        verifier.match.dataset.state = "match";
-      } else if (state === "fail") {
-        verdict.verdict.textContent = "FAIL";
-        verdict.pane.dataset.verdict = "fail";
-        verdict.reason.textContent = c("Results did not match. No certificate was issued.", "Sonuçlar eşleşmedi. Certificate oluşturulmadı.");
-        verifier.match.textContent = "MISMATCH ×";
-        verifier.match.dataset.state = "fail";
-      } else if (state === "unknown") {
-        verdict.verdict.textContent = "UNKNOWN";
-        verdict.pane.dataset.verdict = "unknown";
-        verdict.reason.textContent = c("FLOP could not record a decision.", "FLOP karar kaydedemedi.");
-      }
-    }
-    if (step === "certificate" && state === "done") certificate.card.dataset.state = "issued";
+  function say(en, tr) {
+    eventStrip.text.textContent = copy(en, tr);
   }
 
-  function setState(step, state, summary) {
+  function setRealState(step, state) {
     states.set(step, state);
-    setProgress(step, state);
-    syncPaneState(step, state);
-    if (summary) summaries.set(step, summary);
-    const index = STEPS.indexOf(step);
     shell.dataset.phase = step;
-    shell.style.setProperty("--ceremony-phase", String(index));
+    shell.dataset.realState = state;
+  }
+
+  async function reveal(node, from = "translateY(18px) scale(.96)") {
+    node.dataset.state = "visible";
+    await animate(node, [{ opacity: 0, transform: from }, { opacity: 1, transform: "translate(0,0) scale(1)" }], { duration: 430, easing: "cubic-bezier(.2,.9,.2,1)" }, reduced);
+  }
+
+  async function pulse(node, scale = 1.05) {
+    await animate(node, [{ transform: "scale(1)" }, { transform: `scale(${scale})` }, { transform: "scale(1)" }], { duration: 430, easing: "cubic-bezier(.2,.8,.2,1)" }, reduced);
+  }
+
+  async function travel(from, to, label, tone = "violet") {
+    const stageRect = stage.getBoundingClientRect();
+    const fromRect = from.getBoundingClientRect();
+    const toRect = to.getBoundingClientRect();
+    const packet = el("div", `ceremony-travel-packet ceremony-travel-${tone}`, label);
+    stage.appendChild(packet);
+    const startX = fromRect.left + fromRect.width / 2 - stageRect.left;
+    const startY = fromRect.top + fromRect.height / 2 - stageRect.top;
+    const endX = toRect.left + toRect.width / 2 - stageRect.left;
+    const endY = toRect.top + toRect.height / 2 - stageRect.top;
+    packet.style.left = `${startX}px`;
+    packet.style.top = `${startY}px`;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    await animate(packet, [
+      { opacity: 0, transform: "translate(-50%,-50%) scale(.7)" },
+      { opacity: 1, offset: .14, transform: `translate(calc(-50% + ${dx * .08}px), calc(-50% + ${dy * .02 - 22}px)) scale(1)` },
+      { opacity: 1, offset: .72, transform: `translate(calc(-50% + ${dx * .78}px), calc(-50% + ${dy * .82 - 14}px)) scale(1)` },
+      { opacity: 0, transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.65)` },
+    ], { duration: 620, easing: "cubic-bezier(.25,.72,.25,1)" }, reduced);
+    packet.remove();
+  }
+
+  async function animateChallenge() {
+    await reveal(challenge.node, "translateX(-28px) scale(.96)");
+    for (const item of challenge.parts.values()) {
+      item.part.dataset.state = "ready";
+      await animate(item.part, [{ opacity: 0, transform: "translateX(-10px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 180, easing: "ease-out" }, reduced);
+    }
+    await pulse(challenge.node, 1.018);
+  }
+
+  async function animateExecution() {
+    module.module.dataset.state = "active";
+    say("Fresh input is entering the installed capability.", "Fresh girdi yüklü capability içine giriyor.");
+    for (const item of challenge.parts.values()) {
+      if (item.part.dataset.state !== "hidden") await travel(item.part, agent.actor, item.title.textContent, "violet");
+    }
+    for (const row of module.rows) {
+      row.dataset.state = "done";
+      row.querySelector(".ceremony-check-mark").textContent = "✓";
+      await animate(row, [{ opacity: .35, transform: "translateX(-5px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 210, easing: "ease-out" }, reduced);
+    }
+    module.state.textContent = copy("EXECUTED", "ÇALIŞTI");
+    await pulse(agent.actor, 1.035);
+  }
+
+  async function animateResult() {
+    result.node.dataset.state = "visible";
+    await travel(agent.actor, result.node, copy("RESULT", "SONUÇ"), "violet");
+    await reveal(result.node, "translateY(20px) scale(.9)");
+  }
+
+  async function animateSign() {
+    didSeal.seal.dataset.state = "visible";
+    await reveal(didSeal.seal, "translateY(-34px) scale(.72)");
+    await travel(agent.actor, didSeal.seal, "DID", "violet");
+    await animate(didSeal.seal, [
+      { transform: "translateY(-10px) scale(1.08) rotate(-4deg)" },
+      { transform: "translateY(26px) scale(.96) rotate(2deg)" },
+      { transform: "translateY(0) scale(1) rotate(0)" },
+    ], { duration: 520, easing: "cubic-bezier(.18,.86,.25,1)" }, reduced);
+    result.node.dataset.signed = "true";
+    await pulse(result.node, 1.025);
+  }
+
+  async function animateVerification() {
+    verifier.actor.dataset.state = "active";
+    verifierPanel.panel.dataset.state = "visible";
+    await reveal(verifierPanel.panel, "translateY(12px) scale(.96)");
+    say("Signed agent output is moving to FLOP's independent verifier.", "İmzalı ajan çıktısı FLOP'un bağımsız verifier'ına gidiyor.");
+    await travel(result.node, verifier.actor, copy("SIGNED RESULT", "İMZALI SONUÇ"), "blue");
+    await pulse(verifier.actor, 1.045);
+    verifier.actor.dataset.state = "done";
+  }
+
+  async function animateVerdict(state) {
+    if (state === "done") {
+      verifierPanel.lock.textContent = "MATCH ✓";
+      verifierPanel.lock.dataset.state = "match";
+      await animate(verifierPanel.lock, [{ transform: "scale(.85)", opacity: .4 }, { transform: "scale(1.08)", opacity: 1 }, { transform: "scale(1)", opacity: 1 }], { duration: 520, easing: "cubic-bezier(.2,.9,.2,1)" }, reduced);
+      pass.dataset.state = "visible";
+      await reveal(pass, "scale(.72)");
+      await animate(pass, [{ transform: "scale(.92)", opacity: .5 }, { transform: "scale(1.06)", opacity: 1 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.15,.9,.2,1)" }, reduced);
+    } else if (state === "fail") {
+      verifierPanel.lock.textContent = "MISMATCH ×";
+      verifierPanel.lock.dataset.state = "fail";
+      pass.dataset.state = "fail";
+      pass.replaceChildren(el("span", "ceremony-pass-small", copy("RESULTS DO NOT MATCH", "SONUÇLAR EŞLEŞMEDİ")), el("strong", "", "FAIL"));
+      await reveal(pass, "scale(.8)");
+    } else {
+      verifierPanel.lock.textContent = "UNKNOWN";
+      verifierPanel.lock.dataset.state = "unknown";
+    }
+  }
+
+  async function animateCertificate() {
+    say("PASS is now being sealed into an individual capability certificate.", "PASS şimdi capability'ye özel certificate içine mühürleniyor.");
+    const sources = [challenge.node, result.node, didSeal.seal, verifier.actor];
+    const labels = ["CHALLENGE", "RESULT", "DID", "VERIFIER"];
+    certificate.node.dataset.state = "forming";
+    for (let i = 0; i < sources.length; i += 1) await travel(sources[i], certificate.node, labels[i], i === 3 ? "blue" : "gold");
+    certificate.node.dataset.state = "visible";
+    await reveal(certificate.node, "translateX(30px) scale(.82) rotateY(-7deg)");
+    proofDock.dataset.state = "visible";
+    await reveal(proofDock, "translateY(18px)");
   }
 
   function reset() {
-    mode = "live";
-    shell.dataset.mode = "live";
-    badge.lastElementChild.textContent = c("VERIFICATION LIVE", "CANLI DOĞRULAMA");
+    container.hidden = false;
+    shell.classList.remove("ceremony-hidden-until-run");
+    shell.dataset.phase = "idle";
+    shell.dataset.realState = "pending";
     states.clear();
     STEPS.forEach((step) => states.set(step, "pending"));
-    summaries.clear();
-    progress.items.forEach((_, step) => setProgress(step, "pending"));
-    nodeMap.forEach((pane) => { pane.dataset.state = "pending"; delete pane.dataset.verdict; });
-    agent.checkRows.forEach((row) => { row.dataset.state = "pending"; row.querySelector(".ceremony-check-dot").textContent = "·"; });
-    challenge.idValue.textContent = "—";
-    challenge.hashValue.textContent = "—";
-    challenge.artifacts.forEach((artifact) => artifact.value.textContent = c("waiting for fresh input", "fresh input bekleniyor"));
-    output.code.textContent = c("Waiting for capability execution…", "Capability çalışması bekleniyor…");
-    output.hashValue.textContent = "—";
-    seal.did.textContent = "—";
-    seal.signature.textContent = c("signature pending", "imza bekleniyor");
-    verifier.verifier.textContent = "verifier · —";
-    verifier.agentResult.textContent = "—";
-    verifier.flopResult.textContent = "—";
-    verifier.match.textContent = c("WAITING", "BEKLİYOR");
-    delete verifier.match.dataset.state;
-    verdict.verdict.textContent = "—";
-    verdict.reason.textContent = c("No decision recorded yet.", "Henüz karar kaydedilmedi.");
-    certificate.did.textContent = "—";
-    certificate.cert.textContent = "—";
-    certificate.receipt.textContent = "—";
-    delete certificate.card.dataset.state;
-    Object.values(bottom.proof).forEach((item) => { item.item.dataset.state = "pending"; item.code.textContent = "—"; });
+    challenge.node.dataset.state = "hidden";
+    challenge.id.textContent = "ID  —";
+    challenge.hash.textContent = "SHA256  —";
+    challenge.parts.forEach((item) => {
+      item.part.dataset.state = "hidden";
+      item.value.textContent = "—";
+      item.value.title = "";
+    });
+    module.module.dataset.state = "installed";
+    module.state.textContent = copy("INSTALLED", "YÜKLÜ");
+    module.rows.forEach((row) => {
+      row.dataset.state = "pending";
+      row.querySelector(".ceremony-check-mark").textContent = "·";
+    });
+    result.node.dataset.state = "hidden";
+    delete result.node.dataset.signed;
+    result.data.textContent = "—";
+    result.hash.textContent = "result hash  —";
+    didSeal.seal.dataset.state = "hidden";
+    didSeal.detail.textContent = "—";
+    verifier.actor.dataset.state = "idle";
+    verifierPanel.panel.dataset.state = "hidden";
+    verifierPanel.id.textContent = "verifier  —";
+    verifierPanel.agent.textContent = "—";
+    verifierPanel.flop.textContent = "—";
+    verifierPanel.lock.textContent = copy("WAITING", "BEKLİYOR");
+    delete verifierPanel.lock.dataset.state;
+    certificate.node.dataset.state = "hidden";
+    certificate.did.textContent = "DID  —";
+    certificate.receipt.textContent = "RECEIPT  —";
+    certificate.cert.textContent = "CERTIFICATE  —";
+    pass.dataset.state = "hidden";
+    pass.replaceChildren(el("span", "ceremony-pass-small", copy("RESULTS MATCH", "SONUÇLAR EŞLEŞTİ")), el("strong", "", "PASS"));
+    proofDock.dataset.state = "hidden";
+    currentResult = null;
+    decision = {};
+    say("Verification started. Waiting for the first real event.", "Doğrulama başladı. İlk gerçek event bekleniyor.");
+  }
+
+  function begin(step) {
+    setRealState(step, "active");
+    const labels = STEP_LABELS[step];
+    if (labels) say(`${labels[0]}…`, `${labels[1]}…`);
+    if (step === "execute") agent.actor.dataset.state = "active";
+    if (step === "verify") verifier.actor.dataset.state = "active";
+  }
+
+  function complete(step, summary) {
+    setRealState(step, "done");
+    const summaryText = summary ? (isTr() ? summary.tr : summary.en) : "";
+    const labels = STEP_LABELS[step];
+    say(summaryText || labels?.[0] || step, summaryText || labels?.[1] || step);
+    if (step === "challenge") queue(animateChallenge);
+    if (step === "execute") queue(animateExecution);
+    if (step === "result") queue(animateResult);
+    if (step === "sign") queue(animateSign);
+    if (step === "verify") queue(animateVerification);
+    if (step === "verdict") queue(() => animateVerdict("done"));
+    if (step === "certificate") queue(animateCertificate);
+  }
+
+  function fail(step, summary) {
+    setRealState(step, "fail");
+    const text = summary ? (isTr() ? summary.tr : summary.en) : copy("Verification failed", "Doğrulama başarısız");
+    say(text, text);
+    if (step === "verdict") queue(() => animateVerdict("fail"));
+  }
+
+  function unknown(step, summary) {
+    setRealState(step, "unknown");
+    const text = summary ? (isTr() ? summary.tr : summary.en) : "UNKNOWN";
+    say(text, text);
+    if (step === "verdict") queue(() => animateVerdict("unknown"));
   }
 
   function setChallenge(caseData, meta = {}) {
-    challenge.idValue.textContent = short(meta.challengeId ?? meta.challenge_id ?? "—", 30);
-    challenge.idValue.title = meta.challengeId ?? meta.challenge_id ?? "";
-    challenge.hashValue.textContent = short(meta.challengeHash ?? meta.challenge_hash ?? "—", 31);
-    challenge.hashValue.title = meta.challengeHash ?? meta.challenge_hash ?? "";
-    challenge.artifacts.forEach((artifact, key) => {
-      const value = inputValue(caseData, key);
-      artifact.value.textContent = value ? short(typeof value === "object" ? pretty(value, 140).replace(/\s+/g, " ") : value, 38) : c("present in challenge", "challenge içinde mevcut");
-      artifact.value.title = typeof value === "object" ? pretty(value, 800) : String(value ?? "");
-      artifact.tile.dataset.state = "ready";
+    if (meta.challengeId ?? meta.challenge_id) challenge.id.textContent = `ID  ${short(meta.challengeId ?? meta.challenge_id, 30)}`;
+    if (meta.challengeHash ?? meta.challenge_hash) challenge.hash.textContent = `SHA256  ${short(meta.challengeHash ?? meta.challenge_hash, 30)}`;
+    challenge.parts.forEach((item, key) => {
+      const value = valueFor(caseData, key);
+      const display = value && typeof value === "object" ? pretty(value, 180).replace(/\s+/g, " ") : String(value || copy("present", "mevcut"));
+      item.value.textContent = short(display, 30);
+      item.value.title = display;
     });
   }
 
-  function setResult(result) {
-    output.code.textContent = pretty(result, 560);
-    const resultText = pretty(result, 4000);
-    verifier.agentResult.textContent = short(resultText.replace(/\s+/g, " "), 22);
+  function setResult(value) {
+    currentResult = value;
+    result.data.textContent = pretty(value, 440);
+    verifierPanel.agent.textContent = short(pretty(value, 120).replace(/\s+/g, " "), 24);
   }
 
   function setResultHash(value) {
-    output.hashValue.textContent = short(value, 31);
-    output.hashValue.title = String(value ?? "");
-    verifier.agentResult.textContent = short(value, 22);
+    if (!value) return;
+    result.hash.textContent = `result hash  ${short(value, 28)}`;
+    result.hash.title = String(value);
+    verifierPanel.agent.textContent = short(value, 24);
   }
 
   function setIdentity(did) {
-    agent.did.textContent = `DID · ${short(did, 44)}`;
-    agent.did.title = did;
-    seal.did.textContent = short(did, 24);
-    seal.did.title = did;
-    certificate.did.textContent = short(did, 27);
+    if (!did) return;
+    didSeal.detail.textContent = short(did, 25);
+    didSeal.detail.title = did;
+    certificate.did.textContent = `DID  ${short(did, 25)}`;
     certificate.did.title = did;
   }
 
   function setSignature(signature) {
-    seal.signature.textContent = short(signature, 24);
-    seal.signature.title = signature;
+    if (!signature) return;
+    didSeal.detail.textContent = `${copy("signed", "imzalı")}  ${short(signature, 19)}`;
+    didSeal.detail.title = signature;
   }
 
   function setVerifier(id, version) {
+    if (!id) return;
     const value = version ? `${id} @ ${version}` : id;
-    verifier.verifier.textContent = short(value, 35);
-    verifier.verifier.title = value;
+    verifierPanel.id.textContent = short(value, 35);
+    verifierPanel.id.title = value;
   }
 
-  function setDecision(decision = {}) {
-    if (decision.receipt_id) {
-      certificate.receipt.textContent = short(decision.receipt_id, 27);
-      certificate.receipt.title = decision.receipt_id;
-      bottom.proof.receipt.item.dataset.state = "ready";
-      bottom.proof.receipt.code.textContent = short(decision.receipt_id, 28);
+  function setDecision(next = {}) {
+    decision = { ...decision, ...next };
+    if (next.result_hash) setResultHash(next.result_hash);
+    if (next.verifier_id) setVerifier(next.verifier_id, next.verifier_version);
+    if (next.receipt_id) {
+      certificate.receipt.textContent = `RECEIPT  ${short(next.receipt_id, 24)}`;
+      certificate.receipt.title = next.receipt_id;
     }
-    if (decision.certificate_id) {
-      certificate.cert.textContent = short(decision.certificate_id, 27);
-      certificate.cert.title = decision.certificate_id;
-      bottom.proof.certificate.item.dataset.state = "ready";
-      bottom.proof.certificate.code.textContent = short(decision.certificate_id, 28);
-      bottom.proof.publicProof.item.dataset.state = "ready";
-      bottom.proof.publicProof.code.textContent = `/certificate/${short(decision.certificate_id, 19)}`;
-      bottom.proof.profile.item.dataset.state = "ready";
-      bottom.proof.profile.code.textContent = c("profile updated", "profil güncellendi");
+    if (next.certificate_id) {
+      certificate.cert.textContent = `CERTIFICATE  ${short(next.certificate_id, 22)}`;
+      certificate.cert.title = next.certificate_id;
     }
-    if (decision.result_hash) setResultHash(decision.result_hash);
-    if (decision.verifier_id) setVerifier(decision.verifier_id, decision.verifier_version);
-    if (decision.verdict === "PASS") {
-      verifier.flopResult.textContent = output.hashValue.textContent !== "—" ? output.hashValue.textContent : c("expected result", "beklenen sonuç");
+    if (next.verdict === "PASS") {
+      verifierPanel.flop.textContent = next.result_hash ? short(next.result_hash, 24) : (result.hash.textContent.replace("result hash  ", "") || copy("expected result", "beklenen sonuç"));
     }
-  }
-
-  function setReceiptProof(receipt = {}) {
-    if (receipt.result_hash) setResultHash(receipt.result_hash);
-    if (receipt.verifier_id) setVerifier(receipt.verifier_id, receipt.verifier_version);
-    if (receipt.receipt_id) setDecision({ receipt_id: receipt.receipt_id });
-    if (receipt.verdict === "PASS") verifier.flopResult.textContent = short(receipt.result_hash ?? "expected result", 22);
   }
 
   function completeProof(proof = {}) {
-    mode = "proof";
-    shell.dataset.mode = "proof";
-    badge.lastElementChild.textContent = c("VERIFIED", "DOĞRULANDI");
-    STEPS.forEach((step) => setState(step, "done"));
-    if (proof.challengeHash) {
-      challenge.hashValue.textContent = short(proof.challengeHash, 31);
-      challenge.hashValue.title = proof.challengeHash;
-    }
-    if (proof.trial) {
-      const artifact = challenge.artifacts.values().next().value;
-      if (artifact) artifact.value.textContent = short(proof.trial, 38);
-    }
     if (proof.did) setIdentity(proof.did);
-    if (proof.receipt) setReceiptProof(proof.receipt);
-    if (proof.certificate) {
-      setDecision({ certificate_id: proof.certificate.certificate_id, receipt_id: proof.certificate.receipt_id });
+    if (proof.receipt) {
+      setDecision({
+        verdict: proof.receipt.verdict,
+        receipt_id: proof.receipt.receipt_id,
+        result_hash: proof.receipt.result_hash,
+        verifier_id: proof.receipt.verifier_id,
+        verifier_version: proof.receipt.verifier_version,
+      });
     }
-    if (proof.attestation) seal.signature.textContent = proof.attestation;
+    if (proof.certificate) setDecision({ certificate_id: proof.certificate.certificate_id });
   }
 
   function localize() {
-    breadcrumb.textContent = c("MY AGENT  /  CAPABILITIES  /  VERIFICATION", "AJANIM  /  CAPABILITY  /  DOĞRULAMA");
-    subtitle.textContent = c("A fresh challenge proves what this installed capability can actually do.", "Fresh challenge, yüklü capability'nin gerçekten ne yapabildiğini kanıtlar.");
-    badge.lastElementChild.textContent = mode === "proof" ? c("VERIFIED", "DOĞRULANDI") : c("VERIFICATION LIVE", "CANLI DOĞRULAMA");
-    progress.items.forEach((item, step) => {
-      item.title.textContent = c(STEP_COPY[step][0], STEP_COPY[step][1]);
-      setProgress(step, states.get(step) ?? "pending");
-    });
+    module.state.textContent = states.get("execute") === "done" ? copy("EXECUTED", "ÇALIŞTI") : copy("INSTALLED", "YÜKLÜ");
   }
 
   return {
     reset,
-    begin(step) { setState(step, "active"); },
-    complete(step, summary) { setState(step, "done", summary); },
-    fail(step, summary) { setState(step, "fail", summary); },
-    unknown(step, summary) { setState(step, "unknown", summary); },
+    begin,
+    complete,
+    fail,
+    unknown,
     setChallenge,
     setResult,
     setResultHash,
@@ -699,11 +677,15 @@ export function createVerificationCeremony(container, config) {
     setSignature,
     setVerifier,
     setDecision,
-    setReceiptProof,
     completeProof,
     localize,
-    showCertificate() { certificate.pane.hidden = false; },
-    destroy() { disposed = true; cancelAnimationFrame(frame); },
+    showCertificate() {},
+    destroy() {
+      disposed = true;
+      cancelAnimationFrame(frameId);
+    },
     get capabilityId() { return capabilityId; },
+    get result() { return currentResult; },
+    get decision() { return decision; },
   };
 }
