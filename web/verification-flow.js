@@ -5,33 +5,17 @@ if (!document.getElementById(ceremonyStyleId)) {
   const link = document.createElement("link");
   link.id = ceremonyStyleId;
   link.rel = "stylesheet";
-  link.href = "/verification-ceremony.css?v=ceremony-v1";
+  link.href = "/verification-ceremony-live.css?v=ceremony-live-v2";
   document.head.appendChild(link);
 }
 
 /**
  * Shared production verification controller.
  *
- * VERIFICATION RUN / DOĞRULAMA AKIŞI
- *
- * The controller preserves the real-operation contract used by the product:
+ * It never starts itself. agent.js calls reset only after the user explicitly
+ * starts a certification test, then advances these states from real operations:
  * challenge -> execute -> result -> sign -> verify -> verdict -> certificate.
- * It does not advance itself. Every state transition is called by agent.js
- * only when the represented operation actually starts or resolves.
  */
-const STEP_IDS = ["challenge", "execute", "result", "sign", "verify", "verdict", "certificate"];
-const STEP_TITLES = [
-  ["Fresh challenge created", "Fresh challenge oluşturuldu"],
-  ["Capability executed", "Capability çalıştı"],
-  ["Output produced", "Output üretildi"],
-  ["Signed with agent DID", "Ajan DID'i ile imzalandı"],
-  ["FLOP verified independently", "FLOP bağımsız doğruladı"],
-  ["Verifier decision", "Verifier kararı"],
-  ["Certificate issued", "Certificate oluşturuldu"],
-];
-void STEP_IDS;
-void STEP_TITLES;
-
 export function createVerificationFlow(container, config = {}) {
   const inferredNumber = Number(container?.id?.match(/capability-(\d+)-flow/)?.[1] ?? config.number ?? 4);
   const card = container?.closest?.(".capability-card");
@@ -46,12 +30,17 @@ export function createVerificationFlow(container, config = {}) {
 
   return {
     localize() { ceremony.localize(); },
+
     reset() {
+      container.dataset.verificationRunning = "true";
       ceremony.reset();
       const did = document.getElementById("did")?.textContent?.trim();
       if (did) ceremony.setIdentity(did);
+      requestAnimationFrame(() => container.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
+
     begin(stepId) { ceremony.begin(stepId); },
+
     complete(stepId, summaryCopy) {
       ceremony.complete(stepId, summaryCopy);
       if (stepId === "result" && summaryCopy) {
@@ -62,9 +51,10 @@ export function createVerificationFlow(container, config = {}) {
         if (did) ceremony.setIdentity(did);
       }
     },
+
     unknown(stepId, summaryCopy) { ceremony.unknown(stepId, summaryCopy); },
     fail(stepId, summaryCopy) { ceremony.fail(stepId, summaryCopy); },
-    showCertificateStep() { ceremony.showCertificate(); },
+    showCertificateStep() {},
 
     setChallenge(caseData, meta) { ceremony.setChallenge(caseData, meta); },
     setResult(result) { ceremony.setResult(result); },
