@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>FLOP Capability Lab</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=premium-proof-v2">
 </head>
 <body>
   <main>
@@ -118,170 +118,47 @@
       </div>
 
       <article class="capability-card">
-        <div class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">01</span>
-            <div>
-              <strong>Ed25519 Signature Verification</strong>
-              <span class="mono trial-capability">cryptography.signature-verification</span>
-            </div>
-          </div>
-          <div class="trial-action"><span id="capability-1-status" class="trial-status">Available</span></div>
-        </div>
-        <p id="capability-1-purpose" class="capability-purpose"></p>
-        <p id="capability-1-description" class="muted"></p>
-        <div class="actions compact">
-          <button id="acquire-capability-1" type="button">Get capability</button>
-          <button id="practice-capability-1" class="secondary" type="button" hidden>Practice</button>
-          <button id="verify-capability-1" type="button" hidden>Take certification test</button>
-        </div>
-        <p id="practice-result" class="operation"></p>
-        <section id="capability-1-flow" class="verification-flow" hidden></section>
-        <a id="capability-1-certificate" class="receipt" hidden>Open Capability 1 certificate</a>
-        <details id="capability-1-use" class="technical-details" hidden>
-          <summary>Use this capability inside FLOP</summary>
-          <section class="checks">
-            <label for="use-message" data-i18n="use_message_label">Message</label>
-            <textarea id="use-message" spellcheck="false" placeholder="Message signed by the Ed25519 key"></textarea>
-            <label for="use-public-key">Ed25519 public key · base64url</label>
-            <textarea id="use-public-key" class="mono" spellcheck="false"></textarea>
-            <label for="use-signature">Ed25519 signature · base64url</label>
-            <textarea id="use-signature" class="mono" spellcheck="false"></textarea>
-            <button id="use-capability-1-run" type="button" data-i18n="verify_signature_button">Verify signature</button>
-            <pre id="use-capability-1-result" class="mono"></pre>
-          </section>
-        </details>
+        <div class="trial-row"><div class="trial-copy"><span class="trial-number">01</span><div><strong>Ed25519 Signature Verification</strong><span class="mono trial-capability">cryptography.signature-verification</span></div></div><div class="trial-action"><span id="capability-1-status" class="trial-status">Available</span></div></div>
+        <p id="capability-1-purpose" class="capability-purpose"></p><p id="capability-1-description" class="muted"></p>
+        <div class="actions compact"><button id="acquire-capability-1" type="button">Get capability</button><button id="practice-capability-1" class="secondary" type="button" hidden>Practice</button><button id="verify-capability-1" type="button" hidden>Take certification test</button></div>
+        <p id="practice-result" class="operation"></p><section id="capability-1-flow" class="verification-flow" hidden></section><a id="capability-1-certificate" class="receipt" hidden>Open Capability 1 certificate</a>
+        <details id="capability-1-use" class="technical-details" hidden><summary>Use this capability inside FLOP</summary><section class="checks"><label for="use-message" data-i18n="use_message_label">Message</label><textarea id="use-message" spellcheck="false" placeholder="Message signed by the Ed25519 key"></textarea><label for="use-public-key">Ed25519 public key · base64url</label><textarea id="use-public-key" class="mono" spellcheck="false"></textarea><label for="use-signature">Ed25519 signature · base64url</label><textarea id="use-signature" class="mono" spellcheck="false"></textarea><button id="use-capability-1-run" type="button" data-i18n="verify_signature_button">Verify signature</button><pre id="use-capability-1-result" class="mono"></pre></section></details>
       </article>
 
       <article class="capability-card">
-        <div class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">02</span>
-            <div>
-              <strong>Canonical JSON + SHA256</strong>
-              <span class="mono trial-capability">data.canonical-json-sha256</span>
-            </div>
-          </div>
-          <div class="trial-action"><span id="capability-2-status" class="trial-status">Locked</span></div>
-        </div>
-        <p id="capability-2-purpose" class="capability-purpose"></p>
-        <p id="capability-2-description" class="muted"></p>
-        <div class="actions compact">
-          <button id="acquire-capability-2" type="button" hidden>Get capability</button>
-          <button id="practice-capability-2" class="secondary" type="button" hidden>Practice</button>
-          <button id="verify-capability-2" type="button" hidden>Take certification test</button>
-        </div>
-        <p id="practice-result-2" class="operation"></p>
-        <section id="capability-2-flow" class="verification-flow" hidden></section>
-        <a id="capability-2-certificate" class="receipt" hidden>Open Capability 2 certificate</a>
-        <details id="capability-2-use" class="technical-details" hidden>
-          <summary>Use this capability inside FLOP</summary>
-          <section class="checks">
-            <label for="use-json-2">JSON</label>
-            <textarea id="use-json-2" class="mono" spellcheck="false" placeholder='{"b":2,"a":1}'></textarea>
-            <button id="use-capability-2-run" type="button">Canonicalize + SHA256</button>
-            <pre id="use-capability-2-result" class="mono"></pre>
-          </section>
-        </details>
+        <div class="trial-row"><div class="trial-copy"><span class="trial-number">02</span><div><strong>Canonical JSON + SHA256</strong><span class="mono trial-capability">data.canonical-json-sha256</span></div></div><div class="trial-action"><span id="capability-2-status" class="trial-status">Locked</span></div></div>
+        <p id="capability-2-purpose" class="capability-purpose"></p><p id="capability-2-description" class="muted"></p>
+        <div class="actions compact"><button id="acquire-capability-2" type="button" hidden>Get capability</button><button id="practice-capability-2" class="secondary" type="button" hidden>Practice</button><button id="verify-capability-2" type="button" hidden>Take certification test</button></div>
+        <p id="practice-result-2" class="operation"></p><section id="capability-2-flow" class="verification-flow" hidden></section><a id="capability-2-certificate" class="receipt" hidden>Open Capability 2 certificate</a>
+        <details id="capability-2-use" class="technical-details" hidden><summary>Use this capability inside FLOP</summary><section class="checks"><label for="use-json-2">JSON</label><textarea id="use-json-2" class="mono" spellcheck="false" placeholder='{"b":2,"a":1}'></textarea><button id="use-capability-2-run" type="button">Canonicalize + SHA256</button><pre id="use-capability-2-result" class="mono"></pre></section></details>
       </article>
 
       <article class="capability-card">
-        <div class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">03</span>
-            <div>
-              <strong>Technocore Canonical Message</strong>
-              <span class="mono trial-capability">protocol.technocore-canonical-message</span>
-            </div>
-          </div>
-          <div class="trial-action"><span id="capability-3-status" class="trial-status">Locked</span></div>
-        </div>
-        <p id="capability-3-purpose" class="capability-purpose"></p>
-        <p id="capability-3-description" class="muted"></p>
-        <div class="actions compact">
-          <button id="acquire-capability-3" type="button" hidden>Get capability</button>
-          <button id="practice-capability-3" class="secondary" type="button" hidden>Practice</button>
-          <button id="verify-capability-3" type="button" hidden>Take certification test</button>
-        </div>
-        <p id="practice-result-3" class="operation"></p>
-        <section id="capability-3-flow" class="verification-flow" hidden></section>
-        <a id="capability-3-certificate" class="receipt" hidden>Open Capability 3 certificate</a>
-        <details id="capability-3-use" class="technical-details" hidden>
-          <summary>Use this capability inside FLOP</summary>
-          <section class="checks">
-            <label for="use-room" data-i18n="use_room_label">Room</label>
-            <input id="use-room" class="mono" spellcheck="false" value="flop-room">
-            <label for="use-nonce" data-i18n="use_nonce_label">Nonce</label>
-            <input id="use-nonce" class="mono" spellcheck="false" value="1700000000000">
-            <label for="use-text" data-i18n="use_text_label">Message text</label>
-            <textarea id="use-text" spellcheck="false">  hello   technocore  </textarea>
-            <button id="use-capability-3-run" type="button" data-i18n="build_message_button">Build canonical message</button>
-            <pre id="use-capability-3-result" class="mono"></pre>
-          </section>
-        </details>
+        <div class="trial-row"><div class="trial-copy"><span class="trial-number">03</span><div><strong>Technocore Canonical Message</strong><span class="mono trial-capability">protocol.technocore-canonical-message</span></div></div><div class="trial-action"><span id="capability-3-status" class="trial-status">Locked</span></div></div>
+        <p id="capability-3-purpose" class="capability-purpose"></p><p id="capability-3-description" class="muted"></p>
+        <div class="actions compact"><button id="acquire-capability-3" type="button" hidden>Get capability</button><button id="practice-capability-3" class="secondary" type="button" hidden>Practice</button><button id="verify-capability-3" type="button" hidden>Take certification test</button></div>
+        <p id="practice-result-3" class="operation"></p><section id="capability-3-flow" class="verification-flow" hidden></section><a id="capability-3-certificate" class="receipt" hidden>Open Capability 3 certificate</a>
+        <details id="capability-3-use" class="technical-details" hidden><summary>Use this capability inside FLOP</summary><section class="checks"><label for="use-room" data-i18n="use_room_label">Room</label><input id="use-room" class="mono" spellcheck="false" value="flop-room"><label for="use-nonce" data-i18n="use_nonce_label">Nonce</label><input id="use-nonce" class="mono" spellcheck="false" value="1700000000000"><label for="use-text" data-i18n="use_text_label">Message text</label><textarea id="use-text" spellcheck="false">  hello   technocore  </textarea><button id="use-capability-3-run" type="button" data-i18n="build_message_button">Build canonical message</button><pre id="use-capability-3-result" class="mono"></pre></section></details>
       </article>
 
       <article class="capability-card">
-        <div class="trial-row">
-          <div class="trial-copy">
-            <span class="trial-number">04</span>
-            <div>
-              <strong>Signed Receipt Verification</strong>
-              <span class="mono trial-capability">evidence.signed-receipt-verification</span>
-            </div>
-          </div>
-          <div class="trial-action"><span id="capability-4-status" class="trial-status">Locked</span></div>
-        </div>
-        <p id="capability-4-purpose" class="capability-purpose"></p>
-        <p id="capability-4-description" class="muted"></p>
-        <div class="actions compact">
-          <button id="acquire-capability-4" type="button" hidden>Get capability</button>
-          <button id="practice-capability-4" class="secondary" type="button" hidden>Practice</button>
-          <button id="verify-capability-4" type="button" hidden>Take certification test</button>
-        </div>
-        <p id="practice-result-4" class="operation"></p>
-        <section id="capability-4-flow" class="verification-flow" hidden></section>
-        <a id="capability-4-certificate" class="receipt" hidden>Open Capability 4 certificate</a>
-        <details id="capability-4-use" class="technical-details" hidden>
-          <summary>Use this capability inside FLOP</summary>
-          <section class="checks">
-            <label for="use-receipt" data-i18n="use_receipt_label">Signed receipt JSON</label>
-            <textarea id="use-receipt" class="mono" spellcheck="false"></textarea>
-            <label for="use-server-keys" data-i18n="use_server_keys_label">Server public keys JSON</label>
-            <textarea id="use-server-keys" class="mono" spellcheck="false"></textarea>
-            <button id="use-capability-4-run" type="button" data-i18n="check_receipt_button">Check receipt</button>
-            <pre id="use-capability-4-result" class="mono"></pre>
-          </section>
-        </details>
+        <div class="trial-row"><div class="trial-copy"><span class="trial-number">04</span><div><strong>Signed Receipt Verification</strong><span class="mono trial-capability">evidence.signed-receipt-verification</span></div></div><div class="trial-action"><span id="capability-4-status" class="trial-status">Locked</span></div></div>
+        <p id="capability-4-purpose" class="capability-purpose"></p><p id="capability-4-description" class="muted"></p>
+        <div class="actions compact"><button id="acquire-capability-4" type="button" hidden>Get capability</button><button id="practice-capability-4" class="secondary" type="button" hidden>Practice</button><button id="verify-capability-4" type="button" hidden>Take certification test</button></div>
+        <p id="practice-result-4" class="operation"></p><section id="capability-4-flow" class="verification-flow" hidden></section><a id="capability-4-certificate" class="receipt" hidden>Open Capability 4 certificate</a>
+        <details id="capability-4-use" class="technical-details" hidden><summary>Use this capability inside FLOP</summary><section class="checks"><label for="use-receipt" data-i18n="use_receipt_label">Signed receipt JSON</label><textarea id="use-receipt" class="mono" spellcheck="false"></textarea><label for="use-server-keys" data-i18n="use_server_keys_label">Server public keys JSON</label><textarea id="use-server-keys" class="mono" spellcheck="false"></textarea><button id="use-capability-4-run" type="button" data-i18n="check_receipt_button">Check receipt</button><pre id="use-capability-4-result" class="mono"></pre></section></details>
       </article>
 
-      <div class="actions compact identity-disconnect-row">
-        <button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button>
-      </div>
+      <div class="actions compact identity-disconnect-row"><button id="reset-identity" class="secondary" data-i18n="disconnect">Disconnect local identity</button></div>
     </section>
 
-    <section id="evidence-panel" class="panel" hidden>
-      <div class="label" data-i18n="capability_certificates">Capability certificates</div>
-      <div id="evidence-status" class="status">No certificates yet.</div>
-      <div id="capabilities"></div>
-    </section>
+    <section id="evidence-panel" class="panel" hidden><div class="label" data-i18n="capability_certificates">Capability certificates</div><div id="evidence-status" class="status">No certificates yet.</div><div id="capabilities"></div></section>
 
-    <details id="technical-details" class="technical-details" hidden>
-      <summary data-i18n="technical_details">Technical details</summary>
-      <section class="checks">
-        <div><span data-i18n="identity_mode">Identity mode</span> <strong id="identity-mode">none</strong></div>
-        <div><span data-i18n="active_key">Active browser key</span> <strong id="extractable-check">n/a</strong></div>
-        <div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div>
-        <div><span data-i18n="network_transfer">Seed/private key sent to server</span> <strong data-i18n="never">never</strong></div>
-        <div id="backup-download-row" hidden>
-          <button id="download-backup" class="secondary" data-i18n="download_backup">Download encrypted backup</button>
-        </div>
-      </section>
-    </details>
+    <details id="technical-details" class="technical-details" hidden><summary data-i18n="technical_details">Technical details</summary><section class="checks"><div><span data-i18n="identity_mode">Identity mode</span> <strong id="identity-mode">none</strong></div><div><span data-i18n="active_key">Active browser key</span> <strong id="extractable-check">n/a</strong></div><div><span data-i18n="encrypted_recovery">Encrypted recovery backup</span> <strong id="backup-check">n/a</strong></div><div><span data-i18n="network_transfer">Seed/private key sent to server</span> <strong data-i18n="never">never</strong></div><div id="backup-download-row" hidden><button id="download-backup" class="secondary" data-i18n="download_backup">Download encrypted backup</button></div></section></details>
 
     <p id="operation-status" class="operation"></p>
   </main>
-  <script type="module" src="/agent.js?v=capability1-4-production-v1"></script>
-  <script type="module" src="/capability-explainer.js?v=capability1-4-explainer-v1"></script>
+  <script type="module" src="/agent.js?v=premium-proof-v2"></script>
+  <script type="module" src="/capability-explainer.js?v=premium-proof-v2"></script>
 </body>
 </html>
