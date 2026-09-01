@@ -1,0 +1,79 @@
+/* Motion-safe layout overrides. Animated transforms must never own positioning. */
+@media (min-width: 1051px) {
+  .ceremony-challenge {
+    top: calc(50% - 145px);
+    transform: none;
+  }
+
+  .ceremony-agent {
+    left: calc(50% - 165px);
+    top: calc(50% - 195px);
+    transform: none;
+  }
+
+  .ceremony-verifier {
+    right: 28px;
+    top: calc(50% - 185px);
+    transform: none;
+  }
+
+  .ceremony-pass {
+    left: calc(70% - 85px);
+    top: calc(50% - 85px);
+    transform: none;
+  }
+
+  .ceremony-certificate {
+    right: 36px;
+    top: calc(50% - 165px);
+    transform: none;
+  }
+}
+
+@media (max-width: 1050px) and (min-width: 721px) {
+  .ceremony-challenge,
+  .ceremony-agent,
+  .ceremony-verifier,
+  .ceremony-pass,
+  .ceremony-certificate {
+    transform: none;
+  }
+
+  .ceremony-agent {
+    left: calc(55% - 165px);
+  }
+
+  .ceremony-verifier {
+    top: 415px;
+  }
+
+  .ceremony-pass {
+    left: calc(50% - 85px);
+    top: 610px;
+  }
+
+  .ceremony-certificate {
+    top: 415px;
+  }
+}
+
+@media (max-width: 720px) {
+  .ceremony-challenge,
+  .ceremony-agent,
+  .ceremony-result,
+  .ceremony-verifier,
+  .ceremony-certificate {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    transform: none;
+  }
+
+  .ceremony-challenge { top: 40px; }
+  .ceremony-agent { top: 340px; height: 350px; }
+  .ceremony-result { top: 690px; }
+  .ceremony-did-seal { left: calc(50% - 46px); top: 850px; transform: none; }
+  .ceremony-verifier { top: 965px; height: 290px; }
+  .ceremony-pass { left: calc(50% - 85px); top: 1090px; transform: none; }
+  .ceremony-certificate { top: 900px; }
+}
