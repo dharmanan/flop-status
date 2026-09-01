@@ -153,8 +153,8 @@ function renderCertificateList() {
     `${count} sertifika`,
   );
   byId("evidence-status").textContent = count === 0
-    ? uiText("No production certificates yet.", "Henüz üretim sertifikası yok.")
-    : uiText(`${count} production certificate${count === 1 ? "" : "s"}.`, `${count} üretim sertifikası.`);
+    ? uiText("No certificates yet.", "Henüz sertifika yok.")
+    : uiText(`${count} certificate${count === 1 ? "" : "s"}`, `${count} sertifika`);
   for (const certificate of certificates) {
     const item = document.createElement("a");
     item.className = "capability";

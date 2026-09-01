@@ -253,6 +253,7 @@ function createCertificateExplanation() {
 }
 
 const CERTIFICATE_PROOF_LABELS = {
+  "certificate-eyebrow": ["FLOP Capability Certificate", "FLOP Yetenek Sertifikası"],
   "agent-did": ["Agent DID", "Ajan DID"],
   capability: ["Capability", "Yetenek"],
   "capability-version": ["Capability version", "Yetenek sürümü"],
