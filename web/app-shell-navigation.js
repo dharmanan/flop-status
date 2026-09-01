@@ -78,6 +78,8 @@ const COPY = {
 let currentView = "capabilities";
 let secondary = null;
 let boundShell = null;
+let sourceObserver = null;
+let refreshQueued = false;
 
 function lang() { return document.documentElement.lang === "tr" ? "tr" : "en"; }
 function t(key) { return COPY[lang()][key]; }
@@ -121,7 +123,7 @@ function loadStyle() {
   const link = document.createElement("link");
   link.id = "flop-product-navigation-style";
   link.rel = "stylesheet";
-  link.href = "/app-shell-navigation.css?v=workspace-navigation-v1";
+  link.href = "/app-shell-navigation.css?v=workspace-navigation-v2";
   document.head.appendChild(link);
 }
 
@@ -142,9 +144,7 @@ function openCapability(number, replay = false) {
   showView("capabilities");
   const selector = document.querySelector(`.capability-selector-button[data-capability="${number}"]`);
   selector?.click();
-  if (replay) {
-    queueMicrotask(() => document.getElementById(`replay-capability-${number}`)?.click());
-  }
+  if (replay) queueMicrotask(() => document.getElementById(`replay-capability-${number}`)?.click());
 }
 
 function capabilityRow(number, action = "open") {
@@ -279,8 +279,7 @@ function showCapabilities(show) {
   if (!workspace) return;
   for (const selector of [".workspace-header", ".workspace-stage-label", "#active-actions"]) {
     const el = workspace.querySelector(selector);
-    if (!el) continue;
-    el.classList.toggle("shell-view-hidden", !show);
+    if (el) el.classList.toggle("shell-view-hidden", !show);
   }
 }
 
@@ -288,6 +287,12 @@ function setNavActive(view) {
   boundShell?.querySelectorAll(".product-nav-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.view === view);
   });
+}
+
+function renderSecondary() {
+  if (!secondary || currentView === "capabilities") return;
+  const next = buildView(currentView);
+  if (next) secondary.replaceChildren(next);
 }
 
 function showView(view) {
@@ -306,7 +311,7 @@ function showView(view) {
     boundShell.querySelector(".product-workspace")?.appendChild(secondary);
   }
   secondary.hidden = false;
-  secondary.replaceChildren(buildView(view));
+  renderSecondary();
 }
 
 function bindNav(shell) {
@@ -316,37 +321,77 @@ function bindNav(shell) {
     item.dataset.view = view;
     item.setAttribute("role", "button");
     item.tabIndex = 0;
-    if (item.dataset.boundNav === "true") return;
-    item.dataset.boundNav = "true";
-    item.addEventListener("click", () => showView(view));
-    item.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        showView(view);
-      }
-    });
+    if (item.dataset.boundNav !== "true") {
+      item.dataset.boundNav = "true";
+      item.addEventListener("click", () => showView(view));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          showView(view);
+        }
+      });
+    }
   });
   shell.querySelectorAll(".capability-selector-button").forEach((button) => {
-    if (button.dataset.boundWorkspaceNav === "true") return;
-    button.dataset.boundWorkspaceNav = "true";
-    button.addEventListener("click", () => showView("capabilities"));
+    if (button.dataset.boundWorkspaceNav !== "true") {
+      button.dataset.boundWorkspaceNav = "true";
+      button.addEventListener("click", () => showView("capabilities"));
+    }
   });
-  showView(currentView);
+  setNavActive(currentView);
 }
 
-function refresh() {
+function refreshFromSource() {
   const shell = document.querySelector(".product-shell");
   if (!shell) return;
   bindNav(shell);
-  if (currentView !== "capabilities" && secondary && !secondary.hidden) {
-    secondary.replaceChildren(buildView(currentView));
-  }
+  if (currentView !== "capabilities" && secondary && !secondary.hidden) renderSecondary();
+}
+
+function queueRefresh() {
+  if (refreshQueued) return;
+  refreshQueued = true;
+  queueMicrotask(() => {
+    refreshQueued = false;
+    refreshFromSource();
+  });
+}
+
+function observeSources() {
+  sourceObserver?.disconnect();
+  sourceObserver = new MutationObserver(queueRefresh);
+  const active = document.getElementById("active-actions");
+  if (active) sourceObserver.observe(active, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden", "href", "class", "data-verification-running"] });
+  const progress = document.getElementById("certificate-progress");
+  if (progress) sourceObserver.observe(progress, { childList: true, subtree: true, characterData: true });
+  const rankNode = document.getElementById("rank-progress");
+  if (rankNode) sourceObserver.observe(rankNode, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
+  const didNode = document.getElementById("did");
+  if (didNode) sourceObserver.observe(didNode, { childList: true, subtree: true, characterData: true });
 }
 
 loadStyle();
-const observer = new MutationObserver(refresh);
-observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden", "href"] });
-document.documentElement.addEventListener("click", (event) => {
-  if (event.target instanceof Element && event.target.closest(".lang-button")) queueMicrotask(refresh);
+
+const shellBootstrap = new MutationObserver(() => {
+  const shell = document.querySelector(".product-shell");
+  if (!shell) return;
+  shellBootstrap.disconnect();
+  bindNav(shell);
+  observeSources();
+  showView(currentView);
 });
-refresh();
+shellBootstrap.observe(document.body, { childList: true, subtree: true });
+
+if (document.querySelector(".product-shell")) {
+  shellBootstrap.disconnect();
+  bindNav(document.querySelector(".product-shell"));
+  observeSources();
+  showView(currentView);
+}
+
+document.documentElement.addEventListener("click", (event) => {
+  if (event.target instanceof Element && event.target.closest(".lang-button")) queueMicrotask(() => {
+    bindNav(document.querySelector(".product-shell"));
+    if (currentView !== "capabilities") renderSecondary();
+  });
+});
