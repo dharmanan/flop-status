@@ -9,8 +9,8 @@ function loadCeremonyStyle(id, href) {
   document.head.appendChild(link);
 }
 
-loadCeremonyStyle("flop-verification-ceremony-style", "/verification-ceremony-live.css?v=ceremony-live-v2");
-loadCeremonyStyle("flop-verification-ceremony-layout", "/verification-ceremony-layout.css?v=ceremony-layout-v1");
+loadCeremonyStyle("flop-verification-ceremony-style", "/verification-ceremony-live.css?v=ceremony-live-v3");
+loadCeremonyStyle("flop-verification-ceremony-layout", "/verification-ceremony-layout.css?v=ceremony-layout-v2");
 
 /**
  * VERIFICATION RUN / DOĞRULAMA AKIŞI
