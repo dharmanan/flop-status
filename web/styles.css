@@ -71,11 +71,13 @@ html[lang="tr"] .tr-copy { display: inline; }
 .checks { padding: 12px 0 0; }
 .checks > div { padding: 7px 0; }
 .capability-explanation { margin: 22px 0 26px; border: 1px solid #2d2d2d; background: #151515; border-radius: 16px; padding: 20px; }
-.capability-explanation-block + .capability-explanation-block { margin-top: 22px; padding-top: 22px; border-top: 1px solid #2d2d2d; }
 .capability-explanation .status { margin-bottom: 4px; }
 .capability-explanation .checks { padding-top: 6px; }
 .capability-explanation .checks > div { line-height: 1.55; color: #bcbcbc; }
 .capability-explanation .checks strong { color: #f4f4f4; }
+.capability-summary-row + .capability-summary-row { margin-top: 16px; padding-top: 16px; border-top: 1px solid #2d2d2d; }
+.capability-summary-row strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.capability-summary-row span { display: block; opacity: .72; line-height: 1.5; font-size: 14px; }
 .certificate-explanation { margin-top: 28px; margin-bottom: 8px; }
 .operation { min-height: 24px; }
 dl { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; margin: 28px 0; }

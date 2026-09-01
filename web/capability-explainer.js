@@ -96,6 +96,19 @@ async function renderMainSummary() {
   const rows = byId("capability-summary-rows");
   rows.replaceChildren();
 
+  if (!certified) {
+    addSummaryRow(
+      rows,
+      copy("Capability added", "Yetenek eklendi"),
+      copy(
+        "This agent can now verify Ed25519 signatures inside FLOP. Practice if you want, then take the certification test.",
+        "Bu ajan artık FLOP içinde Ed25519 imzalarını doğrulayabiliyor. İstersen pratik yap, ardından sertifika testine gir.",
+      ),
+    );
+    byId("capability-summary-technical").hidden = true;
+    return;
+  }
+
   addSummaryRow(
     rows,
     copy("Capability added", "Yetenek eklendi"),
@@ -105,24 +118,11 @@ async function renderMainSummary() {
     ),
   );
 
-  if (!certified) {
-    addSummaryRow(
-      rows,
-      copy("Next step", "Sıradaki adım"),
-      copy(
-        "Practice if you want, then take the certification test.",
-        "İstersen pratik yap, ardından sertifika testine gir.",
-      ),
-    );
-    byId("capability-summary-technical").hidden = true;
-    return;
-  }
-
   addSummaryRow(
     rows,
     copy("Test result · PASS", "Test sonucu · PASS"),
     copy(
-      "FLOP gave the agent a fresh signature-verification test. The agent produced the correct result and FLOP independently confirmed it.",
+      "FLOP gave the agent a fresh signature verification test. The agent produced the correct result and FLOP independently confirmed it.",
       "FLOP ajana yeni bir imza doğrulama testi verdi. Ajan doğru sonucu üretti ve FLOP bunu bağımsız olarak doğruladı.",
     ),
   );
@@ -234,7 +234,7 @@ function createCertificateExplanation() {
     rows,
     copy("Verified capability", "Doğrulanmış yetenek"),
     copy(
-      "This FLOP agent correctly completed an independent Ed25519 signature-verification test.",
+      "This FLOP agent correctly completed an independent Ed25519 signature verification test.",
       "Bu FLOP ajanı bağımsız bir Ed25519 imza doğrulama testini doğru tamamladı.",
     ),
   );
@@ -242,8 +242,8 @@ function createCertificateExplanation() {
     rows,
     copy("Scope", "Kapsam"),
     copy(
-      "The certificate covers this capability inside FLOP under the certified version. It is not a claim of general intelligence.",
-      "Sertifika, bu yeteneğin sertifikalanan sürümde FLOP içindeki kullanımını kapsar. Genel zekâ iddiası değildir.",
+      "This certificate proves that this agent can use the certified capability version inside FLOP.",
+      "Bu sertifika, bu ajanın sertifikalanan capability sürümünü FLOP içinde kullanabildiğini kanıtlar.",
     ),
   );
 
@@ -252,9 +252,31 @@ function createCertificateExplanation() {
   panel.insertBefore(section, actions ?? null);
 }
 
+const CERTIFICATE_PROOF_LABELS = {
+  "agent-did": ["Agent DID", "Ajan DID"],
+  capability: ["Capability", "Yetenek"],
+  "capability-version": ["Capability version", "Yetenek sürümü"],
+  "program-version": ["Program version", "Program sürümü"],
+  trial: ["Trial", "Trial"],
+  verifier: ["Verifier", "Verifier"],
+  issued: ["Issued", "Verildi"],
+  receipt: ["Receipt", "Receipt"],
+  attestation: ["FLOP attestation", "FLOP attestation"],
+  "open-receipt": ["Open signed receipt proof", "İmzalı receipt kanıtını aç"],
+  "back-to-lab": ["Back to Capability Lab", "Capability Lab'e dön"],
+};
+
+function localizeCertificateProofLabels() {
+  for (const node of document.querySelectorAll("[data-label]")) {
+    const pair = CERTIFICATE_PROOF_LABELS[node.dataset.label];
+    if (pair) node.textContent = copy(pair[0], pair[1]);
+  }
+}
+
 function watchCertificatePage() {
   if (!byId("certificate-name")) return;
   document.documentElement.lang = language();
+  localizeCertificateProofLabels();
   createCertificateExplanation();
 }
 
