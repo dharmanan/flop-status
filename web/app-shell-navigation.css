@@ -1,12 +1,14 @@
-.product-shell,
-.product-shell * { pointer-events: auto; }
 .product-nav-item,
 .capability-selector-button,
 .shell-action-button,
 .shell-action-link,
 .shell-danger-button,
 .product-shell button,
-.product-shell a { position: relative; z-index: 2; }
+.product-shell a {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
 .product-nav-item { cursor: pointer; user-select: none; }
 .product-nav-item:focus-visible { outline: 1px solid #527cff; outline-offset: 2px; }
 .shell-view-hidden { display: none !important; }
