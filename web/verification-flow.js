@@ -10,11 +10,14 @@ if (!document.getElementById(ceremonyStyleId)) {
 }
 
 /**
- * Shared production verification controller.
+ * VERIFICATION RUN / DOĞRULAMA AKIŞI
  *
- * It never starts itself. agent.js calls reset only after the user explicitly
- * starts a certification test, then advances these states from real operations:
+ * Shared production verification controller. It never starts itself.
+ * agent.js calls reset only after the user explicitly starts certification,
+ * then advances the real sequence:
  * challenge -> execute -> result -> sign -> verify -> verdict -> certificate.
+ *
+ * User-visible bilingual event titles live in verification-ceremony.js.
  */
 export function createVerificationFlow(container, config = {}) {
   const inferredNumber = Number(container?.id?.match(/capability-(\d+)-flow/)?.[1] ?? config.number ?? 4);
@@ -36,7 +39,7 @@ export function createVerificationFlow(container, config = {}) {
       ceremony.reset();
       const did = document.getElementById("did")?.textContent?.trim();
       if (did) ceremony.setIdentity(did);
-      requestAnimationFrame(() => container.scrollIntoView({ behavior: "smooth", block: "center" }));
+      container.scrollIntoView({ behavior: "smooth", block: "center" });
     },
 
     begin(stepId) { ceremony.begin(stepId); },
