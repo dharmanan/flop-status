@@ -1,0 +1,75 @@
+/* Surgical overlap fixes for the stable verification ceremony baseline. */
+
+/* Certificate reuses the verifier side of the stage. Fade the previous actors only
+   when certificate formation actually starts, so recorded replay queues still render
+   the earlier verification phases correctly. */
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-verifier,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-verifier,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-pass,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-pass,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-did-seal,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-did-seal {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 220ms ease;
+}
+
+/* Keep the result readable during verification, then de-emphasize it while the
+   certificate artifact takes over the right side. */
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-result,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-result {
+  opacity: .22 !important;
+  transition: opacity 220ms ease;
+}
+
+/* Tablet: verifier occupies the lower-right block. PASS must sit beneath it, not
+   inside the same 370px vertical footprint. */
+@media (max-width: 1050px) and (min-width: 721px) {
+  .ceremony-shell {
+    min-height: 1120px;
+  }
+
+  .ceremony-stage {
+    min-height: 920px;
+  }
+
+  .ceremony-verifier {
+    top: 420px !important;
+  }
+
+  .ceremony-pass {
+    left: calc(50% - 85px) !important;
+    top: 800px !important;
+  }
+
+  .ceremony-certificate {
+    top: 430px !important;
+  }
+}
+
+/* Mobile: place PASS below the verifier's full footprint. Certificate can reuse
+   the verifier zone because the verifier fades as formation begins. */
+@media (max-width: 720px) {
+  .ceremony-shell {
+    min-height: 1510px;
+  }
+
+  .ceremony-stage {
+    min-height: 1320px;
+  }
+
+  .ceremony-verifier {
+    top: 930px !important;
+    height: 290px !important;
+  }
+
+  .ceremony-pass {
+    left: calc(50% - 85px) !important;
+    top: 1235px !important;
+    transform: none !important;
+  }
+
+  .ceremony-certificate {
+    top: 930px !important;
+  }
+}
