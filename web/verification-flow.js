@@ -1,5 +1,14 @@
 import { createVerificationCeremony } from "/verification-ceremony.js";
 
+const ceremonyStyleId = "flop-verification-ceremony-style";
+if (!document.getElementById(ceremonyStyleId)) {
+  const link = document.createElement("link");
+  link.id = ceremonyStyleId;
+  link.rel = "stylesheet";
+  link.href = "/verification-ceremony.css?v=ceremony-v1";
+  document.head.appendChild(link);
+}
+
 /**
  * Shared production verification controller.
  *
@@ -24,13 +33,35 @@ void STEP_IDS;
 void STEP_TITLES;
 
 export function createVerificationFlow(container, config = {}) {
-  const ceremony = createVerificationCeremony(container, config);
+  const inferredNumber = Number(container?.id?.match(/capability-(\d+)-flow/)?.[1] ?? config.number ?? 4);
+  const card = container?.closest?.(".capability-card");
+  const inferredName = card?.querySelector?.(".trial-copy strong")?.textContent?.trim() || config.name || `Capability ${inferredNumber}`;
+  const inferredCapabilityId = card?.querySelector?.(".trial-capability")?.textContent?.trim() || config.capabilityId || "";
+  const ceremony = createVerificationCeremony(container, {
+    ...config,
+    number: inferredNumber,
+    name: inferredName,
+    capabilityId: inferredCapabilityId,
+  });
 
   return {
     localize() { ceremony.localize(); },
-    reset() { ceremony.reset(); },
+    reset() {
+      ceremony.reset();
+      const did = document.getElementById("did")?.textContent?.trim();
+      if (did) ceremony.setIdentity(did);
+    },
     begin(stepId) { ceremony.begin(stepId); },
-    complete(stepId, summaryCopy) { ceremony.complete(stepId, summaryCopy); },
+    complete(stepId, summaryCopy) {
+      ceremony.complete(stepId, summaryCopy);
+      if (stepId === "result" && summaryCopy) {
+        ceremony.setResult(document.documentElement.lang === "tr" ? summaryCopy.tr : summaryCopy.en);
+      }
+      if (stepId === "sign") {
+        const did = document.getElementById("did")?.textContent?.trim();
+        if (did) ceremony.setIdentity(did);
+      }
+    },
     unknown(stepId, summaryCopy) { ceremony.unknown(stepId, summaryCopy); },
     fail(stepId, summaryCopy) { ceremony.fail(stepId, summaryCopy); },
     showCertificateStep() { ceremony.showCertificate(); },
@@ -44,9 +75,6 @@ export function createVerificationFlow(container, config = {}) {
     setDecision(decision) { ceremony.setDecision(decision); },
     completeProof(proof) { ceremony.completeProof(proof); },
 
-    // Existing callers still add raw identifiers through this method. The
-    // ceremony promotes the useful identifiers into the visual scene while
-    // keeping the controller API backwards compatible.
     addTechnicalLine(titleCopy, value) {
       const key = `${titleCopy?.en ?? ""} ${titleCopy?.tr ?? ""}`.toLowerCase();
       if (key.includes("challenge id")) ceremony.setChallenge(null, { challengeId: value });
