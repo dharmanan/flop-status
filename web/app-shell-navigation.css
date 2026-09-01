@@ -1,0 +1,50 @@
+.product-nav-item { cursor: pointer; user-select: none; }
+.product-nav-item:focus-visible { outline: 1px solid #527cff; outline-offset: 2px; }
+.shell-view-hidden { display: none !important; }
+.workspace-secondary-view { min-height: 620px; padding: 22px 20px 28px; }
+.shell-screen { display: grid; gap: 18px; }
+.shell-screen-head { padding-bottom: 16px; border-bottom: 1px solid #202b35; }
+.shell-screen-title { margin: 0; font-size: 28px; line-height: 1.05; letter-spacing: -.03em; }
+.shell-screen-intro { margin: 7px 0 0; color: #84919c; font-size: 11px; line-height: 1.5; }
+.shell-overview-stats { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+.shell-overview-stat { min-width: 0; padding: 16px; border: 1px solid #25323d; border-radius: 9px; background: #0c1217; }
+.shell-overview-stat span, .shell-overview-stat strong { display: block; }
+.shell-overview-stat span { color: #75828d; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.shell-overview-stat strong { margin-top: 8px; overflow: hidden; color: #dce4ea; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.shell-screen-section { border: 1px solid #25323d; border-radius: 10px; overflow: hidden; background: #0a0f13; }
+.shell-screen-section-title { margin: 0; padding: 14px 16px; border-bottom: 1px solid #25323d; font-size: 13px; }
+.shell-record-row { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; }
+.shell-record-row + .shell-record-row { border-top: 1px solid #202b35; }
+.shell-record-index { color: #73808b; font: 800 10px/1 ui-monospace, monospace; }
+.shell-record-body { min-width: 0; }
+.shell-record-body strong, .shell-record-body code { display: block; }
+.shell-record-body strong { font-size: 13px; }
+.shell-record-body code { margin-top: 4px; overflow: hidden; color: #65727e; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.shell-record-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.shell-state-badge { padding: 5px 7px; border: 1px solid #34414d; border-radius: 999px; color: #8c99a4; font-size: 8px; white-space: nowrap; }
+.shell-state-badge[data-certified="true"] { border-color: #2d6644; color: #82d49f; background: #09150f; }
+.shell-state-badge[data-verifying="true"] { border-color: #416bd9; color: #b9ccff; background: #10192b; }
+.shell-action-button, .shell-action-link, .shell-danger-button { min-height: 32px; padding: 7px 10px; border-radius: 7px; font-size: 9px; }
+.shell-action-button { border: 1px solid #34424d; background: #11171d; color: #d4dce3; }
+.shell-action-button[data-active="true"] { border-color: #557ae2; color: #d8e2ff; background: #111a2c; }
+.shell-action-link { display: inline-flex; align-items: center; border: 1px solid #35527b; color: #b7cffd; text-decoration: none; }
+.shell-empty-action { color: #697580; font-size: 9px; }
+.shell-boundary-card, .shell-operation-card, .shell-settings-card { padding: 16px; border: 1px solid #25323d; border-radius: 10px; background: #0c1217; }
+.shell-boundary-card strong { font-size: 12px; }
+.shell-boundary-card p { margin: 7px 0 0; color: #87949f; font-size: 10px; line-height: 1.55; }
+.shell-operation-card span, .shell-operation-card strong { display: block; }
+.shell-operation-card span { color: #73808b; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.shell-operation-card strong { margin-top: 8px; font-size: 12px; }
+.shell-settings-card { display: grid; gap: 10px; }
+.shell-settings-label { color: #74808c; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.shell-settings-did { overflow-wrap: anywhere; color: #cbd4db; font-size: 10px; }
+.shell-settings-card p { margin: 0; color: #87949f; font-size: 10px; line-height: 1.5; }
+.shell-danger-button { justify-self: start; border: 1px solid #68423d; background: #1b1110; color: #dfaaa3; }
+.shell-language-row { display: flex; gap: 8px; }
+
+@media (max-width: 760px) {
+  .workspace-secondary-view { padding: 16px 14px 22px; min-height: 0; }
+  .shell-overview-stats { grid-template-columns: 1fr; }
+  .shell-record-row { grid-template-columns: 36px minmax(0,1fr); }
+  .shell-record-actions { grid-column: 1 / -1; justify-content: flex-start; padding-left: 48px; }
+}
