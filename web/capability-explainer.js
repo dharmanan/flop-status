@@ -6,12 +6,13 @@ function loadProductShellStyle() {
   const link = document.createElement("link");
   link.id = "flop-product-shell-style";
   link.rel = "stylesheet";
-  link.href = "/app-shell.css?v=workspace-shell-v1";
+  link.href = "/app-shell.css?v=workspace-shell-v2";
   document.head.appendChild(link);
 }
 
 loadProductShellStyle();
-void import("/app-shell.js?v=workspace-shell-v1");
+void import("/app-shell.js?v=workspace-shell-v2");
+void import("/app-shell-navigation.js?v=workspace-navigation-v1");
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const replayScenes = new Map();
