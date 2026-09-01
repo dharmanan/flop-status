@@ -1,29 +1,125 @@
-/* Surgical overlap fixes for the stable verification ceremony baseline. */
+/* Final-phase geometry and overlap fixes for the stable verification ceremony. */
 
-/* Certificate reuses the verifier side of the stage. Fade the previous actors only
-   when certificate formation actually starts, so recorded replay queues still render
-   the earlier verification phases correctly. */
-.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-verifier,
-.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-verifier,
-.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-pass,
-.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-pass,
+/* The certificate must not visually exist before proof convergence finishes. The
+   element keeps a measurable target box for travel(), but remains invisible while
+   state=forming. */
+.ceremony-certificate[data-state="forming"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* While proof sources converge, keep the scene legible but subordinate it to the
+   invisible certificate target. Nothing shares the same visual weight. */
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-challenge {
+  opacity: .18 !important;
+}
+
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-agent {
+  opacity: .26 !important;
+}
+
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-result {
+  opacity: .34 !important;
+}
+
 .ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-did-seal,
-.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-did-seal {
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-verifier {
+  opacity: .28 !important;
+}
+
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-pass {
+  opacity: .42 !important;
+}
+
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-challenge,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-agent,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-result,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-did-seal,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-verifier,
+.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-pass {
+  transition: opacity 240ms ease;
+}
+
+/* Once the certificate is born it becomes the only primary artifact in the stage. */
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-challenge,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-agent,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-result,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-did-seal,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-verifier,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-pass {
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 220ms ease;
 }
 
-/* Keep the result readable during verification, then de-emphasize it while the
-   certificate artifact takes over the right side. */
-.ceremony-stage:has(.ceremony-certificate[data-state="forming"]) .ceremony-result,
-.ceremony-stage:has(.ceremony-certificate[data-state="visible"]) .ceremony-result {
-  opacity: .22 !important;
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"])::before,
+.ceremony-stage:has(.ceremony-certificate[data-state="visible"])::after {
+  opacity: .16;
   transition: opacity 220ms ease;
 }
 
-/* Tablet: verifier occupies the lower-right block. PASS sits immediately beneath
-   the full verifier footprint and the stage is tall enough not to clip it. */
+/* Final certificate is an artifact, not another small dashboard card. Cut corners,
+   quiet brass line, restrained typography and no glow. */
+.ceremony-certificate[data-state="forming"],
+.ceremony-certificate[data-state="visible"] {
+  left: calc(50% - 220px) !important;
+  right: auto !important;
+  top: 126px !important;
+  width: 440px !important;
+  min-height: 338px !important;
+  padding: 30px !important;
+  border: 1px solid #746038 !important;
+  border-radius: 4px !important;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  background: #0b0a07 !important;
+  z-index: 30 !important;
+}
+
+.ceremony-certificate[data-state="visible"] {
+  opacity: 1;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-brand {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #302818;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-type {
+  margin-top: 28px;
+  letter-spacing: .18em;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-cap {
+  margin-top: 18px;
+  font-size: 24px;
+  letter-spacing: -.025em;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-name {
+  margin-top: 7px;
+  font-size: 11px;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-fields {
+  margin-top: 30px;
+  gap: 10px;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-fields code {
+  font-size: 8px;
+}
+
+.ceremony-certificate[data-state="visible"] .ceremony-certificate-seal {
+  right: 24px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+/* Tablet: verification actors get separate vertical bands. PASS sits below the
+   verifier. During certificate formation all proof sources converge to a centered
+   target, then the stage contracts around the final artifact. */
 @media (max-width: 1050px) and (min-width: 721px) {
   .ceremony-shell {
     min-height: 1190px;
@@ -42,14 +138,24 @@
     top: 800px !important;
   }
 
-  .ceremony-certificate {
-    top: 430px !important;
+  .ceremony-certificate[data-state="forming"],
+  .ceremony-certificate[data-state="visible"] {
+    left: calc(50% - 210px) !important;
+    top: 250px !important;
+    width: 420px !important;
+  }
+
+  .ceremony-shell:has(.ceremony-certificate[data-state="visible"]) {
+    min-height: 820px !important;
+  }
+
+  .ceremony-stage:has(.ceremony-certificate[data-state="visible"]) {
+    min-height: 650px !important;
   }
 }
 
-/* Mobile: verifier ends at 1220px. PASS starts below it with a real gap, and the
-   stage remains taller than the complete PASS footprint. Certificate can reuse the
-   verifier zone because the verifier fades only when formation begins. */
+/* Mobile: every live phase remains vertically separated. The certificate target is
+   already in its final position during convergence, so it never jumps when revealed. */
 @media (max-width: 720px) {
   .ceremony-shell {
     min-height: 1630px;
@@ -70,7 +176,22 @@
     transform: none !important;
   }
 
-  .ceremony-certificate {
-    top: 930px !important;
+  .ceremony-certificate[data-state="forming"],
+  .ceremony-certificate[data-state="visible"] {
+    left: 16px !important;
+    right: 16px !important;
+    top: 300px !important;
+    width: auto !important;
+    min-height: 350px !important;
+    padding: 24px !important;
+    transform: none !important;
+  }
+
+  .ceremony-shell:has(.ceremony-certificate[data-state="visible"]) {
+    min-height: 900px !important;
+  }
+
+  .ceremony-stage:has(.ceremony-certificate[data-state="visible"]) {
+    min-height: 720px !important;
   }
 }
