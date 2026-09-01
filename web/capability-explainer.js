@@ -1,6 +1,18 @@
 import { getLanguage } from "/i18n.js";
 import { createVerificationCeremony } from "/verification-ceremony.js";
 
+function loadProductShellStyle() {
+  if (document.getElementById("flop-product-shell-style")) return;
+  const link = document.createElement("link");
+  link.id = "flop-product-shell-style";
+  link.rel = "stylesheet";
+  link.href = "/app-shell.css?v=workspace-shell-v1";
+  document.head.appendChild(link);
+}
+
+loadProductShellStyle();
+void import("/app-shell.js?v=workspace-shell-v1");
+
 const API_BASE = "https://flop-status-production.up.railway.app";
 const replayScenes = new Map();
 
