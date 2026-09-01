@@ -189,3 +189,51 @@ Status: Active
 No speculative wallet, faucet, chain id, token accounting, eligibility or airdrop logic is added without official specification.
 
 Status: Active
+
+### Production capabilities are defined in one bounded registry
+
+Capabilities 1–4 share a single production definition list (`lib/runtime/capability-registry.ts`) carrying ordinal, capability id/version, module id/version, production trial id, historical trial id, verifier identity, certificate name and prerequisite capability.
+
+Reason: the Capability 1 implementation used capability-specific service methods and inline trial-id branches. Repeating that for four capabilities would have produced four parallel if/else chains across issuance, submission, finalization and the product service, which is exactly where a sequencing or certificate-eligibility mistake would hide. The registry is a bounded data table, not a framework, and the runtime security checks stay where they were.
+
+Status: Active
+
+### Sequential capability order is enforced in the backend
+
+Acquiring Capability N requires an ACTIVE production certificate for Capability N-1, checked in `CapabilityProductService`. Issuing a production certification challenge requires the matching capability to be installed for that DID.
+
+Reason: hiding buttons is not enforcement. A direct API call must not be able to skip the order.
+
+Status: Active
+
+### Certificate eligibility is decided only by the production trial id
+
+`finalizeCapabilityVerification` issues a certificate only when the finalized challenge's trial id resolves to a production capability in the registry. Historical Trial 1–4 receipts still finalize and remain immutable evidence, but never create a certificate.
+
+Reason: production certificates must never be inferred from historical development acceptance evidence or from `capability_records`.
+
+Status: Active
+
+### Cumulative rank is derived, not stored
+
+Rank is computed from the count of ACTIVE certificates (`lib/runtime/agent-rank.ts`) and is never written onto a certificate.
+
+Reason: certificate and rank are different concepts. Storing rank on a certificate would freeze a value that changes as other capabilities are certified.
+
+Status: Active
+
+### One capability module serves practice, certification and use
+
+Each capability exposes exactly one browser executor. The page controller only ever calls `capability.execute(...)`, whether for practice, for the certification challenge or for normal FLOP use, and the module never receives the hidden expected answer.
+
+Reason: a certification-specific solver would make a PASS prove something other than the capability the certificate names.
+
+Status: Active
+
+### Verification progress is bound to real operations
+
+The shared verification run surface advances a step only when the corresponding asynchronous operation resolves. No timer, interval or animation frame advances verification state.
+
+Reason: simulated progress would misrepresent what FLOP actually did, which is the opposite of what an evidence product exists to show.
+
+Status: Active

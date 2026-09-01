@@ -11,6 +11,7 @@ import {
   type Trial4CaseClass,
   type Trial4ChallengePayload,
   type Trial4HiddenVerifierContext,
+  type Trial4Id,
 } from "./schema.js";
 
 export type ClockFn = () => Date;
@@ -23,6 +24,7 @@ export interface Trial4ChallengeGeneratorDependencies {
 
 export interface GenerateSignedReceiptVerificationChallengeInput {
   agentDid: string;
+  trialId?: Trial4Id;
   caseClass?: Trial4CaseClass;
 }
 
@@ -126,7 +128,7 @@ export function generateSignedReceiptVerificationChallenge(
     challenge_id: challengeId,
     agent_did: input.agentDid,
     capability_id: CAPABILITY_ID,
-    trial_id: TRIAL_ID,
+    trial_id: input.trialId ?? TRIAL_ID,
     trial_version: TRIAL_VERSION,
     nonce: encodeBase64Url(randomBytes(16)),
     case: { receipt, server_keys: serverKeys },

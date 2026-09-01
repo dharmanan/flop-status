@@ -19,9 +19,15 @@ import {
   TRIAL_ID as TRIAL1_ID,
 } from "../trials/ed25519-signature-verification/constants.js";
 import { trial1SignedSubmissionEnvelopeSchema } from "../trials/ed25519-signature-verification/schema.js";
-import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL4_PRODUCTION_ID,
+  TRIAL_ID as TRIAL4_ID,
+} from "../trials/signed-receipt-verification/constants.js";
 import { trial4SignedSubmissionEnvelopeSchema } from "../trials/signed-receipt-verification/schema.js";
-import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL3_PRODUCTION_ID,
+  TRIAL_ID as TRIAL3_ID,
+} from "../trials/technocore-canonical-message/constants.js";
 import { trial3SignedSubmissionEnvelopeSchema } from "../trials/technocore-canonical-message/schema.js";
 
 export const MAX_SUBMISSION_BODY_BYTES = 32_768;
@@ -75,6 +81,12 @@ type ParsedEnvelope =
   | ReturnType<typeof trial3SignedSubmissionEnvelopeSchema.parse>
   | ReturnType<typeof trial4SignedSubmissionEnvelopeSchema.parse>;
 
+type ParsedEnvelopeSchema =
+  | typeof trial1SignedSubmissionEnvelopeSchema
+  | typeof trial2SignedSubmissionEnvelopeSchema
+  | typeof trial3SignedSubmissionEnvelopeSchema
+  | typeof trial4SignedSubmissionEnvelopeSchema;
+
 function assertSupportedDid(did: string): void {
   try {
     parseEd25519DidKey(did);
@@ -97,18 +109,20 @@ function trialIdFromEnvelope(envelope: unknown): string | null {
   return typeof trialId === "string" ? trialId : null;
 }
 
+const ENVELOPE_SCHEMAS_BY_TRIAL_ID = new Map<string, ParsedEnvelopeSchema>([
+  [TRIAL1_ID, trial1SignedSubmissionEnvelopeSchema],
+  [TRIAL1_PRODUCTION_ID, trial1SignedSubmissionEnvelopeSchema],
+  [TRIAL2_ID, trial2SignedSubmissionEnvelopeSchema],
+  [TRIAL2_PRODUCTION_ID, trial2SignedSubmissionEnvelopeSchema],
+  [TRIAL3_ID, trial3SignedSubmissionEnvelopeSchema],
+  [TRIAL3_PRODUCTION_ID, trial3SignedSubmissionEnvelopeSchema],
+  [TRIAL4_ID, trial4SignedSubmissionEnvelopeSchema],
+  [TRIAL4_PRODUCTION_ID, trial4SignedSubmissionEnvelopeSchema],
+]);
+
 function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
   const trialId = trialIdFromEnvelope(envelope);
-  const schema =
-    trialId === TRIAL1_ID || trialId === TRIAL1_PRODUCTION_ID
-      ? trial1SignedSubmissionEnvelopeSchema
-      : trialId === TRIAL2_ID || trialId === TRIAL2_PRODUCTION_ID
-        ? trial2SignedSubmissionEnvelopeSchema
-        : trialId === TRIAL3_ID
-          ? trial3SignedSubmissionEnvelopeSchema
-          : trialId === TRIAL4_ID
-            ? trial4SignedSubmissionEnvelopeSchema
-            : null;
+  const schema = trialId === null ? undefined : ENVELOPE_SCHEMAS_BY_TRIAL_ID.get(trialId);
 
   if (!schema) {
     throw new SubmissionAcceptanceError(

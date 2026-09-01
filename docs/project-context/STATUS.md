@@ -4,102 +4,101 @@ Last updated: 2026-09-01
 
 ## Current phase
 
-FLOP identity ownership, shared deterministic verification infrastructure and Production Capability 1 are accepted.
+The shared FLOP verification infrastructure is proven, and the production capability journey now runs for **Capabilities 1 through 4**.
 
-Accepted production user path:
+Accepted infrastructure path:
 
-**ACQUIRE → PRACTICE → VERIFY → CERTIFY → USE → PROVE**
+Identity → Challenge → DID-signed Submission → Deterministic Verification → Server-signed Receipt → Public Verification.
 
-The active milestone is now **Production Capability 2: Canonical JSON + SHA256**.
+Accepted identity model:
 
-## Product rules in force
+Create or restore Ed25519 `did:key` → user owns portable seed → optional encrypted recovery → nonextractable active browser key → same verification protocol.
+
+Product v1 is not complete. Capabilities 5–10 are not started.
+
+## Product rules now in force
 
 * Every production capability PASS issues its own individual capability certificate.
-* Certification proceeds one capability at a time from Capability 1 onward.
-* A later capability cannot bypass required earlier certificate prerequisites.
-* Internal Trial 1–4 development acceptance receipts are historical protocol evidence only and never count as production certificates or rank.
+* Certification starts at Capability 1. FLOP does not wait for 7/7 or 10/10.
+* Every user proceeds capability by capability, one at a time, and the order is enforced in the backend rather than by hiding UI.
+* There is no bulk certification or credit from internal development acceptance runs.
 * FLOP v1 contains seven deterministic Core capabilities and three optional LLM-backed Agentic capabilities.
-* Capabilities 8–10 require explicit LLM opt-in and may create usage cost.
-* Cumulative rank is separate from individual certificates.
+* Capabilities 8–10 require explicit user opt-in to LLM usage and may create usage cost.
+* Cumulative rank is separate from individual certificates and is derived from the active certificate count.
 * Initial rank thresholds: 3–4 Rookie, 5–6 Regular, 7 Core Verified, 8–9 Advanced, 10 Agentic Verified.
-* FLOP-managed capability execution remains contained inside FLOP in v1.
-* Public identity, receipts and certificates are portable/verifiable; arbitrary third-party agent invocation is not exposed.
+* FLOP-managed capability execution is contained inside FLOP in v1.
+* Public proof and certificates may be viewed externally, but FLOP v1 does not expose a public arbitrary agent invocation endpoint.
 * Idle agents are metadata, not permanently running services.
 
 ## Completed infrastructure
 
-* Ed25519 `did:key` identity creation and seed restore.
-* User-owned portable seed and optional encrypted recovery.
-* Nonextractable active browser private key in IndexedDB.
-* Seed/private key network-boundary tests.
-* PostgreSQL durable state for challenge/submission/verification/receipt/capability evidence.
-* One-time DID-bound challenges and deterministic PASS/FAIL/UNKNOWN semantics.
-* Server-signed receipts and independent public receipt verification.
-* Production capability registry, installation state and explicit capability certificate records.
-* Public certificate proof route.
-* Railway backend / Vercel frontend boundary.
+* Product, architecture, threat model, receipt, PostgreSQL and API foundations defined.
+* Persistent AI workflow rules added through root `AGENTS.md`.
+* Overheard remains the explicit identity ownership/portability reference.
+* RFC 8785 JCS, strict base64url/base58btc, SHA-256 and Ed25519 `did:key` support implemented.
+* PostgreSQL persistence implemented for agents, capabilities, trial definitions, challenges, submissions, verification runs, server public signing keys, receipts and capability records.
+* Race-safe challenge issuance and one-time challenge consumption implemented.
+* DID-signed submission acceptance and deterministic PASS/FAIL/UNKNOWN semantics verified.
+* Atomic PASS finalization, server-signed receipt generation and public receipt verification implemented.
+* Railway is backend only; Vercel hosts the browser product surface.
+* Browser-created identity exposes the portable 32-byte Ed25519 seed before continuation.
+* Seed Reveal, Copy and Download work and continuation is gated on saving it.
+* Seed/text-file restore reproduces the same DID.
+* Active browser signing keys are nonextractable WebCrypto `CryptoKey` objects persisted in IndexedDB.
+* Optional encrypted backup/restore uses AES-GCM with PBKDF2-SHA256.
+* Browser network-boundary tests prevent seed/private key/passphrase serialization into API requests.
+* Vercel CSP/security tests enforce strict self-hosted script policy and bounded outbound API connectivity.
+
+## Production capability program
+
+A single bounded registry (`lib/runtime/capability-registry.ts`) defines the production entry for each capability: ordinal, capability id/version, module id/version, production trial id, historical trial id, certificate name and prerequisite capability.
+
+Implemented and covered by regression tests:
+
+| # | Capability | Production trial id | Certificate |
+| - | ---------- | ------------------- | ----------- |
+| 1 | Ed25519 Signature Verification | `ed25519-signature-verification-certification` | Ed25519 Signature Verification Certificate |
+| 2 | Canonical JSON + SHA256 | `canonical-json-sha256-certification` | Canonical JSON + SHA256 Certificate |
+| 3 | Technocore Canonical Message | `technocore-canonical-message-certification` | Technocore Canonical Message Certificate |
+| 4 | Signed Receipt Verification | `signed-receipt-verification-certification` | Signed Receipt Verification Certificate |
+
+For each of the four, the following is implemented and locked by tests:
+
+* acquisition is blocked in `CapabilityProductService` until the previous capability holds an ACTIVE certificate
+* production certification challenge issuance is blocked unless the capability is installed for that DID
+* practice, certification and normal FLOP use call one shared browser capability module, with no certification-specific solver and no hidden expected answer in the browser
+* a correct result produces PASS, an immutable server-signed receipt and exactly one individual certificate
+* a wrong deterministic result produces FAIL with no receipt and no certificate
+* a historical trial PASS still produces a receipt but never a certificate
+
+Verified only against in-memory repositories, generated challenges and the real browser capability modules. Migrations 0008–0010 have not been applied to a live PostgreSQL instance in this change set, and no deployed browser acceptance run has been performed for Capabilities 2–4.
 
 ## Internal development acceptance completed
 
-The following remain accepted as infrastructure/protocol evidence:
+The following are accepted as infrastructure/protocol evidence:
 
-* Identity ownership/connectivity
-* Trial 1 Ed25519 Signature Verification
-* Trial 2 Canonical JSON + SHA256
-* Trial 3 Technocore Canonical Message Construction
-* Trial 4 Signed Receipt Verification
+* Identity ownership/connectivity acceptance
+* Trial 1 Ed25519 Signature Verification development acceptance
+* Trial 2 Canonical JSON + SHA256 development acceptance
+* Trial 3 Technocore Canonical Message Construction development acceptance
+* Trial 4 Signed Receipt Verification development acceptance
 
-The historical browser 4/4 is not production user certification. Those receipts remain immutable but do not count toward certificates or rank.
+The current browser reached 4/4 during these development acceptance runs.
 
-## Production Capability 1 completed
+Important: those 4/4 results are **not production user capability certificates** because the browser acceptance harness calculated the trial answers directly.
 
-Capability: `cryptography.signature-verification`
+Their signed receipts remain immutable historical protocol evidence. They are not deleted or rewritten and they do not count toward production certificate totals or rank.
 
-Production trial: `ed25519-signature-verification-certification@1`
+## Verification flow UX
 
-Verified behavior:
+Capabilities 1–4 share one `VERIFICATION RUN` / `DOĞRULAMA AKIŞI` surface (`web/verification-flow.js`).
 
-* explicit acquisition required
-* practice uses the installed versioned capability module
-* production challenge is fresh and DID-bound
-* same module implementation is used by Practice, Verify and Use
-* deterministic verifier independently checks the result
-* wrong result FAILS without certificate
-* PASS creates server-signed receipt and individual Certificate 1
-* historical Trial 1 evidence does not count as Certificate 1
-* public certificate proof and receipt verification work
-* reload restores installation/certificate state
-* TR/EN product explanation is user-readable with technical proof details optional
-
-## In progress
-
-Production Capability 2: `data.canonical-json-sha256`.
-
-Required behavior:
-
-* Capability 1 ACTIVE certificate is required before Capability 2 acquisition
-* prerequisite is enforced server-side, not only by UI
-* production trial id is distinct from historical Trial 2
-* user explicitly acquires the versioned Canonical JSON + SHA256 module
-* practice is optional and does not certify
-* fresh challenge contains a JSON document but not the expected answer
-* same module is used by Practice, Verify and Use
-* module produces RFC 8785/JCS canonical JSON and SHA256 of its UTF-8 bytes
-* browser-owned DID signs the submission
-* backend verifier independently recomputes both values
-* wrong answer FAILS with no certificate
-* PASS creates the second individual certificate and signed receipt
-* historical Trial 2 evidence remains excluded from production certificate totals
-* no LLM is involved
-
-Acceptance contract: `docs/acceptance/capability2-production-acceptance.md`
+Its seven steps advance only when the corresponding operation actually completes: challenge response received, installed module resolved, result available, DID signature produced, submission response received, verdict known, certificate id returned. There is no timer-driven progress. UNKNOWN has its own visual state and is never rendered as FAIL.
 
 ## Next
 
-After Capability 2 acceptance:
+Apply the same production pattern sequentially to:
 
-* Capability 3 Technocore Canonical Message Construction
-* Capability 4 Signed Receipt Verification
 * Capability 5 Structured Data Transformation
 * Capability 6 Constraint and Policy Compliance
 * Capability 7 Failure Recovery and Idempotency
@@ -111,24 +110,18 @@ Each PASS produces its own separate certificate.
 
 ## Known problems
 
-* Capability 2 must still pass deployed Railway/browser acceptance before it is called complete.
-* Capability 3–10 do not yet have production acquisition/certificate runtime slices.
-* The public profile that aggregates all certificates and cumulative rank is not yet complete.
-* The product visual system is still functional/structural rather than final premium presentation.
+* Migrations 0008–0010 are written and unit-tested but not yet applied to the live database.
+* No deployed browser acceptance run exists yet for production Capabilities 2, 3 and 4.
+* The public agent profile aggregating all certificates and the certificate image/share surfaces are still not implemented.
+* `lib/trials/` remains trial-centric; the production boundary is expressed through the capability registry rather than a separate module tree.
+* Deployed acceptance runs created bounded historical evidence records in production PostgreSQL.
 
 ## Blocked
 
 None currently known.
 
-## Current completion gate
+## Important current state
 
-Do not start Capability 3 until Capability 2 passes:
+Do not count the existing development 4/4 as user certificates.
 
-1. sequential prerequisite enforcement
-2. acquire/practice/use
-3. fresh production verification
-4. wrong-answer FAIL/no certificate
-5. correct PASS/Certificate 2
-6. public proof and independent receipt verification
-7. two-certificate durable reload state
-8. browser TR/EN acceptance
+Do not start Capability 5 or later until Capabilities 2–4 pass a deployed browser acceptance run.

@@ -15,6 +15,7 @@ import {
   PRODUCTION_TRIAL_ID as CAPABILITY1_TRIAL_ID,
   TRIAL_VERSION as CAPABILITY1_TRIAL_VERSION,
   createPracticeFixture as createCapability1PracticeFixture,
+  evaluatePractice as evaluateCapability1Practice,
   executeEd25519SignatureVerification,
   textMessageToBase64Url,
 } from "/capabilities/ed25519-signature-verification.js";
@@ -23,8 +24,27 @@ import {
   PRODUCTION_TRIAL_ID as CAPABILITY2_TRIAL_ID,
   TRIAL_VERSION as CAPABILITY2_TRIAL_VERSION,
   createPracticeFixture as createCapability2PracticeFixture,
+  evaluatePractice as evaluateCapability2Practice,
   executeCanonicalJsonSha256,
 } from "/capabilities/canonical-json-sha256.js";
+import {
+  CAPABILITY_ID as CAPABILITY3_ID,
+  PRODUCTION_TRIAL_ID as CAPABILITY3_TRIAL_ID,
+  TRIAL_VERSION as CAPABILITY3_TRIAL_VERSION,
+  createPracticeFixture as createCapability3PracticeFixture,
+  evaluatePractice as evaluateCapability3Practice,
+  executeTechnocoreCanonicalMessage,
+} from "/capabilities/technocore-canonical-message.js";
+import {
+  CAPABILITY_ID as CAPABILITY4_ID,
+  PRODUCTION_TRIAL_ID as CAPABILITY4_TRIAL_ID,
+  TRIAL_VERSION as CAPABILITY4_TRIAL_VERSION,
+  createPracticeFixture as createCapability4PracticeFixture,
+  evaluatePractice as evaluateCapability4Practice,
+  executeSignedReceiptVerification,
+} from "/capabilities/signed-receipt-verification.js";
+import { canonicalizeJson } from "/capabilities/jcs.js";
+import { createVerificationFlow } from "/verification-flow.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const SUBMISSION_VERSION = "1";
@@ -43,17 +63,26 @@ const CAPABILITIES = [
     trialVersion: CAPABILITY1_TRIAL_VERSION,
     statusId: "capability-1-status",
     descriptionId: "capability-1-description",
+    purposeId: "capability-1-purpose",
     acquireId: "acquire-capability-1",
     practiceId: "practice-capability-1",
     verifyId: "verify-capability-1",
     certificateId: "capability-1-certificate",
     useId: "capability-1-use",
     practiceResultId: "practice-result",
+    flowId: "capability-1-flow",
     name: "Ed25519 Signature Verification",
     certificateName: {
       en: "Ed25519 Signature Verification Certificate",
       tr: "Ed25519 İmza Doğrulama Sertifikası",
     },
+    purpose: {
+      en: "Checks whether a digital signature really belongs to the supplied key and message. Used inside FLOP to verify signed data and identity proofs.",
+      tr: "Dijital imzaların gerçekten doğru anahtar ve mesaja ait olup olmadığını kontrol eder. FLOP içinde imzalı veri ve kimlik kanıtlarını doğrulamak için kullanılır.",
+    },
+    execute: executeEd25519SignatureVerification,
+    createPracticeFixture: createCapability1PracticeFixture,
+    evaluatePractice: evaluateCapability1Practice,
   },
   {
     number: 2,
@@ -62,20 +91,89 @@ const CAPABILITIES = [
     trialVersion: CAPABILITY2_TRIAL_VERSION,
     statusId: "capability-2-status",
     descriptionId: "capability-2-description",
+    purposeId: "capability-2-purpose",
     acquireId: "acquire-capability-2",
     practiceId: "practice-capability-2",
     verifyId: "verify-capability-2",
     certificateId: "capability-2-certificate",
     useId: "capability-2-use",
     practiceResultId: "practice-result-2",
+    flowId: "capability-2-flow",
     prerequisiteCapabilityId: CAPABILITY1_ID,
     name: "Canonical JSON + SHA256",
     certificateName: {
       en: "Canonical JSON + SHA256 Certificate",
       tr: "Canonical JSON + SHA256 Sertifikası",
     },
+    purpose: {
+      en: "Makes the same JSON data produce the same canonical form and SHA256 fingerprint across systems. Used to prove whether data changed and whether two parties are referring to exactly the same content.",
+      tr: "Aynı JSON verisinin farklı sistemlerde aynı biçime ve aynı SHA256 parmak izine dönüşmesini sağlar. Veri değişmiş mi, iki taraf gerçekten aynı içeriği mi görüyor, bunu kesin olarak kontrol etmek için kullanılır.",
+    },
+    execute: executeCanonicalJsonSha256,
+    createPracticeFixture: createCapability2PracticeFixture,
+    evaluatePractice: evaluateCapability2Practice,
+  },
+  {
+    number: 3,
+    capabilityId: CAPABILITY3_ID,
+    trialId: CAPABILITY3_TRIAL_ID,
+    trialVersion: CAPABILITY3_TRIAL_VERSION,
+    statusId: "capability-3-status",
+    descriptionId: "capability-3-description",
+    purposeId: "capability-3-purpose",
+    acquireId: "acquire-capability-3",
+    practiceId: "practice-capability-3",
+    verifyId: "verify-capability-3",
+    certificateId: "capability-3-certificate",
+    useId: "capability-3-use",
+    practiceResultId: "practice-result-3",
+    flowId: "capability-3-flow",
+    prerequisiteCapabilityId: CAPABILITY2_ID,
+    name: "Technocore Canonical Message",
+    certificateName: {
+      en: "Technocore Canonical Message Certificate",
+      tr: "Technocore Canonical Message Sertifikası",
+    },
+    purpose: {
+      en: "Builds the exact signable message format expected by Technocore. It lets different agents derive the same canonical payload for the same message.",
+      tr: "Bir mesajı Technocore'un beklediği kesin imzalanabilir biçime dönüştürür. Farklı ajanların aynı mesaj üzerinde aynı canonical payloadı üretmesini sağlar.",
+    },
+    execute: executeTechnocoreCanonicalMessage,
+    createPracticeFixture: createCapability3PracticeFixture,
+    evaluatePractice: evaluateCapability3Practice,
+  },
+  {
+    number: 4,
+    capabilityId: CAPABILITY4_ID,
+    trialId: CAPABILITY4_TRIAL_ID,
+    trialVersion: CAPABILITY4_TRIAL_VERSION,
+    statusId: "capability-4-status",
+    descriptionId: "capability-4-description",
+    purposeId: "capability-4-purpose",
+    acquireId: "acquire-capability-4",
+    practiceId: "practice-capability-4",
+    verifyId: "verify-capability-4",
+    certificateId: "capability-4-certificate",
+    useId: "capability-4-use",
+    practiceResultId: "practice-result-4",
+    flowId: "capability-4-flow",
+    prerequisiteCapabilityId: CAPABILITY3_ID,
+    name: "Signed Receipt Verification",
+    certificateName: {
+      en: "Signed Receipt Verification Certificate",
+      tr: "İmzalı Receipt Doğrulama Sertifikası",
+    },
+    purpose: {
+      en: "Checks whether FLOP signed receipts and capability evidence are authentic. This allows certificates and proofs to be independently checked for tampering or forgery.",
+      tr: "FLOP tarafından imzalanmış receipt ve capability kanıtlarının gerçekten geçerli olup olmadığını kontrol eder. Böylece bir sertifika veya kanıtın sahte ya da değiştirilmiş olup olmadığı bağımsız olarak anlaşılabilir.",
+    },
+    execute: executeSignedReceiptVerification,
+    createPracticeFixture: createCapability4PracticeFixture,
+    evaluatePractice: evaluateCapability4Practice,
   },
 ];
+
+const flows = new Map();
 
 let identity = null;
 let pendingSeed = null;
@@ -83,7 +181,7 @@ let seedSavedAction = false;
 let seedRevealed = false;
 let setupPath = "create";
 let capabilityStates = new Map();
-let certificateList = { certificate_count: 0, certificates: [] };
+let certificateList = { certificate_count: 0, rank: null, certificates: [] };
 
 const byId = (id) => document.getElementById(id);
 const setOperation = (value) => { byId("operation-status").textContent = value; };
@@ -103,7 +201,11 @@ async function jsonRequest(path, options = {}) {
   const response = await fetch(API_BASE + path, options);
   let body = null;
   try { body = await response.json(); } catch { body = null; }
-  if (!response.ok) throw new Error(body?.error?.code ?? `HTTP_${response.status}`);
+  if (!response.ok) {
+    const error = new Error(body?.error?.code ?? `HTTP_${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
   return body;
 }
 
@@ -209,7 +311,14 @@ function renderCertificateList() {
   container.replaceChildren();
   const certificates = activeCertificates();
   const count = certificates.length;
+  const rank = certificateList?.rank ?? null;
+
   byId("certificate-progress").textContent = uiText(`${count} certificate${count === 1 ? "" : "s"}`, `${count} sertifika`);
+  const rankBadge = byId("rank-progress");
+  if (rankBadge) {
+    rankBadge.hidden = !rank;
+    if (rank) rankBadge.textContent = rank.rank_name;
+  }
   byId("evidence-status").textContent = count === 0
     ? uiText("No certificates yet.", "Henüz sertifika yok.")
     : uiText(`${count} certificate${count === 1 ? "" : "s"}`, `${count} sertifika`);
@@ -243,6 +352,10 @@ function renderOneCapability(config) {
         ? uiText("Installed", "Yüklendi")
         : uiText("Available", "Hazır");
   status.classList.toggle("verified", certified);
+  status.classList.toggle("locked", !unlocked && !certified);
+
+  const purpose = byId(config.purposeId);
+  if (purpose) purpose.textContent = uiText(config.purpose.en, config.purpose.tr);
 
   const description = byId(config.descriptionId);
   if (!unlocked) {
@@ -280,6 +393,8 @@ function renderOneCapability(config) {
   byId(config.practiceId).textContent = uiText("Practice", "Pratik yap");
   byId(config.verifyId).textContent = uiText("Take certification test", "Sertifika testine gir");
   link.textContent = uiText(`Open Capability ${config.number} certificate`, `Yetenek ${config.number} sertifikasını aç`);
+
+  flowFor(config).localize();
 }
 
 function renderCapabilityState() {
@@ -356,7 +471,7 @@ function renderIdentity() {
 async function refreshProductState() {
   if (!identity) {
     capabilityStates = new Map();
-    certificateList = { certificate_count: 0, certificates: [] };
+    certificateList = { certificate_count: 0, rank: null, certificates: [] };
     return;
   }
   const encodedDid = encodeURIComponent(identity.did);
@@ -505,6 +620,15 @@ function configFor(number) {
   return config;
 }
 
+function flowFor(config) {
+  let flow = flows.get(config.capabilityId);
+  if (!flow) {
+    flow = createVerificationFlow(byId(config.flowId));
+    flows.set(config.capabilityId, flow);
+  }
+  return flow;
+}
+
 async function acquireCapability(number) {
   if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   const config = configFor(number);
@@ -520,43 +644,45 @@ async function acquireCapability(number) {
   }
 }
 
-async function practiceCapability1() {
-  const config = configFor(1);
+async function practiceCapability(number) {
+  const config = configFor(number);
   if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
   const button = byId(config.practiceId);
   button.disabled = true;
   try {
-    const fixture = await createCapability1PracticeFixture();
-    const result = await executeEd25519SignatureVerification(fixture.input);
-    const passed = result.valid === fixture.expected_valid;
+    const fixture = await config.createPracticeFixture();
+    const result = await config.execute(fixture.input);
+    const passed = await config.evaluatePractice(result, fixture);
     byId(config.practiceResultId).textContent = passed
-      ? uiText("Practice passed. The capability correctly verified a sample Ed25519 signature.", "Pratik başarılı. Yetenek örnek bir Ed25519 imzasını doğru doğruladı.")
+      ? uiText("Practice passed. The installed capability produced the expected result.", "Pratik başarılı. Yüklü yetenek beklenen sonucu üretti.")
       : uiText("Practice failed. Try again.", "Pratik başarısız. Tekrar deneyebilirsin.");
   } finally { button.disabled = false; }
 }
 
-async function practiceCapability2() {
-  const config = configFor(2);
-  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
-  const button = byId(config.practiceId);
-  button.disabled = true;
-  try {
-    const fixture = createCapability2PracticeFixture();
-    const result = await executeCanonicalJsonSha256(fixture.input);
-    const passed = result.canonical_json === fixture.expected.canonical_json && result.sha256 === fixture.expected.sha256;
-    byId(config.practiceResultId).textContent = passed
-      ? uiText("Practice passed. The capability canonicalized JSON and calculated the correct SHA256 hash.", "Pratik başarılı. Yetenek JSON'u canonical hale getirdi ve doğru SHA256 hashini hesapladı.")
-      : uiText("Practice failed. Try again.", "Pratik başarısız. Tekrar deneyebilirsin.");
-  } finally { button.disabled = false; }
+function challengeSummary(number) {
+  if (number === 1) return { en: "A fresh one-time public key, message and signature were generated for this DID.", tr: "Bu DID için tek kullanımlık yeni bir public key, mesaj ve imza üretildi." };
+  if (number === 2) return { en: "A fresh JSON document was generated.", tr: "Yeni bir JSON belgesi üretildi." };
+  if (number === 3) return { en: "A fresh room, nonce and raw message text were generated.", tr: "Yeni bir room, nonce ve ham mesaj metni üretildi." };
+  return { en: "A fresh signed receipt and a bounded server key set were generated.", tr: "Yeni bir imzalı receipt ve sınırlı sunucu anahtar kümesi üretildi." };
 }
 
-async function certifyCapability(number, execute) {
+function resultSummary(number, result) {
+  if (number === 1) return { en: `Signature evaluated as ${result.reason_code}.`, tr: `İmza ${result.reason_code} olarak değerlendirildi.` };
+  if (number === 2) return { en: `Canonical form of ${result.canonical_json.length} characters and its SHA256 digest were produced.`, tr: `${result.canonical_json.length} karakterlik canonical biçim ve SHA256 özeti üretildi.` };
+  if (number === 3) return { en: "The text was cleaned and the canonical room|nonce|text message was built.", tr: "Metin temizlendi ve canonical room|nonce|metin mesajı oluşturuldu." };
+  return { en: `The receipt was classified as ${result.status} (${result.reason_code}).`, tr: `Receipt ${result.status} (${result.reason_code}) olarak sınıflandırıldı.` };
+}
+
+async function certifyCapability(number) {
   if (!identity || identity.mode !== "browser" || pendingSeed) throw new Error(t("err_identity_first"));
   const config = configFor(number);
   if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
   const button = byId(config.verifyId);
+  const flow = flowFor(config);
   button.disabled = true;
+  flow.reset();
   try {
+    flow.begin("challenge");
     setOperation(uiText("Preparing a fresh test…", "Yeni test hazırlanıyor…"));
     const created = await jsonRequest("/api/v1/challenges", {
       method: "POST",
@@ -564,8 +690,19 @@ async function certifyCapability(number, execute) {
       body: JSON.stringify({ agent_did: identity.did, trial_id: config.trialId }),
     });
     const challenge = created.challenge;
+    flow.complete("challenge", challengeSummary(number));
+    flow.addTechnicalLine({ en: "Challenge id:", tr: "Challenge id:" }, challenge.challenge_id);
+    flow.addTechnicalLine({ en: "Challenge hash:", tr: "Challenge hash:" }, created.challenge_hash);
+
+    flow.begin("execute");
     setOperation(uiText("The capability is solving the test…", "Yetenek testi çözüyor…"));
-    const result = await execute(challenge.case);
+    const result = await config.execute(challenge.case);
+    flow.complete("execute", { en: "The installed capability module produced the answer.", tr: "Yüklü yetenek modülü cevabı üretti." });
+
+    flow.begin("result");
+    flow.complete("result", resultSummary(number, result));
+
+    flow.begin("sign");
     const payload = {
       submission_version: SUBMISSION_VERSION,
       canonicalization: CANONICALIZATION,
@@ -578,18 +715,54 @@ async function certifyCapability(number, execute) {
       submitted_at: new Date().toISOString(),
     };
     const signature = new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, identity.privateKey, encoder.encode(canonicalize(payload))));
+    flow.complete("sign", { en: "The result was signed with this agent's own DID key.", tr: "Sonuç bu ajanın kendi DID anahtarı ile imzalandı." });
+
+    flow.begin("verify");
     setOperation(uiText("FLOP is verifying the result…", "Sonuç FLOP tarafından doğrulanıyor…"));
-    const submitted = await jsonRequest(`/api/v1/challenges/${challenge.challenge_id}/submissions`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        payload,
-        signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) },
-      }),
-    });
-    if (submitted.verdict !== "PASS" || !submitted.receipt_id || !submitted.certificate_id) {
+    let submitted;
+    try {
+      submitted = await jsonRequest(`/api/v1/challenges/${challenge.challenge_id}/submissions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          payload,
+          signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) },
+        }),
+      });
+    } catch (error) {
+      // VERIFICATION_UNKNOWN means FLOP could not decide. That is an
+      // infrastructure state, never a capability failure, so it gets its own
+      // visual state instead of being shown as FAIL.
+      if (error instanceof Error && error.message === "VERIFICATION_UNKNOWN") {
+        const unknownSummary = { en: "FLOP could not complete verification. This is an infrastructure state, not a capability failure.", tr: "FLOP doğrulamayı tamamlayamadı. Bu bir altyapı durumudur, yetenek başarısızlığı değildir." };
+        flow.unknown("verify", unknownSummary);
+        flow.unknown("verdict", { en: "UNKNOWN — no verdict was recorded.", tr: "UNKNOWN — sonuç kaydedilmedi." });
+        setOperation(uiText("UNKNOWN. Try again later.", "UNKNOWN. Daha sonra tekrar dene."));
+        return;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      flow.fail("verify", { en: message, tr: message });
+      throw error;
+    }
+
+    flow.complete("verify", { en: "FLOP recomputed the expected answer independently and compared it.", tr: "FLOP beklenen cevabı bağımsız olarak yeniden hesapladı ve karşılaştırdı." });
+
+    if (submitted.verdict !== "PASS") {
+      flow.fail("verdict", { en: "FAIL — the answers did not match. No certificate was issued.", tr: "FAIL — sonuçlar eşleşmedi. Sertifika verilmedi." });
+      await refreshProductState();
+      setOperation(uiText(`FAIL. Capability ${number} was not certified.`, `FAIL. Yetenek ${number} sertifikalandırılmadı.`));
+      return;
+    }
+    if (!submitted.receipt_id || !submitted.certificate_id) {
       throw new Error("CERTIFICATION_DID_NOT_PRODUCE_CERTIFICATE");
     }
+
+    flow.complete("verdict", { en: "PASS — the two results matched.", tr: "PASS — iki sonuç eşleşti." });
+    flow.addTechnicalLine({ en: "Receipt id:", tr: "Receipt id:" }, submitted.receipt_id);
+    flow.showCertificateStep();
+    flow.complete("certificate", { en: "An individual certificate and an immutable signed receipt were created.", tr: "Bu yeteneğe özel bir sertifika ve değiştirilemez imzalı receipt oluşturuldu." });
+    flow.addTechnicalLine({ en: "Certificate id:", tr: "Sertifika id:" }, submitted.certificate_id);
+
     await refreshProductState();
     setOperation(uiText(`PASS. Capability ${number} certified.`, `PASS. Yetenek ${number} sertifikalandı.`));
   } finally { button.disabled = false; }
@@ -609,14 +782,40 @@ async function useCapability1() {
 async function useCapability2() {
   const config = configFor(2);
   if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
-  let document;
+  let document_;
   try {
-    document = JSON.parse(byId("use-json-2").value);
+    document_ = JSON.parse(byId("use-json-2").value);
   } catch {
     throw new Error(uiText("Enter valid JSON.", "Geçerli bir JSON gir."));
   }
-  const result = await executeCanonicalJsonSha256({ document });
+  const result = await executeCanonicalJsonSha256({ document: document_ });
   byId("use-capability-2-result").textContent = JSON.stringify(result, null, 2);
+}
+
+async function useCapability3() {
+  const config = configFor(3);
+  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
+  const room = byId("use-room").value.trim();
+  const nonce = byId("use-nonce").value.trim();
+  const text = byId("use-text").value;
+  if (!room || !nonce || !text) throw new Error(uiText("Complete all use fields.", "Kullanım alanlarının tümünü doldur."));
+  const result = await executeTechnocoreCanonicalMessage({ room, nonce, text });
+  byId("use-capability-3-result").textContent = JSON.stringify(result, null, 2);
+}
+
+async function useCapability4() {
+  const config = configFor(4);
+  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
+  let receipt;
+  let serverKeys;
+  try {
+    receipt = JSON.parse(byId("use-receipt").value);
+    serverKeys = JSON.parse(byId("use-server-keys").value);
+  } catch {
+    throw new Error(uiText("Enter valid JSON.", "Geçerli bir JSON gir."));
+  }
+  const result = await executeSignedReceiptVerification({ receipt, server_keys: serverKeys });
+  byId("use-capability-4-result").textContent = JSON.stringify(result, null, 2);
 }
 
 async function disconnectIdentity() {
@@ -627,7 +826,7 @@ async function disconnectIdentity() {
   seedRevealed = false;
   setupPath = "create";
   capabilityStates = new Map();
-  certificateList = { certificate_count: 0, certificates: [] };
+  certificateList = { certificate_count: 0, rank: null, certificates: [] };
   renderIdentity();
   setOperation(t("op_disconnected"));
 }
@@ -676,13 +875,21 @@ byId("confirm-seed-saved").addEventListener("click", () => confirmSeedSaved().ca
 byId("signin-seed").addEventListener("click", () => signInFromSeed().catch(report));
 byId("restore-identity").addEventListener("click", () => restoreBrowserIdentity().catch(report));
 byId("acquire-capability-1").addEventListener("click", () => acquireCapability(1).catch(report));
-byId("practice-capability-1").addEventListener("click", () => practiceCapability1().catch(report));
-byId("verify-capability-1").addEventListener("click", () => certifyCapability(1, executeEd25519SignatureVerification).catch(report));
+byId("practice-capability-1").addEventListener("click", () => practiceCapability(1).catch(report));
+byId("verify-capability-1").addEventListener("click", () => certifyCapability(1).catch(report));
 byId("use-capability-1-run").addEventListener("click", () => useCapability1().catch(report));
 byId("acquire-capability-2").addEventListener("click", () => acquireCapability(2).catch(report));
-byId("practice-capability-2").addEventListener("click", () => practiceCapability2().catch(report));
-byId("verify-capability-2").addEventListener("click", () => certifyCapability(2, executeCanonicalJsonSha256).catch(report));
+byId("practice-capability-2").addEventListener("click", () => practiceCapability(2).catch(report));
+byId("verify-capability-2").addEventListener("click", () => certifyCapability(2).catch(report));
 byId("use-capability-2-run").addEventListener("click", () => useCapability2().catch(report));
+byId("acquire-capability-3").addEventListener("click", () => acquireCapability(3).catch(report));
+byId("practice-capability-3").addEventListener("click", () => practiceCapability(3).catch(report));
+byId("verify-capability-3").addEventListener("click", () => certifyCapability(3).catch(report));
+byId("use-capability-3-run").addEventListener("click", () => useCapability3().catch(report));
+byId("acquire-capability-4").addEventListener("click", () => acquireCapability(4).catch(report));
+byId("practice-capability-4").addEventListener("click", () => practiceCapability(4).catch(report));
+byId("verify-capability-4").addEventListener("click", () => certifyCapability(4).catch(report));
+byId("use-capability-4-run").addEventListener("click", () => useCapability4().catch(report));
 byId("download-backup").addEventListener("click", () => { if (identity?.backup) downloadBackup(identity.backup); });
 byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 

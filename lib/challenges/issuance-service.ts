@@ -25,6 +25,7 @@ import {
   type Trial4ChallengeGeneratorDependencies,
 } from "../trials/signed-receipt-verification/challenge-generator.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL4_PRODUCTION_ID,
   TRIAL_ID as TRIAL4_ID,
   TRIAL_VERSION as TRIAL4_VERSION,
 } from "../trials/signed-receipt-verification/constants.js";
@@ -33,6 +34,7 @@ import {
   type Trial3ChallengeGeneratorDependencies,
 } from "../trials/technocore-canonical-message/challenge-generator.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL3_PRODUCTION_ID,
   TRIAL_ID as TRIAL3_ID,
   TRIAL_VERSION as TRIAL3_VERSION,
 } from "../trials/technocore-canonical-message/constants.js";
@@ -169,21 +171,27 @@ export async function issueCapabilityChallenge(
     );
   }
 
-  if (input.trialId === TRIAL3_ID) {
+  if (input.trialId === TRIAL3_ID || input.trialId === TRIAL3_PRODUCTION_ID) {
     const generatorDeps: Trial3ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
-    const generated = generateTechnocoreCanonicalMessageChallenge({ agentDid: input.agentDid }, generatorDeps);
+    const generated = generateTechnocoreCanonicalMessageChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
     return persistGeneratedChallenge(
-      { agentDid: input.agentDid, trialId: TRIAL3_ID, trialVersion: TRIAL3_VERSION },
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL3_VERSION },
       generated,
       deps,
     );
   }
 
-  if (input.trialId === TRIAL4_ID) {
+  if (input.trialId === TRIAL4_ID || input.trialId === TRIAL4_PRODUCTION_ID) {
     const generatorDeps: Trial4ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
-    const generated = generateSignedReceiptVerificationChallenge({ agentDid: input.agentDid }, generatorDeps);
+    const generated = generateSignedReceiptVerificationChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
     return persistGeneratedChallenge(
-      { agentDid: input.agentDid, trialId: TRIAL4_ID, trialVersion: TRIAL4_VERSION },
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL4_VERSION },
       generated,
       deps,
     );

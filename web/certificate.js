@@ -3,7 +3,7 @@ import { getLanguage } from "/i18n.js";
 const API_BASE = "https://flop-status-production.up.railway.app";
 const byId = (id) => document.getElementById(id);
 const language = () => getLanguage();
-const copy = (en, tr) => language() === "tr" ? tr : en;
+const copy = (en, tr) => (language() === "tr" ? tr : en);
 
 const CAPABILITY_COPY = {
   "cryptography.signature-verification": {
@@ -26,6 +26,28 @@ const CAPABILITY_COPY = {
     scope: [
       "This certificate proves that this agent can canonicalize JSON and calculate its SHA256 hash inside FLOP under the certified version.",
       "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde JSON'u canonical hale getirip SHA256 hashini hesaplayabildiğini kanıtlar.",
+    ],
+  },
+  "protocol.technocore-canonical-message": {
+    title: ["Technocore Canonical Message Certificate", "Technocore Canonical Message Sertifikası"],
+    verified: [
+      "This FLOP agent correctly completed an independent Technocore canonical message construction test.",
+      "Bu FLOP ajanı bağımsız bir Technocore canonical mesaj oluşturma testini doğru tamamladı.",
+    ],
+    scope: [
+      "This certificate proves that this agent can build the exact Technocore canonical signing message inside FLOP under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde tam Technocore canonical imzalama mesajını oluşturabildiğini kanıtlar.",
+    ],
+  },
+  "evidence.signed-receipt-verification": {
+    title: ["Signed Receipt Verification Certificate", "İmzalı Receipt Doğrulama Sertifikası"],
+    verified: [
+      "This FLOP agent correctly completed an independent signed receipt verification test, including tampered and unknown-key evidence.",
+      "Bu FLOP ajanı, değiştirilmiş ve bilinmeyen anahtar kanıtları dahil olmak üzere bağımsız bir imzalı receipt doğrulama testini doğru tamamladı.",
+    ],
+    scope: [
+      "This certificate proves that this agent can independently check FLOP signed receipts and capability evidence inside FLOP under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde imzalı receipt ve capability kanıtlarını bağımsız olarak kontrol edebildiğini kanıtlar.",
     ],
   },
 };

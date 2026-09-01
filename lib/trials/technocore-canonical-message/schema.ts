@@ -3,7 +3,7 @@ import { decodeBase64Url } from "../../crypto/base64url.js";
 import { ED25519_SIGNATURE_LENGTH } from "../../crypto/ed25519.js";
 import { isSha256Hash } from "../../crypto/sha256.js";
 import { parseEd25519DidKey } from "../../identity/did-key.js";
-import { CANONICALIZATION_ID, CAPABILITY_ID, CHALLENGE_VERSION, SUBMISSION_VERSION, TRIAL_ID, TRIAL_VERSION } from "./constants.js";
+import { CANONICALIZATION_ID, CAPABILITY_ID, CHALLENGE_VERSION, PRODUCTION_TRIAL_ID, SUBMISSION_VERSION, TRIAL_ID, TRIAL_VERSION } from "./constants.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ROOM_PATTERN = /^[a-z0-9][a-z0-9_-]{0,47}$/;
@@ -25,6 +25,9 @@ function base64UrlSchema(exactByteLength?: number) {
 
 const sha256HashSchema = z.string().refine(isSha256Hash);
 
+export const trial3IdSchema = z.enum([TRIAL_ID, PRODUCTION_TRIAL_ID]);
+export type Trial3Id = z.infer<typeof trial3IdSchema>;
+
 export const trial3CaseClassSchema = z.enum(["WHITESPACE_CONTROL", "UNICODE_TEXT", "PIPE_TEXT", "PLAIN_TEXT"]);
 export type Trial3CaseClass = z.infer<typeof trial3CaseClassSchema>;
 
@@ -33,7 +36,7 @@ export const trial3ChallengePayloadSchema = z.object({
   challenge_id: uuidSchema,
   agent_did: didSchema,
   capability_id: z.literal(CAPABILITY_ID),
-  trial_id: z.literal(TRIAL_ID),
+  trial_id: trial3IdSchema,
   trial_version: z.literal(TRIAL_VERSION),
   nonce: base64UrlSchema(),
   case: z.object({
@@ -58,7 +61,7 @@ export const trial3SignedSubmissionPayloadSchema = z.object({
   challenge_id: uuidSchema,
   challenge_hash: sha256HashSchema,
   agent_did: z.string().min(1),
-  trial_id: z.literal(TRIAL_ID),
+  trial_id: trial3IdSchema,
   trial_version: z.literal(TRIAL_VERSION),
   result: trial3ResultSchema,
   submitted_at: timestampSchema,

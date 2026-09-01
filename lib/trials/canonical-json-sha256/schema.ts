@@ -69,7 +69,11 @@ export const trial2CaseClassSchema = z.enum([
 ]);
 export type Trial2CaseClass = z.infer<typeof trial2CaseClassSchema>;
 
-export const trial2ChallengeCaseSchema = z.object({ document: jsonValueSchema }).strict();
+export const trial2ChallengeCaseSchema = z
+  .object({
+    document: jsonValueSchema,
+  })
+  .strict();
 export type Trial2ChallengeCase = z.infer<typeof trial2ChallengeCaseSchema>;
 
 export const trial2ChallengePayloadSchema = z
@@ -89,7 +93,10 @@ export const trial2ChallengePayloadSchema = z
 export type Trial2ChallengePayload = z.infer<typeof trial2ChallengePayloadSchema>;
 
 export const trial2ResultSchema = z
-  .object({ canonical_json: z.string().min(1), sha256: sha256HashSchema })
+  .object({
+    canonical_json: z.string().min(1),
+    sha256: sha256HashSchema,
+  })
   .strict();
 export type Trial2Result = z.infer<typeof trial2ResultSchema>;
 
@@ -117,7 +124,10 @@ export const trial2SubmissionSignatureSchema = z
   .strict();
 
 export const trial2SignedSubmissionEnvelopeSchema = z
-  .object({ payload: trial2SignedSubmissionPayloadSchema, signature: trial2SubmissionSignatureSchema })
+  .object({
+    payload: trial2SignedSubmissionPayloadSchema,
+    signature: trial2SubmissionSignatureSchema,
+  })
   .strict();
 export type Trial2SignedSubmissionEnvelope = z.infer<typeof trial2SignedSubmissionEnvelopeSchema>;
 

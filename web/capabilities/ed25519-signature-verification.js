@@ -45,6 +45,10 @@ export function textMessageToBase64Url(text) {
   return bytesToBase64Url(encoder.encode(text));
 }
 
+export async function evaluatePractice(result, fixture) {
+  return result.valid === fixture.expected_valid;
+}
+
 export async function createPracticeFixture() {
   const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
   const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
