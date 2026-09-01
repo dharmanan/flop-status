@@ -14,19 +14,19 @@
     <section class="panel">
       <div id="certificate-status" class="status">Loading proof…</div>
       <div class="checks">
-        <div>Agent DID <strong id="certificate-did" class="mono"></strong></div>
-        <div>Capability <strong id="certificate-capability"></strong></div>
-        <div>Capability version <strong id="certificate-capability-version"></strong></div>
-        <div>Program version <strong id="certificate-program-version"></strong></div>
-        <div>Trial <strong id="certificate-trial"></strong></div>
-        <div>Verifier <strong id="certificate-verifier"></strong></div>
-        <div>Issued <strong id="certificate-issued"></strong></div>
-        <div>Receipt <strong id="certificate-receipt" class="mono"></strong></div>
-        <div>FLOP attestation <strong id="certificate-attestation"></strong></div>
+        <div><span data-label="agent-did">Agent DID</span> <strong id="certificate-did" class="mono"></strong></div>
+        <div><span data-label="capability">Capability</span> <strong id="certificate-capability"></strong></div>
+        <div><span data-label="capability-version">Capability version</span> <strong id="certificate-capability-version"></strong></div>
+        <div><span data-label="program-version">Program version</span> <strong id="certificate-program-version"></strong></div>
+        <div><span data-label="trial">Trial</span> <strong id="certificate-trial"></strong></div>
+        <div><span data-label="verifier">Verifier</span> <strong id="certificate-verifier"></strong></div>
+        <div><span data-label="issued">Issued</span> <strong id="certificate-issued"></strong></div>
+        <div><span data-label="receipt">Receipt</span> <strong id="certificate-receipt" class="mono"></strong></div>
+        <div><span data-label="attestation">FLOP attestation</span> <strong id="certificate-attestation"></strong></div>
       </div>
       <div class="actions compact">
-        <a id="certificate-receipt-link" class="receipt">Open signed receipt proof</a>
-        <a href="/" class="receipt">Back to Capability Lab</a>
+        <a id="certificate-receipt-link" class="receipt" data-label="open-receipt">Open signed receipt proof</a>
+        <a href="/" class="receipt" data-label="back-to-lab">Back to Capability Lab</a>
       </div>
     </section>
     <p id="certificate-error" class="operation"></p>

@@ -135,7 +135,12 @@ const translations = {
     result_hash: "Result hash",
     issued_at: "Issued at",
     server_key_id: "Server key ID",
-    server_key_status: "Server key status"
+    server_key_status: "Server key status",
+    step_capability_1: "STEP 3 · CAPABILITY 1",
+    capability_certificates: "Capability certificates",
+    no_certificates_yet: "No production certificates yet.",
+    use_message_label: "Message",
+    verify_signature_button: "Verify signature",
   },
   tr: {
     app_name: "FLOP Capability Lab",
@@ -271,7 +276,12 @@ const translations = {
     result_hash: "Result hash",
     issued_at: "Oluşturulma zamanı",
     server_key_id: "Sunucu key ID",
-    server_key_status: "Sunucu key durumu"
+    server_key_status: "Sunucu key durumu",
+    step_capability_1: "ADIM 3 · YETENEK 1",
+    capability_certificates: "Yetenek sertifikaları",
+    no_certificates_yet: "Henüz üretim sertifikası yok.",
+    use_message_label: "Mesaj",
+    verify_signature_button: "İmzayı doğrula",
   }
 };
 

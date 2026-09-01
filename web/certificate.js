@@ -1,6 +1,15 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
+const LANGUAGE_KEY = "flop-ui-language";
 
 const byId = (id) => document.getElementById(id);
+
+function language() {
+  return document.documentElement.lang === "tr" || localStorage.getItem(LANGUAGE_KEY) === "tr" ? "tr" : "en";
+}
+
+function copy(en, tr) {
+  return language() === "tr" ? tr : en;
+}
 
 function certificateIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -8,6 +17,10 @@ function certificateIdFromPath() {
 }
 
 async function boot() {
+  document.documentElement.lang = language();
+  byId("certificate-name").textContent = copy("Loading certificate…", "Sertifika yükleniyor…");
+  byId("certificate-status").textContent = copy("Loading proof…", "Kanıt yükleniyor…");
+
   const certificateId = certificateIdFromPath();
   if (!certificateId) throw new Error("Certificate id is missing.");
 
@@ -18,7 +31,9 @@ async function boot() {
   const certificate = body.certificate;
   const verification = body.receipt_verification;
   byId("certificate-name").textContent = certificate.certificate_name;
-  byId("certificate-status").textContent = certificate.status === "ACTIVE" ? "CERTIFIED" : certificate.status;
+  byId("certificate-status").textContent = certificate.status === "ACTIVE"
+    ? copy("CERTIFIED", "SERTİFİKALI")
+    : certificate.status;
   byId("certificate-status").classList.toggle("verified", certificate.status === "ACTIVE");
   byId("certificate-did").textContent = certificate.agent_did;
   byId("certificate-capability").textContent = certificate.capability_id;
@@ -34,5 +49,8 @@ async function boot() {
 
 boot().catch((error) => {
   byId("certificate-error").textContent = error instanceof Error ? error.message : String(error);
-  byId("certificate-status").textContent = "Certificate proof could not be loaded.";
+  byId("certificate-status").textContent = copy(
+    "Certificate proof could not be loaded.",
+    "Sertifika kanıtı yüklenemedi.",
+  );
 });

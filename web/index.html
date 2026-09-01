@@ -114,7 +114,7 @@
     </section>
 
     <section id="active-actions" class="panel trial-entry" hidden>
-      <div class="step-label">STEP 3 · CAPABILITY 1</div>
+      <div class="step-label" data-i18n="step_capability_1">STEP 3 · CAPABILITY 1</div>
       <div id="certificate-progress" class="trial-progress">0 certificates</div>
       <article class="trial-row">
         <div class="trial-copy">
@@ -141,13 +141,13 @@
       <details id="capability-1-use" class="technical-details" hidden>
         <summary>Use this capability inside FLOP</summary>
         <section class="checks">
-          <label for="use-message">Message</label>
+          <label for="use-message" data-i18n="use_message_label">Message</label>
           <textarea id="use-message" spellcheck="false" placeholder="Message signed by the Ed25519 key"></textarea>
           <label for="use-public-key">Ed25519 public key · base64url</label>
           <textarea id="use-public-key" class="mono" spellcheck="false"></textarea>
           <label for="use-signature">Ed25519 signature · base64url</label>
           <textarea id="use-signature" class="mono" spellcheck="false"></textarea>
-          <button id="use-capability-1-run" type="button">Verify signature</button>
+          <button id="use-capability-1-run" type="button" data-i18n="verify_signature_button">Verify signature</button>
           <pre id="use-capability-1-result" class="mono"></pre>
         </section>
       </details>
@@ -158,8 +158,8 @@
     </section>
 
     <section id="evidence-panel" class="panel" hidden>
-      <div class="label">Capability certificates</div>
-      <div id="evidence-status" class="status">No production certificates yet.</div>
+      <div class="label" data-i18n="capability_certificates">Capability certificates</div>
+      <div id="evidence-status" class="status" data-i18n="no_certificates_yet">No production certificates yet.</div>
       <div id="capabilities"></div>
     </section>
 

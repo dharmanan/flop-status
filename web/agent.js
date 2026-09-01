@@ -159,7 +159,8 @@ function renderCertificateList() {
     const item = document.createElement("a");
     item.className = "capability";
     item.href = "/certificate/" + certificate.certificate_id;
-    item.textContent = `${certificate.certificate_name} · ${certificate.status}`;
+    const statusLabel = certificate.status === "ACTIVE" ? uiText("Active", "Aktif") : certificate.status;
+    item.textContent = `${certificate.certificate_name} · ${statusLabel}`;
     container.appendChild(item);
   }
 }
@@ -459,15 +460,21 @@ async function practiceCapability1() {
     const result = await executeEd25519SignatureVerification(fixture.input);
     const passed = result.valid === fixture.expected_valid;
     byId("practice-result").textContent = passed
-      ? uiText(`Practice PASS · ${result.reason_code}`, `Pratik PASS · ${result.reason_code}`)
-      : uiText("Practice FAIL", "Pratik FAIL");
+      ? uiText(
+          "Practice passed. The capability correctly verified a sample Ed25519 signature.",
+          "Pratik başarılı. Yetenek örnek bir Ed25519 imzasını doğru doğruladı.",
+        )
+      : uiText(
+          "Practice failed. The capability got the sample signature wrong — you can try again.",
+          "Pratik başarısız. Yetenek örnek imzayı yanlış değerlendirdi — tekrar deneyebilirsin.",
+        );
   } finally {
     button.disabled = false;
   }
 }
 
 async function createProductionChallenge() {
-  setOperation(uiText("Creating fresh certification challenge…", "Yeni sertifika challenge'ı oluşturuluyor…"));
+  setOperation(uiText("Preparing a fresh test…", "Yeni test hazırlanıyor…"));
   return jsonRequest("/api/v1/challenges", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -483,6 +490,7 @@ async function verifyCapability1() {
   try {
     const created = await createProductionChallenge();
     const challenge = created.challenge;
+    setOperation(uiText("The capability is solving the test…", "Yetenek testi çözüyor…"));
     const result = await executeEd25519SignatureVerification(challenge.case);
     const payload = {
       submission_version: SUBMISSION_VERSION,
@@ -502,7 +510,7 @@ async function verifyCapability1() {
         encoder.encode(canonicalize(payload)),
       ),
     );
-    setOperation(uiText("Submitting signed certification result…", "İmzalı sertifika sonucu gönderiliyor…"));
+    setOperation(uiText("FLOP is verifying the result…", "Sonuç FLOP tarafından doğrulanıyor…"));
     const submitted = await jsonRequest(
       `/api/v1/challenges/${challenge.challenge_id}/submissions`,
       {
@@ -518,7 +526,7 @@ async function verifyCapability1() {
       throw new Error("CERTIFICATION_DID_NOT_PRODUCE_CERTIFICATE");
     }
     await refreshProductState();
-    setOperation(uiText("PASS. Capability 1 certificate issued.", "PASS. Yetenek 1 sertifikası verildi."));
+    setOperation(uiText("PASS. Capability certified.", "PASS. Yetenek sertifikalandı."));
   } finally {
     button.disabled = false;
   }
