@@ -11,6 +11,7 @@ function loadCeremonyStyle(id, href) {
 
 loadCeremonyStyle("flop-verification-ceremony-style", "/verification-ceremony-live.css?v=ceremony-live-v2");
 loadCeremonyStyle("flop-verification-ceremony-layout", "/verification-ceremony-layout.css?v=ceremony-layout-v1");
+loadCeremonyStyle("flop-verification-ceremony-overlap-fixes", "/verification-ceremony-overlap-fixes.css?v=ceremony-overlap-v1");
 
 /**
  * VERIFICATION RUN / DOĞRULAMA AKIŞI
