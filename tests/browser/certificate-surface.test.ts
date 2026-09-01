@@ -5,6 +5,7 @@ import { PRODUCTION_CAPABILITIES } from "../../lib/runtime/capability-registry.j
 const certificateJs = readFileSync(new URL("../../web/certificate.js", import.meta.url), "utf8");
 const certificateHtml = readFileSync(new URL("../../web/certificate.html", import.meta.url), "utf8");
 const explainerJs = readFileSync(new URL("../../web/capability-explainer.js", import.meta.url), "utf8");
+const ceremonyJs = readFileSync(new URL("../../web/verification-ceremony.js", import.meta.url), "utf8");
 const agent = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
 
 describe("certificate page is capability aware for Capabilities 1-4", () => {
@@ -64,17 +65,36 @@ describe("capability purpose is visible on the main lab page for Capabilities 1-
   });
 });
 
-describe("main-page explanation covers Capabilities 1-4 without duplicating a whole file per capability", () => {
-  for (const capability of PRODUCTION_CAPABILITIES) {
-    it(`explains Capability ${capability.ordinal} once it is installed`, () => {
-      expect(explainerJs).toContain(`number: ${capability.ordinal}`);
-    });
-  }
+describe("main-page certified proof uses one shared verification ceremony", () => {
+  it("covers all four production capability ordinals with one shared controller", () => {
+    expect(explainerJs).toContain("const CAPABILITIES = [1, 2, 3, 4]");
+    expect(explainerJs).toContain('import { createVerificationCeremony } from "/verification-ceremony.js"');
+    expect(explainerJs).not.toContain("capability2-explainer");
+    expect(explainerJs).not.toContain("capability3-explainer");
+    expect(explainerJs).not.toContain("capability4-explainer");
+  });
 
-  it("is the only main-page explainer script and anchors Capability 1 to the original unsuffixed practice result", () => {
-    expect(explainerJs).toContain('practiceResultId: "practice-result"');
-    expect(explainerJs).toContain('practiceResultId: "practice-result-2"');
-    expect(explainerJs).toContain('practiceResultId: "practice-result-3"');
-    expect(explainerJs).toContain('practiceResultId: "practice-result-4"');
+  it("reconstructs completed proof from real certificate and signed-receipt endpoints instead of replaying fake progress", () => {
+    expect(explainerJs).toContain("/api/v1/certificates/");
+    expect(explainerJs).toContain("/api/v1/verification/");
+    expect(explainerJs).toContain('mode: "proof"');
+    expect(explainerJs).toContain("ceremony.completeProof");
+    expect(explainerJs).not.toMatch(/setTimeout\s*\(/);
+  });
+
+  it("gives the live verification flow priority over the persisted proof surface", () => {
+    expect(explainerJs).toContain("liveFlow.hidden");
+    expect(explainerJs).toContain("MutationObserver");
+    expect(explainerJs).toContain('attributeFilter: ["hidden"]');
+  });
+
+  it("renders the complete visual verification sequence and execution boundary", () => {
+    for (const step of ["challenge", "execute", "result", "sign", "verify", "verdict", "certificate"]) {
+      expect(ceremonyJs).toContain(`"${step}"`);
+    }
+    expect(ceremonyJs).toContain("AGENT CORE");
+    expect(ceremonyJs).toContain("FLOP VERIFIER");
+    expect(ceremonyJs).toContain("EXECUTION BOUNDARY");
+    expect(ceremonyJs).toContain("PROOF PACKAGE · PORTABLE");
   });
 });
