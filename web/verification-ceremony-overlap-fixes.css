@@ -22,15 +22,15 @@
   transition: opacity 220ms ease;
 }
 
-/* Tablet: verifier occupies the lower-right block. PASS must sit beneath it, not
-   inside the same 370px vertical footprint. */
+/* Tablet: verifier occupies the lower-right block. PASS sits immediately beneath
+   the full verifier footprint and the stage is tall enough not to clip it. */
 @media (max-width: 1050px) and (min-width: 721px) {
   .ceremony-shell {
-    min-height: 1120px;
+    min-height: 1190px;
   }
 
   .ceremony-stage {
-    min-height: 920px;
+    min-height: 990px;
   }
 
   .ceremony-verifier {
@@ -47,15 +47,16 @@
   }
 }
 
-/* Mobile: place PASS below the verifier's full footprint. Certificate can reuse
-   the verifier zone because the verifier fades as formation begins. */
+/* Mobile: verifier ends at 1220px. PASS starts below it with a real gap, and the
+   stage remains taller than the complete PASS footprint. Certificate can reuse the
+   verifier zone because the verifier fades only when formation begins. */
 @media (max-width: 720px) {
   .ceremony-shell {
-    min-height: 1510px;
+    min-height: 1630px;
   }
 
   .ceremony-stage {
-    min-height: 1320px;
+    min-height: 1430px;
   }
 
   .ceremony-verifier {
