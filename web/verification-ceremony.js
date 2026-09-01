@@ -83,7 +83,7 @@ function animate(element, keyframes, options, reduced) {
   return safeFinished(element.animate(keyframes, { fill: "both", ...options }));
 }
 
-function createCoreCanvas(className) {
+function createOrbCanvas(className) {
   const canvas = document.createElement("canvas");
   canvas.className = className;
   canvas.width = 420;
@@ -93,7 +93,6 @@ function createCoreCanvas(className) {
 
 function drawCore(canvas, time, energy, rgb, verifier = false) {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cssW = canvas.clientWidth || 320;
   const cssH = canvas.clientHeight || 320;
@@ -108,61 +107,55 @@ function drawCore(canvas, time, energy, rgb, verifier = false) {
 
   const cx = cssW / 2;
   const cy = cssH / 2;
-  const unit = Math.min(cssW, cssH);
-  const radius = unit * (verifier ? .205 : .225);
-  const aperture = radius * (1 + energy * .035);
-  const phase = time * (verifier ? -.00016 : .00019);
-
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  ctx.strokeStyle = `rgba(${rgb},${.12 + energy * .14})`;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 4; i += 1) {
-    ctx.rotate(Math.PI / 2);
-    ctx.beginPath();
-    ctx.moveTo(aperture * .72, 0);
-    ctx.lineTo(aperture * 1.52, 0);
-    ctx.stroke();
-  }
-
-  for (let ring = 0; ring < 3; ring += 1) {
-    const r = aperture * (.72 + ring * .31);
-    const sweep = Math.PI * (1.08 + ring * .17);
-    const start = phase * (ring % 2 ? -1.35 : 1) + ring * 1.14;
-    ctx.strokeStyle = `rgba(${rgb},${.2 + energy * (.16 - ring * .025)})`;
-    ctx.lineWidth = ring === 0 ? 1.5 : .8;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, start, start + sweep);
-    ctx.stroke();
-  }
-
-  const plate = aperture * .64;
-  ctx.rotate(Math.PI / 4 + phase * .45);
-  ctx.fillStyle = verifier ? "rgba(8,25,40,.88)" : "rgba(22,16,45,.9)";
-  ctx.strokeStyle = `rgba(${rgb},${.54 + energy * .28})`;
-  ctx.lineWidth = 1.25;
+  const radius = Math.min(cssW, cssH) * (verifier ? .22 : .255);
+  const halo = ctx.createRadialGradient(cx, cy, radius * .05, cx, cy, radius * 1.85);
+  halo.addColorStop(0, `rgba(${rgb},${.28 + energy * .18})`);
+  halo.addColorStop(.35, `rgba(${rgb},${.09 + energy * .12})`);
+  halo.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.rect(-plate / 2, -plate / 2, plate, plate);
+  ctx.arc(cx, cy, radius * 1.85, 0, Math.PI * 2);
+  ctx.fill();
+
+  const sphere = ctx.createRadialGradient(cx - radius * .34, cy - radius * .35, radius * .03, cx, cy, radius);
+  sphere.addColorStop(0, verifier ? "#183b59" : "#342767");
+  sphere.addColorStop(.28, verifier ? "#0b2034" : "#171331");
+  sphere.addColorStop(.72, "#070b12");
+  sphere.addColorStop(1, "#020407");
+  ctx.fillStyle = sphere;
+  ctx.strokeStyle = `rgba(${rgb},${.34 + energy * .46})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.rotate(-phase * (verifier ? .8 : .65));
-  const inner = plate * .46;
-  ctx.strokeStyle = `rgba(${rgb},${.72 + energy * .18})`;
-  ctx.lineWidth = 1.35;
-  ctx.strokeRect(-inner / 2, -inner / 2, inner, inner);
-
-  ctx.fillStyle = `rgba(${rgb},${.58 + energy * .28})`;
-  const nodeR = Math.max(2.4, unit * .009);
-  for (let i = 0; i < 4; i += 1) {
-    const angle = phase * (verifier ? -1.2 : 1.4) + i * Math.PI / 2;
-    const orbit = aperture * .94;
+  for (let i = 0; i < 5; i += 1) {
+    const ring = radius * (.72 + i * .19);
+    const direction = i % 2 ? -1 : 1;
+    const start = time * .00018 * direction + i * .62;
+    ctx.strokeStyle = `rgba(${rgb},${.13 + energy * .12})`;
+    ctx.lineWidth = i === 0 ? 1.7 : .8;
     ctx.beginPath();
-    ctx.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit, nodeR, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(cx, cy, ring, start, start + Math.PI * (1.05 + i * .12));
+    ctx.stroke();
   }
 
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * .45);
+  core.addColorStop(0, `rgba(${rgb},.98)`);
+  core.addColorStop(.22, `rgba(${rgb},${.68 + energy * .22})`);
+  core.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * .46, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(Math.PI / 4 + time * .00012 * (verifier ? -1 : 1));
+  ctx.strokeStyle = `rgba(${rgb},${.8 + energy * .18})`;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-radius * .18, -radius * .18, radius * .36, radius * .36);
   ctx.restore();
 }
 
@@ -171,35 +164,18 @@ function createActor({ className, kicker, title, canvasClass, rgb, verifier = fa
   actor.dataset.state = "idle";
   const label = el("div", "ceremony-actor-label");
   label.append(el("span", "ceremony-kicker", kicker), el("strong", "ceremony-actor-title", title));
-  const canvas = createCoreCanvas(canvasClass);
-  const ports = el("div", "ceremony-core-ports");
-  const portNodes = [];
-  for (let i = 0; i < 4; i += 1) {
-    const port = el("span", "ceremony-core-port", String(i + 1));
-    port.dataset.state = "empty";
-    ports.appendChild(port);
-    portNodes.push(port);
-  }
-  actor.append(label, canvas, ports);
+  const canvas = createOrbCanvas(canvasClass);
+  actor.append(label, canvas);
   actor.dataset.rgb = rgb;
   actor.dataset.verifier = verifier ? "true" : "false";
-  return { actor, canvas, label, ports: portNodes };
-}
-
-function glyphFor(key) {
-  if (key === "signature") return "∿";
-  if (key.includes("key")) return "⌁";
-  if (key.includes("sha")) return "#";
-  if (key === "receipt") return "R";
-  if (key === "nonce") return "N";
-  return "▱";
+  return { actor, canvas, label };
 }
 
 function createPart(key, label) {
   const part = el("div", "ceremony-part");
   part.dataset.key = key;
   part.dataset.state = "hidden";
-  const glyph = el("span", "ceremony-part-glyph", glyphFor(key));
+  const glyph = el("span", "ceremony-part-glyph", key === "signature" ? "∿" : key.includes("key") ? "⌁" : key.includes("sha") ? "#" : "▱");
   const body = el("span", "ceremony-part-copy");
   const title = el("strong", "", label);
   const value = el("small", "mono", "—");
@@ -212,7 +188,6 @@ function createChallenge(number) {
   const visual = CAPABILITY_VISUALS[number] ?? CAPABILITY_VISUALS[4];
   const node = el("section", "ceremony-object ceremony-challenge");
   node.dataset.state = "hidden";
-  const rail = el("span", "ceremony-challenge-rail", "");
   const top = el("div", "ceremony-object-top");
   top.append(el("span", "ceremony-kicker", "FRESH CHALLENGE"), el("span", "ceremony-fresh-badge", "FRESH"));
   const title = el("strong", "ceremony-object-title", copy("Unseen test input", "Daha önce görülmemiş test girdisi"));
@@ -227,26 +202,23 @@ function createChallenge(number) {
     partsWrap.appendChild(item.part);
     parts.set(key, item);
   });
-  node.append(rail, top, title, meta, partsWrap);
-  return { node, rail, title, id, hash, parts, visual };
+  node.append(top, title, meta, partsWrap);
+  return { node, title, id, hash, parts, visual };
 }
 
 function createCapabilityModule(number, name, checks) {
   const module = el("div", "ceremony-module");
   module.dataset.state = "installed";
   const head = el("div", "ceremony-module-head");
-  const mark = el("span", "ceremony-module-mark", "◇");
-  const copyWrap = el("div", "ceremony-module-copy");
-  copyWrap.append(el("strong", "", `Capability ${number}`), el("small", "", name));
-  head.append(mark, copyWrap);
+  head.append(el("span", "ceremony-module-mark", "◇"), el("div", "", ""));
+  head.lastElementChild.append(el("strong", "", `Capability ${number}`), el("small", "", name));
   const state = el("span", "ceremony-module-state", copy("INSTALLED", "YÜKLÜ"));
   const list = el("div", "ceremony-module-checks");
   const rows = [];
-  checks.forEach(([en, tr], index) => {
+  checks.forEach(([en, tr]) => {
     const row = el("div", "ceremony-module-check");
     row.dataset.state = "pending";
-    row.dataset.index = String(index);
-    row.append(el("span", "ceremony-check-mark", "○"), el("span", "", copy(en, tr)));
+    row.append(el("span", "ceremony-check-mark", "·"), el("span", "", copy(en, tr)));
     list.appendChild(row);
     rows.push(row);
   });
@@ -257,27 +229,21 @@ function createCapabilityModule(number, name, checks) {
 function createResult() {
   const node = el("section", "ceremony-object ceremony-result");
   node.dataset.state = "hidden";
-  const spine = el("span", "ceremony-result-spine", "");
   const top = el("div", "ceremony-object-top");
   top.append(el("span", "ceremony-kicker", "AGENT OUTPUT"), el("span", "ceremony-output-state", copy("CREATED", "OLUŞTU")));
   const title = el("strong", "ceremony-object-title", copy("Capability result", "Capability sonucu"));
   const data = el("pre", "ceremony-result-data mono", "—");
   const hash = el("code", "ceremony-result-hash mono", "result hash  —");
-  const stamp = el("div", "ceremony-result-seal");
-  stamp.dataset.state = "hidden";
-  stamp.append(el("span", "", "DID"), el("strong", "", "◇"));
-  node.append(spine, top, title, data, hash, stamp);
-  return { node, data, hash, stamp };
+  node.append(top, title, data, hash);
+  return { node, data, hash };
 }
 
 function createDidSeal() {
   const seal = el("div", "ceremony-did-seal");
   seal.dataset.state = "hidden";
-  const face = el("div", "ceremony-seal-face");
-  face.append(el("span", "ceremony-seal-symbol", "◇"), el("strong", "", "DID"));
-  const action = el("small", "", "SIGN");
+  seal.append(el("span", "ceremony-seal-symbol", "◇"), el("strong", "", "DID"), el("small", "", "SIGN"));
   const detail = el("code", "ceremony-seal-detail mono", "—");
-  seal.append(face, action, detail);
+  seal.appendChild(detail);
   return { seal, detail };
 }
 
@@ -286,43 +252,20 @@ function createVerifierPanel(verifierActor) {
   panel.dataset.state = "hidden";
   const id = el("code", "ceremony-verifier-id mono", "verifier  —");
   const compare = el("div", "ceremony-compare");
-
-  const agentLane = el("div", "ceremony-compare-lane ceremony-compare-agent");
-  const agentLabel = el("span", "", copy("AGENT RESULT", "AJAN SONUCU"));
-  const agentToken = el("div", "ceremony-compare-token ceremony-agent-token");
-  agentToken.dataset.state = "empty";
-  const agentCode = el("code", "mono", "—");
-  agentToken.append(el("i", "", "A"), agentCode);
-  agentLane.append(agentLabel, agentToken);
-
-  const lock = el("div", "ceremony-match-lock");
-  lock.dataset.state = "waiting";
-  lock.append(el("span", "ceremony-lock-glyph", "◇"), el("strong", "", copy("WAITING", "BEKLİYOR")));
-
-  const flopLane = el("div", "ceremony-compare-lane ceremony-compare-flop");
-  const flopLabel = el("span", "", copy("FLOP RESULT", "FLOP SONUCU"));
-  const flopToken = el("div", "ceremony-compare-token ceremony-flop-token");
-  flopToken.dataset.state = "empty";
-  const flopCode = el("code", "mono", "—");
-  flopToken.append(el("i", "", "F"), flopCode);
-  flopLane.append(flopLabel, flopToken);
-
-  compare.append(agentLane, lock, flopLane);
+  const agent = el("div", "ceremony-compare-value");
+  agent.append(el("span", "", copy("AGENT RESULT", "AJAN SONUCU")), el("code", "mono", "—"));
+  const flop = el("div", "ceremony-compare-value");
+  flop.append(el("span", "", copy("FLOP RESULT", "FLOP SONUCU")), el("code", "mono", "—"));
+  const lock = el("div", "ceremony-match-lock", copy("WAITING", "BEKLİYOR"));
+  compare.append(agent, lock, flop);
   panel.append(id, compare);
   verifierActor.actor.appendChild(panel);
-  return { panel, id, agent: agentCode, flop: flopCode, agentToken, flopToken, lock, lockText: lock.querySelector("strong") };
+  return { panel, id, agent: agent.querySelector("code"), flop: flop.querySelector("code"), lock };
 }
 
 function createCertificate(number, name) {
   const node = el("article", "ceremony-certificate");
   node.dataset.state = "hidden";
-  const assembly = el("div", "ceremony-certificate-assembly");
-  for (const key of ["challenge", "result", "did", "verifier"]) {
-    const slot = el("span", `ceremony-certificate-slot ceremony-certificate-slot-${key}`, "");
-    slot.dataset.state = "empty";
-    slot.dataset.source = key;
-    assembly.appendChild(slot);
-  }
   const brand = el("div", "ceremony-certificate-brand");
   brand.append(el("span", "ceremony-certificate-mark", "◇"), el("strong", "", "FLOP"));
   const type = el("span", "ceremony-certificate-type", "VERIFIED CAPABILITY");
@@ -333,11 +276,9 @@ function createCertificate(number, name) {
   const receipt = el("code", "mono", "RECEIPT  —");
   const cert = el("code", "mono", "CERTIFICATE  —");
   fields.append(did, receipt, cert);
-  const seal = el("div", "ceremony-certificate-seal");
-  seal.append(el("span", "", "PASS"), el("strong", "", "◇"));
-  node.append(assembly, brand, type, cap, capName, fields, seal);
-  const slots = new Map([...assembly.children].map((slot) => [slot.dataset.source, slot]));
-  return { node, did, receipt, cert, slots, seal };
+  const seal = el("div", "ceremony-certificate-seal", "◇");
+  node.append(brand, type, cap, capName, fields, seal);
+  return { node, did, receipt, cert };
 }
 
 function createProofDock() {
@@ -348,22 +289,10 @@ function createProofDock() {
   const split = el("div", "ceremony-proof-split");
   const inside = el("div", "ceremony-boundary-side ceremony-boundary-inside");
   inside.append(el("span", "", copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")), el("strong", "", copy("Agent Core + Capability", "Ajan Core + Capability")));
-  const boundary = el("div", "ceremony-boundary-line");
-  boundary.append(el("span", "", "FLOP"));
   const outside = el("div", "ceremony-boundary-side ceremony-boundary-outside");
   outside.append(el("span", "", copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")), el("strong", "", "DID · Certificate · Receipt · Public proof"));
-  const chips = el("div", "ceremony-proof-chips");
-  const chipNodes = [];
-  for (const label of ["DID", "CERT", "RECEIPT", "PUBLIC"]) {
-    const chip = el("span", "ceremony-proof-chip", label);
-    chip.dataset.state = "parked";
-    chips.appendChild(chip);
-    chipNodes.push(chip);
-  }
-  outside.appendChild(chips);
-  split.append(inside, boundary, outside);
+  split.append(inside, outside);
   dock.append(intro, split);
-  dock.proofChips = chipNodes;
   return dock;
 }
 
@@ -374,10 +303,6 @@ function createEventStrip() {
   const text = el("strong", "ceremony-event-text", copy("Waiting for verification to start", "Doğrulamanın başlaması bekleniyor"));
   strip.append(dot, kind, text);
   return { strip, dot, kind, text };
-}
-
-function center(rect) {
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
 export function createVerificationCeremony(container, config = {}) {
@@ -407,7 +332,8 @@ export function createVerificationCeremony(container, config = {}) {
   head.append(headCopy, live);
 
   const stage = el("div", "ceremony-stage");
-  const field = el("div", "ceremony-field");
+  const field = document.createElement("canvas");
+  field.className = "ceremony-field";
   field.setAttribute("aria-hidden", "true");
   const challenge = createChallenge(number);
   const agent = createActor({ className: "ceremony-agent", kicker: copy("YOUR FLOP AGENT", "FLOP AJANIN"), title: copy("Agent Core", "Ajan Core"), canvasClass: "ceremony-core-canvas", rgb: "137,108,255" });
@@ -432,8 +358,8 @@ export function createVerificationCeremony(container, config = {}) {
   function actorEnergy(step) {
     const state = states.get(step);
     if (state === "active") return 1;
-    if (state === "done") return .74;
-    return .18;
+    if (state === "done") return .68;
+    return .2;
   }
 
   function render(time) {
@@ -459,266 +385,130 @@ export function createVerificationCeremony(container, config = {}) {
     shell.dataset.realState = state;
   }
 
-  async function reveal(node, from = "translateY(18px) scale(.96)", duration = 430) {
+  async function reveal(node, from = "translateY(18px) scale(.96)") {
     node.dataset.state = "visible";
-    await animate(node, [{ opacity: 0, transform: from }, { opacity: 1, transform: "translate(0,0) scale(1)" }], { duration, easing: "cubic-bezier(.2,.9,.2,1)" }, reduced);
+    await animate(node, [{ opacity: 0, transform: from }, { opacity: 1, transform: "translate(0,0) scale(1)" }], { duration: 430, easing: "cubic-bezier(.2,.9,.2,1)" }, reduced);
   }
 
-  async function pulse(node, scale = 1.05, duration = 380) {
-    await animate(node, [{ transform: "scale(1)" }, { transform: `scale(${scale})` }, { transform: "scale(1)" }], { duration, easing: "cubic-bezier(.2,.8,.2,1)" }, reduced);
+  async function pulse(node, scale = 1.05) {
+    await animate(node, [{ transform: "scale(1)" }, { transform: `scale(${scale})` }, { transform: "scale(1)" }], { duration: 430, easing: "cubic-bezier(.2,.8,.2,1)" }, reduced);
   }
 
-  function flightClone(source, tone, kind) {
-    const clone = source.cloneNode(true);
-    clone.removeAttribute?.("id");
-    clone.classList.add("ceremony-flight-artifact", `ceremony-flight-${tone}`, `ceremony-flight-${kind}`);
-    clone.dataset.state = "flying";
-    clone.querySelectorAll?.("[id]").forEach((node) => node.removeAttribute("id"));
-    return clone;
-  }
-
-  async function travel(from, to, source = from, tone = "violet", kind = "part") {
+  async function travel(from, to, label, tone = "violet") {
     const stageRect = stage.getBoundingClientRect();
     const fromRect = from.getBoundingClientRect();
     const toRect = to.getBoundingClientRect();
-    const start = center(fromRect);
-    const end = center(toRect);
-    const clone = flightClone(source, tone, kind);
-    stage.appendChild(clone);
-    clone.style.left = `${start.x - stageRect.left}px`;
-    clone.style.top = `${start.y - stageRect.top}px`;
-    clone.style.width = `${Math.max(38, Math.min(fromRect.width, kind === "result" ? 190 : 132))}px`;
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const lift = Math.max(22, Math.min(62, Math.abs(dx) * .12));
-    await animate(clone, [
-      { opacity: .15, transform: "translate(-50%,-50%) scale(.82) rotate(0deg)" },
-      { opacity: 1, offset: .14, transform: `translate(calc(-50% + ${dx * .10}px), calc(-50% + ${dy * .06 - lift}px)) scale(1) rotate(-1.5deg)` },
-      { opacity: 1, offset: .72, transform: `translate(calc(-50% + ${dx * .76}px), calc(-50% + ${dy * .80 - lift * .42}px)) scale(.96) rotate(.8deg)` },
-      { opacity: .08, transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.58) rotate(0deg)` },
-    ], { duration: kind === "result" ? 720 : 560, easing: "cubic-bezier(.22,.74,.24,1)" }, reduced);
-    clone.remove();
-  }
-
-  async function materializeFrom(from, node, fromScale = .18) {
-    node.dataset.state = "visible";
-    const fromRect = from.getBoundingClientRect();
-    const nodeRect = node.getBoundingClientRect();
-    const a = center(fromRect);
-    const b = center(nodeRect);
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    await animate(node, [
-      { opacity: 0, clipPath: "inset(46% 46% 46% 46%)", transform: `translate(${dx}px, ${dy}px) scale(${fromScale}) rotate(-5deg)` },
-      { opacity: .92, offset: .72, clipPath: "inset(0 0 0 0)", transform: "translate(6px, -3px) scale(1.025) rotate(.6deg)" },
-      { opacity: 1, clipPath: "inset(0 0 0 0)", transform: "translate(0,0) scale(1) rotate(0deg)" },
-    ], { duration: 720, easing: "cubic-bezier(.16,.88,.22,1)" }, reduced);
+    const packet = el("div", `ceremony-travel-packet ceremony-travel-${tone}`, label);
+    stage.appendChild(packet);
+    const startX = fromRect.left + fromRect.width / 2 - stageRect.left;
+    const startY = fromRect.top + fromRect.height / 2 - stageRect.top;
+    const endX = toRect.left + toRect.width / 2 - stageRect.left;
+    const endY = toRect.top + toRect.height / 2 - stageRect.top;
+    packet.style.left = `${startX}px`;
+    packet.style.top = `${startY}px`;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    await animate(packet, [
+      { opacity: 0, transform: "translate(-50%,-50%) scale(.7)" },
+      { opacity: 1, offset: .14, transform: `translate(calc(-50% + ${dx * .08}px), calc(-50% + ${dy * .02 - 22}px)) scale(1)` },
+      { opacity: 1, offset: .72, transform: `translate(calc(-50% + ${dx * .78}px), calc(-50% + ${dy * .82 - 14}px)) scale(1)` },
+      { opacity: 0, transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.65)` },
+    ], { duration: 620, easing: "cubic-bezier(.25,.72,.25,1)" }, reduced);
+    packet.remove();
   }
 
   async function animateChallenge() {
-    challenge.node.dataset.state = "visible";
-    await animate(challenge.node, [
-      { opacity: 0, transform: "translateX(-34px) scale(.965)", clipPath: "inset(0 82% 0 0)" },
-      { opacity: 1, transform: "translateX(0) scale(1)", clipPath: "inset(0 0 0 0)" },
-    ], { duration: 520, easing: "cubic-bezier(.18,.86,.2,1)" }, reduced);
-    await animate(challenge.rail, [{ transform: "scaleY(.1)", opacity: .2 }, { transform: "scaleY(1)", opacity: 1 }], { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" }, reduced);
+    await reveal(challenge.node, "translateX(-28px) scale(.96)");
     for (const item of challenge.parts.values()) {
       item.part.dataset.state = "ready";
-      await animate(item.part, [
-        { opacity: .16, transform: "translateX(-12px)" },
-        { opacity: 1, transform: "translateX(0)" },
-      ], { duration: 150, easing: "ease-out" }, reduced);
+      await animate(item.part, [{ opacity: 0, transform: "translateX(-10px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 180, easing: "ease-out" }, reduced);
     }
+    await pulse(challenge.node, 1.018);
   }
 
   async function animateExecution() {
-    agent.actor.dataset.state = "active";
     module.module.dataset.state = "active";
     say("Fresh input is entering the installed capability.", "Fresh girdi yüklü capability içine giriyor.");
-    const items = [...challenge.parts.values()];
-    for (let index = 0; index < items.length; index += 1) {
-      const item = items[index];
-      const port = agent.ports[index % agent.ports.length];
-      item.part.dataset.state = "extracting";
-      await animate(item.part, [
-        { transform: "translateX(0) scale(1)" },
-        { transform: "translateX(9px) scale(1.025)" },
-      ], { duration: 150, easing: "cubic-bezier(.2,.8,.2,1)" }, reduced);
-      await travel(item.part, port, item.part, "violet", "part");
-      item.part.dataset.state = "consumed";
-      port.dataset.state = "loaded";
-      await pulse(port, 1.24, 260);
-      const row = module.rows[index];
-      if (row) {
-        row.dataset.state = "done";
-        row.querySelector(".ceremony-check-mark").textContent = "●";
-        await animate(row, [
-          { opacity: .22, transform: "translateX(-4px)" },
-          { opacity: 1, transform: "translateX(0)" },
-        ], { duration: 190, easing: "ease-out" }, reduced);
-      }
+    for (const item of challenge.parts.values()) {
+      if (item.part.dataset.state !== "hidden") await travel(item.part, agent.actor, item.title.textContent, "violet");
     }
-    challenge.node.dataset.state = "spent";
+    for (const row of module.rows) {
+      row.dataset.state = "done";
+      row.querySelector(".ceremony-check-mark").textContent = "✓";
+      await animate(row, [{ opacity: .35, transform: "translateX(-5px)" }, { opacity: 1, transform: "translateX(0)" }], { duration: 210, easing: "ease-out" }, reduced);
+    }
     module.state.textContent = copy("EXECUTED", "ÇALIŞTI");
-    module.module.dataset.state = "done";
-    agent.actor.dataset.state = "processing";
-    await animate(agent.canvas, [
-      { transform: "scale(1) rotate(0deg)" },
-      { transform: "scale(1.035) rotate(.5deg)" },
-      { transform: "scale(1) rotate(0deg)" },
-    ], { duration: 520, easing: "cubic-bezier(.2,.78,.2,1)" }, reduced);
+    await pulse(agent.actor, 1.035);
   }
 
   async function animateResult() {
-    say("The capability produced a new result artifact.", "Capability yeni bir sonuç artifact'i üretti.");
-    await materializeFrom(agent.actor, result.node, .16);
     result.node.dataset.state = "visible";
-    agent.actor.dataset.state = "done";
+    await travel(agent.actor, result.node, copy("RESULT", "SONUÇ"), "violet");
+    await reveal(result.node, "translateY(20px) scale(.9)");
   }
 
   async function animateSign() {
     didSeal.seal.dataset.state = "visible";
-    await reveal(didSeal.seal, "translateY(-24px) scale(.7)", 360);
-    const sealRect = didSeal.seal.getBoundingClientRect();
-    const stampRect = result.stamp.getBoundingClientRect();
-    const from = center(sealRect);
-    const to = center(stampRect);
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
+    await reveal(didSeal.seal, "translateY(-34px) scale(.72)");
+    await travel(agent.actor, didSeal.seal, "DID", "violet");
     await animate(didSeal.seal, [
-      { opacity: 1, transform: "translate(0,0) scale(1) rotate(-3deg)" },
-      { opacity: 1, offset: .72, transform: `translate(${dx * .86}px, ${dy * .86}px) scale(.78) rotate(2deg)` },
-      { opacity: .08, transform: `translate(${dx}px, ${dy}px) scale(.56) rotate(0deg)` },
-    ], { duration: 620, easing: "cubic-bezier(.18,.82,.2,1)" }, reduced);
-    didSeal.seal.dataset.state = "docked";
-    result.stamp.dataset.state = "visible";
-    await animate(result.stamp, [
-      { opacity: 0, transform: "scale(1.8) rotate(-8deg)" },
-      { opacity: 1, transform: "scale(.92) rotate(1deg)" },
-      { opacity: 1, transform: "scale(1) rotate(0deg)" },
-    ], { duration: 440, easing: "cubic-bezier(.12,.9,.2,1)" }, reduced);
+      { transform: "translateY(-10px) scale(1.08) rotate(-4deg)" },
+      { transform: "translateY(26px) scale(.96) rotate(2deg)" },
+      { transform: "translateY(0) scale(1) rotate(0)" },
+    ], { duration: 520, easing: "cubic-bezier(.18,.86,.25,1)" }, reduced);
     result.node.dataset.signed = "true";
-    result.node.dataset.state = "signed";
+    await pulse(result.node, 1.025);
   }
 
   async function animateVerification() {
-    verifier.actor.dataset.state = "waking";
-    verifierPanel.panel.dataset.state = "visible";
-    await animate(verifier.actor, [
-      { opacity: .08, transform: "scale(.9) translateX(28px)" },
-      { opacity: 1, transform: "scale(1) translateX(0)" },
-    ], { duration: 520, easing: "cubic-bezier(.18,.86,.2,1)" }, reduced);
     verifier.actor.dataset.state = "active";
-    await reveal(verifierPanel.panel, "translateY(14px) scale(.96)", 360);
+    verifierPanel.panel.dataset.state = "visible";
+    await reveal(verifierPanel.panel, "translateY(12px) scale(.96)");
     say("Signed agent output is moving to FLOP's independent verifier.", "İmzalı ajan çıktısı FLOP'un bağımsız verifier'ına gidiyor.");
-    await travel(result.node, verifierPanel.agentToken, result.node, "blue", "result");
-    verifierPanel.agentToken.dataset.state = "loaded";
-    result.node.dataset.state = "submitted";
-    await pulse(verifierPanel.agentToken, 1.08, 260);
-
-    verifierPanel.flopToken.dataset.state = "computing";
-    await materializeFrom(verifier.actor, verifierPanel.flopToken, .22);
-    verifierPanel.flopToken.dataset.state = "loaded";
-    await pulse(verifierPanel.flopToken, 1.08, 260);
+    await travel(result.node, verifier.actor, copy("SIGNED RESULT", "İMZALI SONUÇ"), "blue");
+    await pulse(verifier.actor, 1.045);
     verifier.actor.dataset.state = "done";
   }
 
   async function animateVerdict(state) {
     if (state === "done") {
-      verifierPanel.lock.dataset.state = "matching";
-      verifierPanel.lockText.textContent = copy("COMPARING", "KARŞILAŞTIRILIYOR");
-      await Promise.all([
-        animate(verifierPanel.agentToken, [
-          { transform: "translateX(0) scale(1)" },
-          { transform: "translateX(30px) scale(.94)" },
-        ], { duration: 420, easing: "cubic-bezier(.2,.82,.2,1)" }, reduced),
-        animate(verifierPanel.flopToken, [
-          { transform: "translateX(0) scale(1)" },
-          { transform: "translateX(-30px) scale(.94)" },
-        ], { duration: 420, easing: "cubic-bezier(.2,.82,.2,1)" }, reduced),
-      ]);
+      verifierPanel.lock.textContent = "MATCH ✓";
       verifierPanel.lock.dataset.state = "match";
-      verifierPanel.lockText.textContent = "MATCH";
-      await animate(verifierPanel.lock, [
-        { transform: "scale(.72) rotate(-8deg)", opacity: .35 },
-        { transform: "scale(1.12) rotate(2deg)", opacity: 1 },
-        { transform: "scale(1) rotate(0deg)", opacity: 1 },
-      ], { duration: 540, easing: "cubic-bezier(.16,.9,.2,1)" }, reduced);
+      await animate(verifierPanel.lock, [{ transform: "scale(.85)", opacity: .4 }, { transform: "scale(1.08)", opacity: 1 }, { transform: "scale(1)", opacity: 1 }], { duration: 520, easing: "cubic-bezier(.2,.9,.2,1)" }, reduced);
       pass.dataset.state = "visible";
-      await animate(pass, [
-        { opacity: 0, clipPath: "inset(48% 0 48% 0)", transform: "scale(.84)" },
-        { opacity: 1, clipPath: "inset(0 0 0 0)", transform: "scale(1.035)" },
-        { opacity: 1, clipPath: "inset(0 0 0 0)", transform: "scale(1)" },
-      ], { duration: 620, easing: "cubic-bezier(.14,.9,.2,1)" }, reduced);
+      await reveal(pass, "scale(.72)");
+      await animate(pass, [{ transform: "scale(.92)", opacity: .5 }, { transform: "scale(1.06)", opacity: 1 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.15,.9,.2,1)" }, reduced);
     } else if (state === "fail") {
+      verifierPanel.lock.textContent = "MISMATCH ×";
       verifierPanel.lock.dataset.state = "fail";
-      verifierPanel.lockText.textContent = "MISMATCH";
       pass.dataset.state = "fail";
       pass.replaceChildren(el("span", "ceremony-pass-small", copy("RESULTS DO NOT MATCH", "SONUÇLAR EŞLEŞMEDİ")), el("strong", "", "FAIL"));
-      await animate(pass, [
-        { opacity: 0, transform: "scale(.84)" },
-        { opacity: 1, transform: "scale(1)" },
-      ], { duration: 460, easing: "cubic-bezier(.18,.86,.2,1)" }, reduced);
+      await reveal(pass, "scale(.8)");
     } else {
+      verifierPanel.lock.textContent = "UNKNOWN";
       verifierPanel.lock.dataset.state = "unknown";
-      verifierPanel.lockText.textContent = "UNKNOWN";
     }
-  }
-
-  async function assembleCertificateSource(source, slot, tone, kind) {
-    if (!source || !slot) return;
-    await travel(source, slot, source, tone, kind);
-    slot.dataset.state = "filled";
-    await pulse(slot, 1.18, 220);
   }
 
   async function animateCertificate() {
     say("PASS is now being sealed into an individual capability certificate.", "PASS şimdi capability'ye özel certificate içine mühürleniyor.");
-    verifier.actor.dataset.state = "receding";
+    const sources = [challenge.node, result.node, didSeal.seal, verifier.actor];
+    const labels = ["CHALLENGE", "RESULT", "DID", "VERIFIER"];
     certificate.node.dataset.state = "forming";
-    await animate(certificate.node, [
-      { opacity: 0, clipPath: "inset(0 100% 0 0)" },
-      { opacity: .34, clipPath: "inset(0 0 0 0)" },
-    ], { duration: 420, easing: "cubic-bezier(.2,.82,.2,1)" }, reduced);
-
-    await travel(pass, certificate.seal, pass, "gold", "proof");
-    pass.dataset.state = "sealing";
-    await assembleCertificateSource(challenge.hash, certificate.slots.get("challenge"), "gold", "proof");
-    await assembleCertificateSource(result.node, certificate.slots.get("result"), "gold", "result");
-    await assembleCertificateSource(result.stamp, certificate.slots.get("did"), "gold", "seal");
-    await assembleCertificateSource(verifierPanel.lock, certificate.slots.get("verifier"), "blue", "proof");
-
+    for (let i = 0; i < sources.length; i += 1) await travel(sources[i], certificate.node, labels[i], i === 3 ? "blue" : "gold");
     certificate.node.dataset.state = "visible";
-    await animate(certificate.node, [
-      { opacity: .42, transform: "translateX(16px) scale(.97)" },
-      { opacity: 1, transform: "translateX(0) scale(1)" },
-    ], { duration: 520, easing: "cubic-bezier(.18,.88,.2,1)" }, reduced);
-    await animate(certificate.seal, [
-      { opacity: .2, transform: "scale(1.7) rotate(-12deg)" },
-      { opacity: 1, transform: "scale(.94) rotate(2deg)" },
-      { opacity: 1, transform: "scale(1) rotate(0deg)" },
-    ], { duration: 520, easing: "cubic-bezier(.16,.9,.2,1)" }, reduced);
-
+    await reveal(certificate.node, "translateX(30px) scale(.82) rotateY(-7deg)");
     proofDock.dataset.state = "visible";
-    await reveal(proofDock, "translateY(16px)", 440);
-    for (const chip of proofDock.proofChips ?? []) {
-      chip.dataset.state = "portable";
-      await animate(chip, [
-        { opacity: .18, transform: "translateX(-34px) scale(.9)" },
-        { opacity: 1, transform: "translateX(0) scale(1)" },
-      ], { duration: 150, easing: "ease-out" }, reduced);
-    }
+    await reveal(proofDock, "translateY(18px)");
   }
 
   function reset() {
-    visualTail = Promise.resolve();
     container.hidden = false;
     shell.classList.remove("ceremony-hidden-until-run");
     shell.dataset.phase = "idle";
     shell.dataset.realState = "pending";
     states.clear();
     STEPS.forEach((step) => states.set(step, "pending"));
-
     challenge.node.dataset.state = "hidden";
     challenge.id.textContent = "ID  —";
     challenge.hash.textContent = "SHA256  —";
@@ -727,47 +517,32 @@ export function createVerificationCeremony(container, config = {}) {
       item.value.textContent = "—";
       item.value.title = "";
     });
-
-    agent.actor.dataset.state = "idle";
-    agent.ports.forEach((port) => { port.dataset.state = "empty"; });
     module.module.dataset.state = "installed";
     module.state.textContent = copy("INSTALLED", "YÜKLÜ");
     module.rows.forEach((row) => {
       row.dataset.state = "pending";
-      row.querySelector(".ceremony-check-mark").textContent = "○";
+      row.querySelector(".ceremony-check-mark").textContent = "·";
     });
-
     result.node.dataset.state = "hidden";
     delete result.node.dataset.signed;
     result.data.textContent = "—";
     result.hash.textContent = "result hash  —";
-    result.stamp.dataset.state = "hidden";
-
     didSeal.seal.dataset.state = "hidden";
     didSeal.detail.textContent = "—";
-
     verifier.actor.dataset.state = "idle";
-    verifier.ports.forEach((port) => { port.dataset.state = "empty"; });
     verifierPanel.panel.dataset.state = "hidden";
     verifierPanel.id.textContent = "verifier  —";
     verifierPanel.agent.textContent = "—";
     verifierPanel.flop.textContent = "—";
-    verifierPanel.agentToken.dataset.state = "empty";
-    verifierPanel.flopToken.dataset.state = "empty";
-    verifierPanel.lock.dataset.state = "waiting";
-    verifierPanel.lockText.textContent = copy("WAITING", "BEKLİYOR");
-
+    verifierPanel.lock.textContent = copy("WAITING", "BEKLİYOR");
+    delete verifierPanel.lock.dataset.state;
     certificate.node.dataset.state = "hidden";
     certificate.did.textContent = "DID  —";
     certificate.receipt.textContent = "RECEIPT  —";
     certificate.cert.textContent = "CERTIFICATE  —";
-    certificate.slots.forEach((slot) => { slot.dataset.state = "empty"; });
-
     pass.dataset.state = "hidden";
     pass.replaceChildren(el("span", "ceremony-pass-small", copy("RESULTS MATCH", "SONUÇLAR EŞLEŞTİ")), el("strong", "", "PASS"));
     proofDock.dataset.state = "hidden";
-    for (const chip of proofDock.proofChips ?? []) chip.dataset.state = "parked";
-
     currentResult = null;
     decision = {};
     say("Verification started. Waiting for the first real event.", "Doğrulama başladı. İlk gerçek event bekleniyor.");
@@ -778,7 +553,7 @@ export function createVerificationCeremony(container, config = {}) {
     const labels = STEP_LABELS[step];
     if (labels) say(`${labels[0]}…`, `${labels[1]}…`);
     if (step === "execute") agent.actor.dataset.state = "active";
-    if (step === "verify") verifier.actor.dataset.state = "waking";
+    if (step === "verify") verifier.actor.dataset.state = "active";
   }
 
   function complete(step, summary) {
