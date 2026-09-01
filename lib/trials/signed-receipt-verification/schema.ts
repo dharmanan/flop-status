@@ -4,7 +4,7 @@ import { ED25519_PUBLIC_KEY_LENGTH, ED25519_SIGNATURE_LENGTH } from "../../crypt
 import { isSha256Hash } from "../../crypto/sha256.js";
 import { parseEd25519DidKey } from "../../identity/did-key.js";
 import { RECEIPT_EVIDENCE_TYPE, RECEIPT_VERSION } from "../../receipts/receipt.js";
-import { CANONICALIZATION_ID, CAPABILITY_ID, CHALLENGE_VERSION, SUBMISSION_VERSION, TRIAL_ID, TRIAL_VERSION } from "./constants.js";
+import { CANONICALIZATION_ID, CAPABILITY_ID, CHALLENGE_VERSION, PRODUCTION_TRIAL_ID, SUBMISSION_VERSION, TRIAL_ID, TRIAL_VERSION } from "./constants.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const uuidSchema = z.string().regex(UUID_PATTERN);
@@ -19,6 +19,9 @@ function base64UrlSchema(exactLength: number) {
     try { return decodeBase64Url(value).length === exactLength; } catch { return false; }
   });
 }
+
+export const trial4IdSchema = z.enum([TRIAL_ID, PRODUCTION_TRIAL_ID]);
+export type Trial4Id = z.infer<typeof trial4IdSchema>;
 
 export const trial4CaseClassSchema = z.enum([
   "VALID",
@@ -59,7 +62,7 @@ export const trial4ChallengePayloadSchema = z.object({
   challenge_id: uuidSchema,
   agent_did: didSchema,
   capability_id: z.literal(CAPABILITY_ID),
-  trial_id: z.literal(TRIAL_ID),
+  trial_id: trial4IdSchema,
   trial_version: z.literal(TRIAL_VERSION),
   nonce: z.string().min(1),
   case: z.object({
@@ -89,7 +92,7 @@ export const trial4SignedSubmissionPayloadSchema = z.object({
   challenge_id: uuidSchema,
   challenge_hash: hashSchema,
   agent_did: z.string().min(1),
-  trial_id: z.literal(TRIAL_ID),
+  trial_id: trial4IdSchema,
   trial_version: z.literal(TRIAL_VERSION),
   result: trial4ResultSchema,
   submitted_at: timestampSchema,

@@ -1,37 +1,8 @@
+import { canonicalizeJson } from "/capabilities/jcs.js";
+
 export const CAPABILITY_ID = "data.canonical-json-sha256";
 export const PRODUCTION_TRIAL_ID = "canonical-json-sha256-certification";
 export const TRIAL_VERSION = "1";
-
-function assertJsonValue(value) {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return;
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("JSON_NUMBER_MUST_BE_FINITE");
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach(assertJsonValue);
-    return;
-  }
-  if (typeof value === "object") {
-    for (const entry of Object.values(value)) assertJsonValue(entry);
-    return;
-  }
-  throw new Error("VALUE_IS_NOT_JSON");
-}
-
-export function canonicalizeJson(value) {
-  assertJsonValue(value);
-  if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return "[" + value.map(canonicalizeJson).join(",") + "]";
-  }
-  return "{" + Object.keys(value)
-    .sort()
-    .map((key) => JSON.stringify(key) + ":" + canonicalizeJson(value[key]))
-    .join(",") + "}";
-}
 
 function bytesToBase64Url(bytes) {
   let binary = "";
@@ -67,4 +38,8 @@ export function createPracticeFixture() {
       sha256: "sha256:_ynS8XTVdQlr2jAxpAre_cRU4Keu1ucZRK3j6R0eRn0",
     },
   };
+}
+
+export async function evaluatePractice(result, fixture) {
+  return result.canonical_json === fixture.expected.canonical_json && result.sha256 === fixture.expected.sha256;
 }

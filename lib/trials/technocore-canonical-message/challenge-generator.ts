@@ -11,6 +11,7 @@ import {
   type Trial3CaseClass,
   type Trial3ChallengePayload,
   type Trial3HiddenVerifierContext,
+  type Trial3Id,
 } from "./schema.js";
 
 export type ClockFn = () => Date;
@@ -23,6 +24,7 @@ export interface Trial3ChallengeGeneratorDependencies {
 
 export interface GenerateTechnocoreCanonicalMessageChallengeInput {
   agentDid: string;
+  trialId?: Trial3Id;
   caseClass?: Trial3CaseClass;
 }
 
@@ -96,7 +98,7 @@ export function generateTechnocoreCanonicalMessageChallenge(
     challenge_id: formatUuidV4(randomBytes(CHALLENGE_ID_ENTROPY_LENGTH)),
     agent_did: input.agentDid,
     capability_id: CAPABILITY_ID,
-    trial_id: TRIAL_ID,
+    trial_id: input.trialId ?? TRIAL_ID,
     trial_version: TRIAL_VERSION,
     nonce: encodeBase64Url(randomBytes(NONCE_LENGTH)),
     case: { room, nonce: technocoreNonce, text },

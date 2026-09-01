@@ -8,25 +8,26 @@ import {
   type SignedPassReceipt,
   type UnsignedPassReceipt,
 } from "../receipts/receipt.js";
+import { findProductionCapabilityByTrialId } from "../runtime/capability-registry.js";
 import {
-  CAPABILITY_VERSION as TRIAL2_CAPABILITY_VERSION,
-  CERTIFICATE_NAME as TRIAL2_CERTIFICATE_NAME,
   PRODUCTION_TRIAL_ID as TRIAL2_PRODUCTION_ID,
-  PROGRAM_VERSION as TRIAL2_PROGRAM_VERSION,
   TRIAL_ID as TRIAL2_ID,
 } from "../trials/canonical-json-sha256/constants.js";
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
 import {
-  CAPABILITY_VERSION as TRIAL1_CAPABILITY_VERSION,
-  CERTIFICATE_NAME as TRIAL1_CERTIFICATE_NAME,
   PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
-  PROGRAM_VERSION as TRIAL1_PROGRAM_VERSION,
   TRIAL_ID as TRIAL1_ID,
 } from "../trials/ed25519-signature-verification/constants.js";
 import { verifyTrial1Result } from "../trials/ed25519-signature-verification/verifier.js";
-import { TRIAL_ID as TRIAL4_ID } from "../trials/signed-receipt-verification/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL4_PRODUCTION_ID,
+  TRIAL_ID as TRIAL4_ID,
+} from "../trials/signed-receipt-verification/constants.js";
 import { verifyTrial4Result } from "../trials/signed-receipt-verification/verifier.js";
-import { TRIAL_ID as TRIAL3_ID } from "../trials/technocore-canonical-message/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL3_PRODUCTION_ID,
+  TRIAL_ID as TRIAL3_ID,
+} from "../trials/technocore-canonical-message/constants.js";
 import { verifyTrial3Result } from "../trials/technocore-canonical-message/verifier.js";
 
 export class FinalizationError extends Error {
@@ -74,14 +75,14 @@ function verifyPersistedResult(context: {
       result: context.resultPayload,
     });
   }
-  if (context.trialId === TRIAL3_ID) {
+  if (context.trialId === TRIAL3_ID || context.trialId === TRIAL3_PRODUCTION_ID) {
     return verifyTrial3Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
       result: context.resultPayload,
     });
   }
-  if (context.trialId === TRIAL4_ID) {
+  if (context.trialId === TRIAL4_ID || context.trialId === TRIAL4_PRODUCTION_ID) {
     return verifyTrial4Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
@@ -89,24 +90,6 @@ function verifyPersistedResult(context: {
     });
   }
   throw new FinalizationError("UNSUPPORTED_TRIAL", `no deterministic verifier registered for ${context.trialId}`);
-}
-
-function certificateMetadata(trialId: string) {
-  if (trialId === TRIAL1_PRODUCTION_ID) {
-    return {
-      certificateName: TRIAL1_CERTIFICATE_NAME,
-      capabilityVersion: TRIAL1_CAPABILITY_VERSION,
-      programVersion: TRIAL1_PROGRAM_VERSION,
-    };
-  }
-  if (trialId === TRIAL2_PRODUCTION_ID) {
-    return {
-      certificateName: TRIAL2_CERTIFICATE_NAME,
-      capabilityVersion: TRIAL2_CAPABILITY_VERSION,
-      programVersion: TRIAL2_PROGRAM_VERSION,
-    };
-  }
-  return null;
 }
 
 export async function finalizeCapabilityVerification(
@@ -200,17 +183,19 @@ export async function finalizeCapabilityVerification(
       serverSignature: receipt.server_signature,
     });
 
+    // Only a production certification trial is certificate eligible. Historical
+    // Trial 1-4 receipts keep their evidence value without creating certificates.
+    const productionCapability = findProductionCapabilityByTrialId(context.trialId);
     let certificateId: string | undefined;
-    const metadata = certificateMetadata(context.trialId);
-    if (metadata) {
+    if (productionCapability) {
       certificateId = uuid();
       await tx.insertCapabilityCertificate({
         id: certificateId,
         agentId: context.agentId,
         capabilityId: context.capabilityId,
-        certificateName: metadata.certificateName,
-        capabilityVersion: metadata.capabilityVersion,
-        programVersion: metadata.programVersion,
+        certificateName: productionCapability.certificateName,
+        capabilityVersion: productionCapability.capabilityVersion,
+        programVersion: productionCapability.programVersion,
         trialId: context.trialId,
         trialVersion: context.trialVersion,
         verifierId: verification.verifier_id,

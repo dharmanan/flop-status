@@ -1,42 +1,48 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
-const capability1 = readFileSync(
-  new URL("../../web/capabilities/ed25519-signature-verification.js", import.meta.url),
-  "utf8",
+
+const capabilityDir = fileURLToPath(new URL("../../web/capabilities/", import.meta.url));
+const capabilityModules = Object.fromEntries(
+  readdirSync(capabilityDir)
+    .filter((name) => name.endsWith(".js"))
+    .map((name) => [name, readFileSync(capabilityDir + name, "utf8")]),
 );
-const capability2 = readFileSync(
-  new URL("../../web/capabilities/canonical-json-sha256.js", import.meta.url),
-  "utf8",
-);
+
+const EXECUTORS = [
+  ["ed25519-signature-verification.js", "executeEd25519SignatureVerification"],
+  ["canonical-json-sha256.js", "executeCanonicalJsonSha256"],
+  ["technocore-canonical-message.js", "executeTechnocoreCanonicalMessage"],
+  ["signed-receipt-verification.js", "executeSignedReceiptVerification"],
+] as const;
 
 describe("production capability browser custody boundary", () => {
-  it("requests only certificate-eligible production trials for Capability 1 and 2", () => {
-    expect(source).toContain("CAPABILITY1_TRIAL_ID");
-    expect(source).toContain("CAPABILITY2_TRIAL_ID");
-    expect(capability1).toContain('PRODUCTION_TRIAL_ID = "ed25519-signature-verification-certification"');
-    expect(capability2).toContain('PRODUCTION_TRIAL_ID = "canonical-json-sha256-certification"');
+  it("requests only production certification trial ids for each capability", () => {
+    for (const [file, executor] of EXECUTORS) {
+      expect(capabilityModules[file]).toContain(`export async function ${executor}`);
+      expect(capabilityModules[file]).toMatch(/PRODUCTION_TRIAL_ID = "[a-z0-9-]+-certification"/);
+    }
+    expect(source).not.toContain('trialId: "canonical-json-sha256"');
     expect(source).not.toContain('trialId: "technocore-canonical-message"');
     expect(source).not.toContain('trialId: "signed-receipt-verification"');
+    expect(source).not.toContain('trialId: "ed25519-signature-verification"');
   });
 
-  it("uses the same versioned Capability 1 implementation for practice, verification and normal use", () => {
-    expect(source).toContain("executeEd25519SignatureVerification(fixture.input)");
-    expect(source).toContain("certifyCapability(1, executeEd25519SignatureVerification)");
+  it("uses the same installed module for practice, certification and normal use — one executor per capability", () => {
+    // The page controller only ever calls config.execute; there is no
+    // certification-specific code path and no second implementation.
+    expect(source).toContain("await config.execute(fixture.input)");
+    expect(source).toContain("await config.execute(challenge.case)");
     expect(source).toContain("executeEd25519SignatureVerification({ public_key: publicKey");
-    expect(capability1).toContain("export async function executeEd25519SignatureVerification");
+    expect(source).toContain("executeCanonicalJsonSha256({ document: document_ })");
+    expect(source).toContain("executeTechnocoreCanonicalMessage({ room, nonce, text })");
+    expect(source).toContain("executeSignedReceiptVerification({ receipt, server_keys: serverKeys })");
   });
 
-  it("uses the same versioned Capability 2 implementation for practice, verification and normal use", () => {
-    expect(source).toContain("executeCanonicalJsonSha256(fixture.input)");
-    expect(source).toContain("certifyCapability(2, executeCanonicalJsonSha256)");
-    expect(source).toContain("executeCanonicalJsonSha256({ document })");
-    expect(capability2).toContain("export async function executeCanonicalJsonSha256");
-  });
-
-  it("submits only canonical payload and DID signature for certification", () => {
-    expect(source).toContain("body: JSON.stringify({\n        payload,");
+  it("submits only the canonical payload and DID signature for certification", () => {
+    expect(source).toContain("body: JSON.stringify({\n          payload,");
     expect(source).toContain('signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) }');
   });
 
@@ -52,17 +58,36 @@ describe("production capability browser custody boundary", () => {
     expect(source).toContain("indexedDB.open(DB_NAME, 1)");
   });
 
+  it("never sends seed, private key or passphrase from a capability module", () => {
+    for (const [file, text] of Object.entries(capabilityModules)) {
+      expect(text, file).not.toContain("fetch(");
+      expect(text, file).not.toContain("pendingSeed");
+      expect(text, file).not.toContain("passphrase");
+      expect(text, file).not.toContain("seedHex");
+    }
+  });
+
   it("acquires by public DID and capability id without sending private material", () => {
-    expect(source).toContain('/product-capabilities/${encodeURIComponent(config.capabilityId)}/acquire');
+    expect(source).toContain("/product-capabilities/${encodeURIComponent(config.capabilityId)}/acquire");
     expect(source).toContain('{ method: "POST" }');
   });
 
-  it("does not reintroduce old test-specific solver functions", () => {
-    expect(source).not.toContain("solveTrial1");
-    expect(source).not.toContain("solveTrial2");
-    expect(source).not.toContain("solveTrial3");
-    expect(source).not.toContain("solveTrial4");
+  it("keeps test-specific solvers out of the production browser controller and modules", () => {
+    for (const text of [source, ...Object.values(capabilityModules)]) {
+      expect(text).not.toContain("solveTrial1");
+      expect(text).not.toContain("solveTrial2");
+      expect(text).not.toContain("solveTrial3");
+      expect(text).not.toContain("solveTrial4");
+    }
     expect(source).not.toContain("cleanTechnocoreLine");
     expect(source).not.toContain("verifyReceiptWithKey");
+  });
+
+  it("never hands a hidden expected answer to a capability module", () => {
+    for (const text of [source, ...Object.values(capabilityModules)]) {
+      expect(text).not.toContain("hidden_context");
+      expect(text).not.toContain("hiddenContext");
+    }
+    expect(source).not.toMatch(/challenge\.(expected|hidden)/);
   });
 });
