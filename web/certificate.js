@@ -1,10 +1,11 @@
+import { getLanguage } from "/i18n.js";
+
 const API_BASE = "https://flop-status-production.up.railway.app";
-const LANGUAGE_KEY = "flop-ui-language";
 
 const byId = (id) => document.getElementById(id);
 
 function language() {
-  return document.documentElement.lang === "tr" || localStorage.getItem(LANGUAGE_KEY) === "tr" ? "tr" : "en";
+  return getLanguage();
 }
 
 function copy(en, tr) {
