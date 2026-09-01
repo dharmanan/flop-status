@@ -6,6 +6,7 @@ const certificateJs = readFileSync(new URL("../../web/certificate.js", import.me
 const certificateHtml = readFileSync(new URL("../../web/certificate.html", import.meta.url), "utf8");
 const explainerJs = readFileSync(new URL("../../web/capability-explainer.js", import.meta.url), "utf8");
 const ceremonyJs = readFileSync(new URL("../../web/verification-ceremony.js", import.meta.url), "utf8");
+const flowJs = readFileSync(new URL("../../web/verification-flow.js", import.meta.url), "utf8");
 const agent = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
 
 describe("certificate page is capability aware for Capabilities 1-4", () => {
@@ -65,36 +66,33 @@ describe("capability purpose is visible on the main lab page for Capabilities 1-
   });
 });
 
-describe("main-page certified proof uses one shared verification ceremony", () => {
-  it("covers all four production capability ordinals with one shared controller", () => {
-    expect(explainerJs).toContain("const CAPABILITIES = [1, 2, 3, 4]");
-    expect(explainerJs).toContain('import { createVerificationCeremony } from "/verification-ceremony.js"');
-    expect(explainerJs).not.toContain("capability2-explainer");
-    expect(explainerJs).not.toContain("capability3-explainer");
-    expect(explainerJs).not.toContain("capability4-explainer");
+describe("completed proof is never misrepresented as a live verification", () => {
+  it("keeps all existing C1-C4 live flow containers hidden unless a real run explicitly marks them running", () => {
+    expect(explainerJs).toContain("for (const number of [1, 2, 3, 4])");
+    expect(explainerJs).toContain("!liveFlow.dataset.verificationRunning");
+    expect(explainerJs).toContain("liveFlow.hidden = true");
   });
 
-  it("reconstructs completed proof from real certificate and signed-receipt endpoints instead of replaying fake progress", () => {
-    expect(explainerJs).toContain("/api/v1/certificates/");
-    expect(explainerJs).toContain("/api/v1/verification/");
-    expect(explainerJs).toContain('mode: "proof"');
-    expect(explainerJs).toContain("ceremony.completeProof");
-    expect(explainerJs).not.toMatch(/setTimeout\s*\(/);
+  it("does not reconstruct a completed certificate as a fake live ceremony", () => {
+    expect(explainerJs).not.toContain("createVerificationCeremony");
+    expect(explainerJs).not.toContain("/api/v1/certificates/");
+    expect(explainerJs).not.toContain("/api/v1/verification/");
+    expect(explainerJs).not.toContain('mode: "proof"');
   });
 
-  it("gives the live verification flow priority over the persisted proof surface", () => {
-    expect(explainerJs).toContain("liveFlow.hidden");
-    expect(explainerJs).toContain("MutationObserver");
-    expect(explainerJs).toContain('attributeFilter: ["hidden"]');
+  it("only opens the ceremony from the explicit certification reset path", () => {
+    expect(ceremonyJs).toContain("container.hidden = true");
+    expect(flowJs).toContain('container.dataset.verificationRunning = "true"');
+    expect(flowJs).toContain("ceremony.reset()");
+    expect(agent).toContain("button.disabled = true");
+    expect(agent).toContain("flow.reset()");
   });
 
-  it("renders the complete visual verification sequence and execution boundary", () => {
-    for (const step of ["challenge", "execute", "result", "sign", "verify", "verdict", "certificate"]) {
-      expect(ceremonyJs).toContain(`"${step}"`);
-    }
-    expect(ceremonyJs).toContain("AGENT CORE");
-    expect(ceremonyJs).toContain("FLOP VERIFIER");
-    expect(ceremonyJs).toContain("EXECUTION BOUNDARY");
-    expect(ceremonyJs).toContain("PROOF PACKAGE · PORTABLE");
+  it("uses a single visual scene to explain execution, verification and portability", () => {
+    expect(ceremonyJs).toContain('title: copy("Agent Core", "Ajan Core")');
+    expect(ceremonyJs).toContain('title: copy("Independent verifier", "Bağımsız verifier")');
+    expect(ceremonyJs).toContain('copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")');
+    expect(ceremonyJs).toContain('copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")');
+    expect(ceremonyJs).toContain("DID · Certificate · Receipt · Public proof");
   });
 });
