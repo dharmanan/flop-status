@@ -251,8 +251,7 @@ export function createVerificationFlow(container) {
     const step = steps.get(stepId);
     if (!step) return;
     step.item.dataset.state = state;
-    if (state === "active") step.time.textContent = timestamp();
-    if (["done", "fail", "unknown"].includes(state)) step.time.textContent = timestamp();
+    if (state === "active" || ["done", "fail", "unknown"].includes(state)) step.time.textContent = timestamp();
     if (summaryCopy !== undefined) {
       step.summaryCopy = summaryCopy;
       step.summary.textContent = copy(summaryCopy.en, summaryCopy.tr);
@@ -261,11 +260,8 @@ export function createVerificationFlow(container) {
       if (state === "done") {
         step.marker.textContent = "✓";
         why.hidden = false;
-      } else if (state === "fail") {
-        step.marker.textContent = "×";
-      } else if (state === "unknown") {
-        step.marker.textContent = "?";
-      }
+      } else if (state === "fail") step.marker.textContent = "×";
+      else if (state === "unknown") step.marker.textContent = "?";
     }
     if (stepId === "certificate" && state === "done") {
       certificateProof.card.dataset.state = "ready";
@@ -274,7 +270,7 @@ export function createVerificationFlow(container) {
   }
 
   function localize() {
-    eyebrow.textContent = copy("LIVE VERIFICATION", "CANLI DOĞRULAMA");
+    eyebrow.textContent = copy("VERIFICATION RUN", "DOĞRULAMA AKIŞI");
     heading.textContent = copy("Your agent is proving the capability now", "Ajanın capability'yi şimdi kanıtlıyor");
     intro.textContent = copy(
       "Every movement below is tied to a real verification event.",
@@ -322,7 +318,6 @@ export function createVerificationFlow(container) {
 
   return {
     localize,
-
     reset() {
       container.hidden = false;
       why.hidden = true;
@@ -346,28 +341,14 @@ export function createVerificationFlow(container) {
       technicalRows.length = 0;
       technicalLines.replaceChildren();
     },
-
-    begin(stepId) {
-      setState(stepId, "active");
-    },
-
-    complete(stepId, summaryCopy) {
-      setState(stepId, "done", summaryCopy);
-    },
-
-    unknown(stepId, summaryCopy) {
-      setState(stepId, "unknown", summaryCopy);
-    },
-
-    fail(stepId, summaryCopy) {
-      setState(stepId, "fail", summaryCopy);
-    },
-
+    begin(stepId) { setState(stepId, "active"); },
+    complete(stepId, summaryCopy) { setState(stepId, "done", summaryCopy); },
+    unknown(stepId, summaryCopy) { setState(stepId, "unknown", summaryCopy); },
+    fail(stepId, summaryCopy) { setState(stepId, "fail", summaryCopy); },
     showCertificateStep() {
       const step = steps.get("certificate");
       if (step) step.item.hidden = false;
     },
-
     addTechnicalLine(titleCopy, value) {
       const row = document.createElement("div");
       const strong = document.createElement("strong");
