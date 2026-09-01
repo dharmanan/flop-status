@@ -7,6 +7,7 @@ import {
   CANONICALIZATION_ID,
   CAPABILITY_ID,
   CHALLENGE_VERSION,
+  PRODUCTION_TRIAL_ID,
   SUBMISSION_VERSION,
   TRIAL_ID,
   TRIAL_VERSION,
@@ -57,6 +58,9 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([jsonPrimitiveSchema, z.array(jsonValueSchema), z.record(jsonValueSchema)]),
 );
 
+export const trial2IdSchema = z.enum([TRIAL_ID, PRODUCTION_TRIAL_ID]);
+export type Trial2Id = z.infer<typeof trial2IdSchema>;
+
 export const trial2CaseClassSchema = z.enum([
   "NESTED_OBJECT",
   "UNICODE_KEYS",
@@ -65,11 +69,7 @@ export const trial2CaseClassSchema = z.enum([
 ]);
 export type Trial2CaseClass = z.infer<typeof trial2CaseClassSchema>;
 
-export const trial2ChallengeCaseSchema = z
-  .object({
-    document: jsonValueSchema,
-  })
-  .strict();
+export const trial2ChallengeCaseSchema = z.object({ document: jsonValueSchema }).strict();
 export type Trial2ChallengeCase = z.infer<typeof trial2ChallengeCaseSchema>;
 
 export const trial2ChallengePayloadSchema = z
@@ -78,7 +78,7 @@ export const trial2ChallengePayloadSchema = z
     challenge_id: uuidSchema,
     agent_did: ed25519DidKeySchema,
     capability_id: z.literal(CAPABILITY_ID),
-    trial_id: z.literal(TRIAL_ID),
+    trial_id: trial2IdSchema,
     trial_version: z.literal(TRIAL_VERSION),
     nonce: base64UrlSchema(),
     case: trial2ChallengeCaseSchema,
@@ -89,10 +89,7 @@ export const trial2ChallengePayloadSchema = z
 export type Trial2ChallengePayload = z.infer<typeof trial2ChallengePayloadSchema>;
 
 export const trial2ResultSchema = z
-  .object({
-    canonical_json: z.string().min(1),
-    sha256: sha256HashSchema,
-  })
+  .object({ canonical_json: z.string().min(1), sha256: sha256HashSchema })
   .strict();
 export type Trial2Result = z.infer<typeof trial2ResultSchema>;
 
@@ -103,7 +100,7 @@ export const trial2SignedSubmissionPayloadSchema = z
     challenge_id: uuidSchema,
     challenge_hash: sha256HashSchema,
     agent_did: z.string().min(1),
-    trial_id: z.literal(TRIAL_ID),
+    trial_id: trial2IdSchema,
     trial_version: z.literal(TRIAL_VERSION),
     result: trial2ResultSchema,
     submitted_at: rfc3339TimestampSchema,
@@ -120,10 +117,7 @@ export const trial2SubmissionSignatureSchema = z
   .strict();
 
 export const trial2SignedSubmissionEnvelopeSchema = z
-  .object({
-    payload: trial2SignedSubmissionPayloadSchema,
-    signature: trial2SubmissionSignatureSchema,
-  })
+  .object({ payload: trial2SignedSubmissionPayloadSchema, signature: trial2SubmissionSignatureSchema })
   .strict();
 export type Trial2SignedSubmissionEnvelope = z.infer<typeof trial2SignedSubmissionEnvelopeSchema>;
 

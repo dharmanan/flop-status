@@ -2,29 +2,41 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(new URL("../../web/agent.js", import.meta.url), "utf8");
-const capability = readFileSync(
+const capability1 = readFileSync(
   new URL("../../web/capabilities/ed25519-signature-verification.js", import.meta.url),
+  "utf8",
+);
+const capability2 = readFileSync(
+  new URL("../../web/capabilities/canonical-json-sha256.js", import.meta.url),
   "utf8",
 );
 
 describe("production capability browser custody boundary", () => {
-  it("requests only the production Capability 1 certification challenge", () => {
-    expect(source).toContain('trial_id: PRODUCTION_TRIAL_ID');
-    expect(source).toContain('PRODUCTION_TRIAL_ID');
-    expect(source).not.toContain('trialId: "canonical-json-sha256"');
+  it("requests only certificate-eligible production trials for Capability 1 and 2", () => {
+    expect(source).toContain("CAPABILITY1_TRIAL_ID");
+    expect(source).toContain("CAPABILITY2_TRIAL_ID");
+    expect(capability1).toContain('PRODUCTION_TRIAL_ID = "ed25519-signature-verification-certification"');
+    expect(capability2).toContain('PRODUCTION_TRIAL_ID = "canonical-json-sha256-certification"');
     expect(source).not.toContain('trialId: "technocore-canonical-message"');
     expect(source).not.toContain('trialId: "signed-receipt-verification"');
   });
 
-  it("uses the same versioned capability module for practice, verification and normal use", () => {
-    expect(source).toContain('executeEd25519SignatureVerification(fixture.input)');
-    expect(source).toContain('executeEd25519SignatureVerification(challenge.case)');
-    expect(source).toContain('executeEd25519SignatureVerification({');
-    expect(capability).toContain('export async function executeEd25519SignatureVerification');
+  it("uses the same versioned Capability 1 implementation for practice, verification and normal use", () => {
+    expect(source).toContain("executeEd25519SignatureVerification(fixture.input)");
+    expect(source).toContain("certifyCapability(1, executeEd25519SignatureVerification)");
+    expect(source).toContain("executeEd25519SignatureVerification({ public_key: publicKey");
+    expect(capability1).toContain("export async function executeEd25519SignatureVerification");
   });
 
-  it("submits only the canonical payload and DID signature for certification", () => {
-    expect(source).toContain('body: JSON.stringify({\n          payload,');
+  it("uses the same versioned Capability 2 implementation for practice, verification and normal use", () => {
+    expect(source).toContain("executeCanonicalJsonSha256(fixture.input)");
+    expect(source).toContain("certifyCapability(2, executeCanonicalJsonSha256)");
+    expect(source).toContain("executeCanonicalJsonSha256({ document })");
+    expect(capability2).toContain("export async function executeCanonicalJsonSha256");
+  });
+
+  it("submits only canonical payload and DID signature for certification", () => {
+    expect(source).toContain("body: JSON.stringify({\n        payload,");
     expect(source).toContain('signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) }');
   });
 
@@ -41,11 +53,11 @@ describe("production capability browser custody boundary", () => {
   });
 
   it("acquires by public DID and capability id without sending private material", () => {
-    expect(source).toContain('/product-capabilities/${encodeURIComponent(CAPABILITY_ID)}/acquire');
+    expect(source).toContain('/product-capabilities/${encodeURIComponent(config.capabilityId)}/acquire');
     expect(source).toContain('{ method: "POST" }');
   });
 
-  it("removes old test-specific solver implementations from the production browser controller", () => {
+  it("does not reintroduce old test-specific solver functions", () => {
     expect(source).not.toContain("solveTrial1");
     expect(source).not.toContain("solveTrial2");
     expect(source).not.toContain("solveTrial3");

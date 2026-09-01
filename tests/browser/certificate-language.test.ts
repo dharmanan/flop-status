@@ -3,18 +3,27 @@ import { describe, expect, it } from "vitest";
 
 const certificateHtml = readFileSync(new URL("../../web/certificate.html", import.meta.url), "utf8");
 const certificateJs = readFileSync(new URL("../../web/certificate.js", import.meta.url), "utf8");
-const explainerJs = readFileSync(new URL("../../web/capability-explainer.js", import.meta.url), "utf8");
 
-describe("certificate language surface", () => {
-  it("uses the shared language source for certificate scripts", () => {
+describe("certificate language and capability-specific proof surface", () => {
+  it("uses the shared language source", () => {
     expect(certificateJs).toContain('import { getLanguage } from "/i18n.js"');
-    expect(certificateJs).toContain("return getLanguage()");
-    expect(explainerJs).toContain('import { getLanguage } from "/i18n.js"');
-    expect(explainerJs).toContain("return getLanguage()");
+    expect(certificateJs).toContain("getLanguage()");
   });
 
-  it("cache-busts the localized certificate scripts", () => {
-    expect(certificateHtml).toContain("/certificate.js?v=capability1-certificate-v3");
-    expect(certificateHtml).toContain("/capability-explainer.js?v=capability1-explainer-v5");
+  it("localizes proof labels without a second certificate-page explainer script", () => {
+    expect(certificateJs).toContain("PROOF_LABELS");
+    expect(certificateJs).toContain("localizeProofLabels");
+    expect(certificateHtml).not.toContain("/capability-explainer.js");
+  });
+
+  it("contains human-readable proof copy for Capability 1 and Capability 2", () => {
+    expect(certificateJs).toContain('"cryptography.signature-verification"');
+    expect(certificateJs).toContain('"data.canonical-json-sha256"');
+    expect(certificateJs).toContain("Canonical JSON + SHA256 Sertifikası");
+    expect(certificateJs).toContain("BU NEYİ KANITLIYOR?");
+  });
+
+  it("cache-busts the Capability 2 certificate script", () => {
+    expect(certificateHtml).toContain("/certificate.js?v=capability2-certificate-v2");
   });
 });

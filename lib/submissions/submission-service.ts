@@ -9,7 +9,10 @@ import {
   parseEd25519DidKey,
 } from "../identity/did-key.js";
 import { verifyEd25519DidKeySignature } from "../identity/verify-signature.js";
-import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL2_PRODUCTION_ID,
+  TRIAL_ID as TRIAL2_ID,
+} from "../trials/canonical-json-sha256/constants.js";
 import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
 import {
   PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
@@ -99,7 +102,7 @@ function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {
   const schema =
     trialId === TRIAL1_ID || trialId === TRIAL1_PRODUCTION_ID
       ? trial1SignedSubmissionEnvelopeSchema
-      : trialId === TRIAL2_ID
+      : trialId === TRIAL2_ID || trialId === TRIAL2_PRODUCTION_ID
         ? trial2SignedSubmissionEnvelopeSchema
         : trialId === TRIAL3_ID
           ? trial3SignedSubmissionEnvelopeSchema
