@@ -6,8 +6,13 @@ import type { Trial1FinalizationRepository } from "../db/finalization-recovery-r
 import type { SubmissionAcceptanceRepository } from "../db/submission-repository.js";
 import type { AttestationSigner } from "../receipts/receipt.js";
 import { acceptCapabilitySignedSubmission } from "../submissions/submission-service.js";
-import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
 import {
+  CAPABILITY_ID as TRIAL2_CAPABILITY_ID,
+  PRODUCTION_TRIAL_ID as TRIAL2_PRODUCTION_ID,
+  TRIAL_ID as TRIAL2_ID,
+} from "../trials/canonical-json-sha256/constants.js";
+import {
+  CAPABILITY_ID as TRIAL1_CAPABILITY_ID,
   PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
   TRIAL_ID as TRIAL1_ID,
 } from "../trials/ed25519-signature-verification/constants.js";
@@ -24,7 +29,14 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const createChallengeSchema = z
   .object({
     agent_did: z.string().min(1),
-    trial_id: z.enum([TRIAL1_ID, TRIAL1_PRODUCTION_ID, TRIAL2_ID, TRIAL3_ID, TRIAL4_ID]),
+    trial_id: z.enum([
+      TRIAL1_ID,
+      TRIAL1_PRODUCTION_ID,
+      TRIAL2_ID,
+      TRIAL2_PRODUCTION_ID,
+      TRIAL3_ID,
+      TRIAL4_ID,
+    ]),
   })
   .strict();
 
@@ -67,9 +79,12 @@ export class CapabilityApiService {
         parsed.error.issues.map((issue) => issue.message).join("; "),
       );
     }
-    if (parsed.data.trial_id === TRIAL1_PRODUCTION_ID) {
+    if (parsed.data.trial_id === TRIAL1_PRODUCTION_ID || parsed.data.trial_id === TRIAL2_PRODUCTION_ID) {
       if (!this.deps.capabilityProduct) throw new Error("capability product service is required for production certification");
-      await this.deps.capabilityProduct.requireCapability1Installed(parsed.data.agent_did);
+      const capabilityId = parsed.data.trial_id === TRIAL1_PRODUCTION_ID
+        ? TRIAL1_CAPABILITY_ID
+        : TRIAL2_CAPABILITY_ID;
+      await this.deps.capabilityProduct.requireCapabilityInstalled(parsed.data.agent_did, capabilityId);
     }
     const issued = await issueCapabilityChallenge(
       { agentDid: parsed.data.agent_did, trialId: parsed.data.trial_id },

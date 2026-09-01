@@ -5,6 +5,7 @@ import {
   type Trial2ChallengeGeneratorDependencies,
 } from "../trials/canonical-json-sha256/challenge-generator.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL2_PRODUCTION_ID,
   TRIAL_ID as TRIAL2_ID,
   TRIAL_VERSION as TRIAL2_VERSION,
 } from "../trials/canonical-json-sha256/constants.js";
@@ -155,11 +156,14 @@ export async function issueCapabilityChallenge(
     );
   }
 
-  if (input.trialId === TRIAL2_ID) {
+  if (input.trialId === TRIAL2_ID || input.trialId === TRIAL2_PRODUCTION_ID) {
     const generatorDeps: Trial2ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
-    const generated = generateCanonicalJsonSha256Challenge({ agentDid: input.agentDid }, generatorDeps);
+    const generated = generateCanonicalJsonSha256Challenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
     return persistGeneratedChallenge(
-      { agentDid: input.agentDid, trialId: TRIAL2_ID, trialVersion: TRIAL2_VERSION },
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL2_VERSION },
       generated,
       deps,
     );

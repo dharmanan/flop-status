@@ -10,6 +10,7 @@ import {
   type Trial2CaseClass,
   type Trial2ChallengePayload,
   type Trial2HiddenVerifierContext,
+  type Trial2Id,
 } from "./schema.js";
 
 export type ClockFn = () => Date;
@@ -22,6 +23,7 @@ export interface Trial2ChallengeGeneratorDependencies {
 
 export interface GenerateCanonicalJsonSha256ChallengeInput {
   agentDid: string;
+  trialId?: Trial2Id;
   caseClass?: Trial2CaseClass;
 }
 
@@ -39,12 +41,7 @@ const TOKEN_LENGTH = 8;
 const defaultClock: ClockFn = () => new Date();
 const defaultRandomBytes: RandomBytesFn = (length) => new Uint8Array(nodeRandomBytes(length));
 
-const CASE_CLASSES: readonly Trial2CaseClass[] = [
-  "NESTED_OBJECT",
-  "UNICODE_KEYS",
-  "ARRAY_MIX",
-  "NUMERIC_EDGE",
-];
+const CASE_CLASSES: readonly Trial2CaseClass[] = ["NESTED_OBJECT", "UNICODE_KEYS", "ARRAY_MIX", "NUMERIC_EDGE"];
 
 function formatUuidV4(entropy: Uint8Array): string {
   const bytes = Uint8Array.from(entropy);
@@ -57,34 +54,13 @@ function formatUuidV4(entropy: Uint8Array): string {
 function buildDocument(caseClass: Trial2CaseClass, token: string): unknown {
   switch (caseClass) {
     case "NESTED_OBJECT":
-      return {
-        zeta: { enabled: true, count: 3, token },
-        alpha: { nested: { c: null, a: "first", b: false } },
-        list: [3, 2, 1],
-      };
+      return { zeta: { enabled: true, count: 3, token }, alpha: { nested: { c: null, a: "first", b: false } }, list: [3, 2, 1] };
     case "UNICODE_KEYS":
-      return {
-        "é": "precomposed",
-        "€": "euro",
-        "😀": "emoji",
-        "a": token,
-        "\r": "carriage-return-key",
-      };
+      return { "é": "precomposed", "€": "euro", "😀": "emoji", a: token, "\r": "carriage-return-key" };
     case "ARRAY_MIX":
-      return [
-        { b: 2, a: 1 },
-        [true, null, token, { y: "yes", x: "ex" }],
-        "line\nfeed",
-      ];
+      return [{ b: 2, a: 1 }, [true, null, token, { y: "yes", x: "ex" }], "line\nfeed"];
     case "NUMERIC_EDGE":
-      return {
-        tiny: 1e-27,
-        large: 1e30,
-        fraction: 333333333.33333329,
-        zero: 0,
-        negative: -0.000001,
-        token,
-      };
+      return { tiny: 1e-27, large: 1e30, fraction: 333333333.33333329, zero: 0, negative: -0.000001, token };
   }
 }
 
@@ -102,7 +78,6 @@ export function generateCanonicalJsonSha256Challenge(
   const document = buildDocument(caseClass, token);
   const expectedCanonicalJson = canonicalizeJson(document);
   const expectedSha256 = sha256(new TextEncoder().encode(expectedCanonicalJson));
-
   const issuedAt = now();
   const expiresAt = new Date(issuedAt.getTime() + CHALLENGE_TTL_MS);
 
@@ -111,7 +86,7 @@ export function generateCanonicalJsonSha256Challenge(
     challenge_id: formatUuidV4(randomBytes(CHALLENGE_ID_ENTROPY_LENGTH)),
     agent_did: input.agentDid,
     capability_id: CAPABILITY_ID,
-    trial_id: TRIAL_ID,
+    trial_id: input.trialId ?? TRIAL_ID,
     trial_version: TRIAL_VERSION,
     nonce: encodeBase64Url(randomBytes(NONCE_LENGTH)),
     case: { document },
@@ -124,7 +99,6 @@ export function generateCanonicalJsonSha256Challenge(
     expected_canonical_json: expectedCanonicalJson,
     expected_sha256: expectedSha256,
   });
-
   const challengeHash = sha256(canonicalizeJsonToBytes(publicPayload));
   return { publicPayload, hiddenContext, challengeHash };
 }

@@ -8,7 +8,13 @@ import {
   type SignedPassReceipt,
   type UnsignedPassReceipt,
 } from "../receipts/receipt.js";
-import { TRIAL_ID as TRIAL2_ID } from "../trials/canonical-json-sha256/constants.js";
+import {
+  CAPABILITY_VERSION as TRIAL2_CAPABILITY_VERSION,
+  CERTIFICATE_NAME as TRIAL2_CERTIFICATE_NAME,
+  PRODUCTION_TRIAL_ID as TRIAL2_PRODUCTION_ID,
+  PROGRAM_VERSION as TRIAL2_PROGRAM_VERSION,
+  TRIAL_ID as TRIAL2_ID,
+} from "../trials/canonical-json-sha256/constants.js";
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
 import {
   CAPABILITY_VERSION as TRIAL1_CAPABILITY_VERSION,
@@ -61,7 +67,7 @@ function verifyPersistedResult(context: {
       result: context.resultPayload,
     });
   }
-  if (context.trialId === TRIAL2_ID) {
+  if (context.trialId === TRIAL2_ID || context.trialId === TRIAL2_PRODUCTION_ID) {
     return verifyTrial2Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
@@ -83,6 +89,24 @@ function verifyPersistedResult(context: {
     });
   }
   throw new FinalizationError("UNSUPPORTED_TRIAL", `no deterministic verifier registered for ${context.trialId}`);
+}
+
+function certificateMetadata(trialId: string) {
+  if (trialId === TRIAL1_PRODUCTION_ID) {
+    return {
+      certificateName: TRIAL1_CERTIFICATE_NAME,
+      capabilityVersion: TRIAL1_CAPABILITY_VERSION,
+      programVersion: TRIAL1_PROGRAM_VERSION,
+    };
+  }
+  if (trialId === TRIAL2_PRODUCTION_ID) {
+    return {
+      certificateName: TRIAL2_CERTIFICATE_NAME,
+      capabilityVersion: TRIAL2_CAPABILITY_VERSION,
+      programVersion: TRIAL2_PROGRAM_VERSION,
+    };
+  }
+  return null;
 }
 
 export async function finalizeCapabilityVerification(
@@ -177,15 +201,16 @@ export async function finalizeCapabilityVerification(
     });
 
     let certificateId: string | undefined;
-    if (context.trialId === TRIAL1_PRODUCTION_ID) {
+    const metadata = certificateMetadata(context.trialId);
+    if (metadata) {
       certificateId = uuid();
       await tx.insertCapabilityCertificate({
         id: certificateId,
         agentId: context.agentId,
         capabilityId: context.capabilityId,
-        certificateName: TRIAL1_CERTIFICATE_NAME,
-        capabilityVersion: TRIAL1_CAPABILITY_VERSION,
-        programVersion: TRIAL1_PROGRAM_VERSION,
+        certificateName: metadata.certificateName,
+        capabilityVersion: metadata.capabilityVersion,
+        programVersion: metadata.programVersion,
         trialId: context.trialId,
         trialVersion: context.trialVersion,
         verifierId: verification.verifier_id,

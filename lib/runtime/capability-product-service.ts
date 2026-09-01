@@ -1,15 +1,43 @@
 import type { CertificationRepository } from "../db/certification-repository.js";
 import { parseEd25519DidKey } from "../identity/did-key.js";
 import {
-  CAPABILITY_ID,
-  CAPABILITY_VERSION,
-  MODULE_ID,
-  MODULE_VERSION,
+  CAPABILITY_ID as CAPABILITY1_ID,
+  CAPABILITY_VERSION as CAPABILITY1_VERSION,
+  MODULE_ID as CAPABILITY1_MODULE_ID,
+  MODULE_VERSION as CAPABILITY1_MODULE_VERSION,
 } from "../trials/ed25519-signature-verification/constants.js";
+import {
+  CAPABILITY_ID as CAPABILITY2_ID,
+  CAPABILITY_VERSION as CAPABILITY2_VERSION,
+  MODULE_ID as CAPABILITY2_MODULE_ID,
+  MODULE_VERSION as CAPABILITY2_MODULE_VERSION,
+} from "../trials/canonical-json-sha256/constants.js";
+
+interface ProductCapabilityDefinition {
+  capabilityId: string;
+  capabilityVersion: string;
+  moduleId: string;
+  moduleVersion: string;
+}
+
+const PRODUCT_CAPABILITIES: Record<string, ProductCapabilityDefinition> = {
+  [CAPABILITY1_ID]: {
+    capabilityId: CAPABILITY1_ID,
+    capabilityVersion: CAPABILITY1_VERSION,
+    moduleId: CAPABILITY1_MODULE_ID,
+    moduleVersion: CAPABILITY1_MODULE_VERSION,
+  },
+  [CAPABILITY2_ID]: {
+    capabilityId: CAPABILITY2_ID,
+    capabilityVersion: CAPABILITY2_VERSION,
+    moduleId: CAPABILITY2_MODULE_ID,
+    moduleVersion: CAPABILITY2_MODULE_VERSION,
+  },
+};
 
 export class CapabilityProductError extends Error {
   constructor(
-    readonly code: "UNSUPPORTED_CAPABILITY" | "CAPABILITY_NOT_INSTALLED",
+    readonly code: "UNSUPPORTED_CAPABILITY" | "CAPABILITY_NOT_INSTALLED" | "PREREQUISITE_CERTIFICATE_REQUIRED",
     message: string,
   ) {
     super(message);
@@ -20,52 +48,79 @@ export class CapabilityProductError extends Error {
 export class CapabilityProductService {
   constructor(private readonly repository: CertificationRepository) {}
 
-  async acquireCapability(did: string, capabilityId: string) {
-    parseEd25519DidKey(did);
-    if (capabilityId !== CAPABILITY_ID) {
+  private definition(capabilityId: string): ProductCapabilityDefinition {
+    const definition = PRODUCT_CAPABILITIES[capabilityId];
+    if (!definition) {
       throw new CapabilityProductError("UNSUPPORTED_CAPABILITY", `unsupported production capability: ${capabilityId}`);
     }
+    return definition;
+  }
+
+  async acquireCapability(did: string, capabilityId: string) {
+    parseEd25519DidKey(did);
+    const definition = this.definition(capabilityId);
+
+    if (capabilityId === CAPABILITY2_ID) {
+      const certificates = await this.repository.listCertificates(did);
+      const hasCapability1Certificate = certificates.some(
+        (item) => item.capabilityId === CAPABILITY1_ID && item.capabilityVersion === CAPABILITY1_VERSION && item.status === "ACTIVE",
+      );
+      if (!hasCapability1Certificate) {
+        throw new CapabilityProductError(
+          "PREREQUISITE_CERTIFICATE_REQUIRED",
+          "Capability 1 certificate is required before acquiring Capability 2.",
+        );
+      }
+    }
+
     return this.repository.acquireCapability({
       did,
       didMethod: "key",
       keyType: "Ed25519",
-      capabilityId: CAPABILITY_ID,
-      capabilityVersion: CAPABILITY_VERSION,
-      moduleId: MODULE_ID,
-      moduleVersion: MODULE_VERSION,
+      capabilityId: definition.capabilityId,
+      capabilityVersion: definition.capabilityVersion,
+      moduleId: definition.moduleId,
+      moduleVersion: definition.moduleVersion,
       installedAt: new Date().toISOString(),
     });
   }
 
-  async requireCapability1Installed(did: string): Promise<void> {
-    const installation = await this.repository.getInstallation(did, CAPABILITY_ID, CAPABILITY_VERSION);
+  async requireCapabilityInstalled(did: string, capabilityId: string): Promise<void> {
+    const definition = this.definition(capabilityId);
+    const installation = await this.repository.getInstallation(
+      did,
+      definition.capabilityId,
+      definition.capabilityVersion,
+    );
     if (!installation || installation.status !== "INSTALLED") {
       throw new CapabilityProductError(
         "CAPABILITY_NOT_INSTALLED",
-        "Capability 1 must be acquired before production verification.",
+        `${capabilityId} must be acquired before production verification.`,
       );
     }
   }
 
-  async getCapability1State(did: string) {
+  async requireCapability1Installed(did: string): Promise<void> {
+    return this.requireCapabilityInstalled(did, CAPABILITY1_ID);
+  }
+
+  async getCapabilityState(did: string, capabilityId: string) {
     parseEd25519DidKey(did);
+    const definition = this.definition(capabilityId);
     const [installation, certificates] = await Promise.all([
-      this.repository.getInstallation(did, CAPABILITY_ID, CAPABILITY_VERSION),
+      this.repository.getInstallation(did, definition.capabilityId, definition.capabilityVersion),
       this.repository.listCertificates(did),
     ]);
     const certificate = certificates.find(
-      (item) => item.capabilityId === CAPABILITY_ID && item.capabilityVersion === CAPABILITY_VERSION && item.status === "ACTIVE",
+      (item) => item.capabilityId === definition.capabilityId && item.capabilityVersion === definition.capabilityVersion && item.status === "ACTIVE",
     ) ?? null;
     return {
-      capability_id: CAPABILITY_ID,
-      capability_version: CAPABILITY_VERSION,
-      module_id: MODULE_ID,
-      module_version: MODULE_VERSION,
+      capability_id: definition.capabilityId,
+      capability_version: definition.capabilityVersion,
+      module_id: definition.moduleId,
+      module_version: definition.moduleVersion,
       installation: installation
-        ? {
-            status: installation.status,
-            installed_at: installation.installedAt,
-          }
+        ? { status: installation.status, installed_at: installation.installedAt }
         : { status: "AVAILABLE" as const, installed_at: null },
       certificate: certificate
         ? {
@@ -77,6 +132,10 @@ export class CapabilityProductService {
           }
         : null,
     };
+  }
+
+  async getCapability1State(did: string) {
+    return this.getCapabilityState(did, CAPABILITY1_ID);
   }
 
   async listCertificates(did: string) {

@@ -1,28 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  ActiveChallengeExistsError,
-  TrialDefinitionNotFoundError,
-} from "../challenges/issuance-service.js";
-import {
-  MalformedDidError,
-  UnsupportedDidMethodError,
-  UnsupportedKeyTypeError,
-} from "../identity/did-key.js";
+import { ActiveChallengeExistsError, TrialDefinitionNotFoundError } from "../challenges/issuance-service.js";
+import { MalformedDidError, UnsupportedDidMethodError, UnsupportedKeyTypeError } from "../identity/did-key.js";
 import { MAX_SUBMISSION_BODY_BYTES, SubmissionAcceptanceError } from "../submissions/submission-service.js";
-import {
-  PublicVerificationIntegrityError,
-  type PublicReceiptVerification,
-  type PublicServerKey,
-} from "../verification/public-verification-service.js";
-import {
-  CapabilityProductError,
-  type CapabilityProductService,
-} from "./capability-product-service.js";
-import {
-  Trial1ApiRequestError,
-  Trial1VerificationUnknownError,
-} from "./trial1-api-service.js";
+import { PublicVerificationIntegrityError, type PublicReceiptVerification, type PublicServerKey } from "../verification/public-verification-service.js";
+import { CapabilityProductError, type CapabilityProductService } from "./capability-product-service.js";
+import { Trial1ApiRequestError, Trial1VerificationUnknownError } from "./trial1-api-service.js";
 
 export const MAX_CHALLENGE_BODY_BYTES = 8_192;
 
@@ -189,10 +172,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       if (!deps.capabilityProduct) throw new Error("capability product service unavailable");
       const did = decodedPathValue(productCapabilityMatch[1] ?? "");
       const capabilityId = decodedPathValue(productCapabilityMatch[2] ?? "");
-      if (capabilityId !== "cryptography.signature-verification") {
-        throw new CapabilityProductError("UNSUPPORTED_CAPABILITY", `unsupported production capability: ${capabilityId}`);
-      }
-      json(response, 200, await deps.capabilityProduct.getCapability1State(did));
+      json(response, 200, await deps.capabilityProduct.getCapabilityState(did, capabilityId));
       return;
     }
 
@@ -286,7 +266,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       return;
     }
     if (error instanceof CapabilityProductError) {
-      const status = error.code === "CAPABILITY_NOT_INSTALLED" ? 409 : 400;
+      const status = error.code === "CAPABILITY_NOT_INSTALLED" || error.code === "PREREQUISITE_CERTIFICATE_REQUIRED" ? 409 : 400;
       apiError(response, status, error.code, error.message, requestId);
       return;
     }
