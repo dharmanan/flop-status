@@ -1,13 +1,44 @@
+/* Product shell must never coexist with onboarding or seed custody. */
+main.workspace-mode:has(#active-actions[hidden]) .product-shell,
+main.workspace-mode:has(#seed-gate:not([hidden])) .product-shell,
+main.workspace-mode:has(#identity-setup:not([hidden])) .product-shell {
+  display: none !important;
+}
+
+main.workspace-mode:has(#active-actions[hidden]),
+main.workspace-mode:has(#seed-gate:not([hidden])),
+main.workspace-mode:has(#identity-setup:not([hidden])) {
+  width: min(1040px, calc(100% - 40px)) !important;
+  margin: 64px auto !important;
+}
+
+main.workspace-mode:has(#active-actions[hidden]) > .topbar,
+main.workspace-mode:has(#seed-gate:not([hidden])) > .topbar,
+main.workspace-mode:has(#identity-setup:not([hidden])) > .topbar {
+  display: flex !important;
+}
+
+main.workspace-mode:has(#active-actions[hidden]) > h1,
+main.workspace-mode:has(#seed-gate:not([hidden])) > h1,
+main.workspace-mode:has(#identity-setup:not([hidden])) > h1 {
+  display: block !important;
+}
+
+main.workspace-mode:has(#active-actions[hidden]) > #identity-summary:not([hidden]),
+main.workspace-mode:has(#seed-gate:not([hidden])) > #identity-summary:not([hidden]) {
+  display: block !important;
+}
+
 .product-nav-item,
 .capability-selector-button,
 .shell-action-button,
-.shell-action-link,
 .shell-danger-button,
-.product-shell button,
-.product-shell a {
-  position: relative;
-  z-index: 2;
-  pointer-events: auto;
+.shell-action-link,
+.proof-open-link,
+.product-shell #active-actions button,
+.product-shell #active-actions a,
+.product-shell #active-actions summary {
+  pointer-events: auto !important;
 }
 .product-nav-item { cursor: pointer; user-select: none; }
 .product-nav-item:focus-visible { outline: 1px solid #527cff; outline-offset: 2px; }
@@ -54,6 +85,12 @@
 .shell-language-row { display: flex; gap: 8px; }
 
 @media (max-width: 760px) {
+  main.workspace-mode:has(#active-actions[hidden]),
+  main.workspace-mode:has(#seed-gate:not([hidden])),
+  main.workspace-mode:has(#identity-setup:not([hidden])) {
+    width: min(100% - 28px, 1040px) !important;
+    margin-top: 36px !important;
+  }
   .workspace-secondary-view { padding: 16px 14px 22px; min-height: 0; }
   .shell-overview-stats { grid-template-columns: 1fr; }
   .shell-record-row { grid-template-columns: 36px minmax(0,1fr); }
