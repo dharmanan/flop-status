@@ -66,29 +66,40 @@ describe("capability purpose is visible on the main lab page for Capabilities 1-
   });
 });
 
-describe("completed proof is never misrepresented as a live verification", () => {
-  it("keeps all existing C1-C4 live flow containers hidden unless a real run explicitly marks them running", () => {
+describe("completed proof and live verification are explicitly different experiences", () => {
+  it("keeps C1-C4 live containers hidden until either a real run or an explicit recorded replay starts", () => {
     expect(explainerJs).toContain("for (const number of [1, 2, 3, 4])");
-    expect(explainerJs).toContain("!liveFlow.dataset.verificationRunning");
-    expect(explainerJs).toContain("liveFlow.hidden = true");
-  });
-
-  it("does not reconstruct a completed certificate as a fake live ceremony", () => {
-    expect(explainerJs).not.toContain("createVerificationCeremony");
-    expect(explainerJs).not.toContain("/api/v1/certificates/");
-    expect(explainerJs).not.toContain("/api/v1/verification/");
-    expect(explainerJs).not.toContain('mode: "proof"');
-  });
-
-  it("only opens the ceremony from the explicit certification reset path", () => {
+    expect(explainerJs).toContain("!config.flow.dataset.verificationRunning");
+    expect(explainerJs).toContain("config.flow.hidden = true");
     expect(ceremonyJs).toContain("container.hidden = true");
+  });
+
+  it("starts a live ceremony only from the real certification reset path", () => {
     expect(flowJs).toContain('container.dataset.verificationRunning = "true"');
     expect(flowJs).toContain("ceremony.reset()");
-    expect(agent).toContain("button.disabled = true");
     expect(agent).toContain("flow.reset()");
   });
 
-  it("uses a single visual scene to explain execution, verification and portability", () => {
+  it("offers an explicit recorded replay without issuing another certificate", () => {
+    expect(explainerJs).toContain("Watch verification record");
+    expect(explainerJs).toContain("Doğrulama kaydını izle");
+    expect(explainerJs).toContain('config.flow.dataset.verificationRunning = "recorded"');
+    expect(explainerJs).toContain("RECORDED VERIFICATION");
+    expect(explainerJs).toContain("KAYITLI DOĞRULAMA");
+    expect(explainerJs).toContain("It is not a live test.");
+    expect(explainerJs).toContain("Canlı test değildir.");
+    expect(explainerJs).not.toContain("/submissions");
+  });
+
+  it("loads recorded replay evidence from real certificate and receipt endpoints", () => {
+    expect(explainerJs).toContain("/api/v1/certificates/");
+    expect(explainerJs).toContain("/api/v1/verification/");
+    expect(explainerJs).toContain("proof.certificate.agent_did");
+    expect(explainerJs).toContain("receipt.result_hash");
+    expect(explainerJs).toContain("receipt.verifier_id");
+  });
+
+  it("uses the same single scene to explain execution, verification and proof portability", () => {
     expect(ceremonyJs).toContain('title: copy("Agent Core", "Ajan Core")');
     expect(ceremonyJs).toContain('title: copy("Independent verifier", "Bağımsız verifier")');
     expect(ceremonyJs).toContain('copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")');
