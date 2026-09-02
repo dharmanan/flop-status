@@ -190,7 +190,7 @@ function keepCertifiedProofCompact() {
   const active = document.getElementById("active-actions");
   if (!active) return;
 
-  for (const number of [1, 2, 3, 4]) {
+  for (const number of [1, 2, 3, 4, 5, 6, 7]) {
     const config = configFor(number);
     if (config.flow && !config.flow.dataset.verificationRunning) config.flow.hidden = true;
     ensureReplayButton(config);
@@ -200,7 +200,7 @@ function keepCertifiedProofCompact() {
 keepCertifiedProofCompact();
 
 const observer = new MutationObserver(keepCertifiedProofCompact);
-for (const number of [1, 2, 3, 4]) {
+for (const number of [1, 2, 3, 4, 5, 6, 7]) {
   const config = configFor(number);
   if (config.status) observer.observe(config.status, { childList: true, subtree: true });
   if (config.certificate) observer.observe(config.certificate, { attributes: true, attributeFilter: ["hidden", "href"] });

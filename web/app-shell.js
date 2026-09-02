@@ -5,7 +5,11 @@ const CAPABILITIES = {
   2: { name: "Canonical JSON + SHA256", id: "data.canonical-json-sha256" },
   3: { name: "Technocore Canonical Message", id: "protocol.technocore-canonical-message" },
   4: { name: "Signed Receipt Verification", id: "evidence.signed-receipt-verification" },
+  5: { name: "Structured Data Transformation", id: "data.structured-transformation" },
+  6: { name: "Constraint & Policy Compliance", id: "policy.constraint-compliance" },
+  7: { name: "Failure Recovery & Idempotency", id: "runtime.failure-recovery-idempotency" },
 };
+const CAPABILITY_NUMBERS = Object.keys(CAPABILITIES).map(Number);
 
 const COPY = {
   en: {
@@ -107,12 +111,12 @@ function isVerifying(number) {
   return flow?.dataset.verificationRunning === "true" || text.includes("verifying") || text.includes("doğrulan");
 }
 function preferredCapability() {
-  for (const number of [1,2,3,4]) if (isVerifying(number)) return number;
-  for (const number of [1,2,3,4]) {
+  for (const number of CAPABILITY_NUMBERS) if (isVerifying(number)) return number;
+  for (const number of CAPABILITY_NUMBERS) {
     const text = statusText(number).toLowerCase();
     if (!isCertified(number) && !text.includes("locked") && !text.includes("kilit")) return number;
   }
-  for (const number of [4,3,2,1]) if (isCertified(number)) return number;
+  for (const number of [...CAPABILITY_NUMBERS].reverse()) if (isCertified(number)) return number;
   return 1;
 }
 function short(value, max = 26) {
@@ -160,7 +164,7 @@ function makeSidebar() {
   rankStat.append(node("span", "", t("rank")), node("strong", "shell-rank", "—"));
   stats.append(certStat, rankStat);
   const selector = node("div", "capability-selector");
-  for (const number of [1,2,3,4]) {
+  for (const number of CAPABILITY_NUMBERS) {
     const button = node("button", "capability-selector-button", `C${number}`);
     button.type = "button";
     button.dataset.capability = String(number);

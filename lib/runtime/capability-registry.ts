@@ -1,6 +1,9 @@
 import * as trial2 from "../trials/canonical-json-sha256/constants.js";
+import * as trial6 from "../trials/constraint-policy-compliance/constants.js";
 import * as trial1 from "../trials/ed25519-signature-verification/constants.js";
+import * as trial7 from "../trials/failure-recovery-idempotency/constants.js";
 import * as trial4 from "../trials/signed-receipt-verification/constants.js";
+import * as trial5 from "../trials/structured-data-transformation/constants.js";
 import * as trial3 from "../trials/technocore-canonical-message/constants.js";
 
 /**
@@ -86,6 +89,51 @@ export const PRODUCTION_CAPABILITIES: readonly ProductionCapabilityDefinition[] 
     certificateName: trial4.CERTIFICATE_NAME,
     programVersion: trial4.PROGRAM_VERSION,
     prerequisiteCapabilityId: trial3.CAPABILITY_ID,
+  },
+  {
+    ordinal: 5,
+    capabilityId: trial5.CAPABILITY_ID,
+    capabilityVersion: trial5.CAPABILITY_VERSION,
+    moduleId: trial5.MODULE_ID,
+    moduleVersion: trial5.MODULE_VERSION,
+    productionTrialId: trial5.PRODUCTION_TRIAL_ID,
+    productionTrialVersion: trial5.TRIAL_VERSION,
+    historicalTrialId: trial5.TRIAL_ID,
+    verifierId: trial5.VERIFIER_ID,
+    verifierVersion: trial5.VERIFIER_VERSION,
+    certificateName: trial5.CERTIFICATE_NAME,
+    programVersion: trial5.PROGRAM_VERSION,
+    prerequisiteCapabilityId: trial4.CAPABILITY_ID,
+  },
+  {
+    ordinal: 6,
+    capabilityId: trial6.CAPABILITY_ID,
+    capabilityVersion: trial6.CAPABILITY_VERSION,
+    moduleId: trial6.MODULE_ID,
+    moduleVersion: trial6.MODULE_VERSION,
+    productionTrialId: trial6.PRODUCTION_TRIAL_ID,
+    productionTrialVersion: trial6.TRIAL_VERSION,
+    historicalTrialId: trial6.TRIAL_ID,
+    verifierId: trial6.VERIFIER_ID,
+    verifierVersion: trial6.VERIFIER_VERSION,
+    certificateName: trial6.CERTIFICATE_NAME,
+    programVersion: trial6.PROGRAM_VERSION,
+    prerequisiteCapabilityId: trial5.CAPABILITY_ID,
+  },
+  {
+    ordinal: 7,
+    capabilityId: trial7.CAPABILITY_ID,
+    capabilityVersion: trial7.CAPABILITY_VERSION,
+    moduleId: trial7.MODULE_ID,
+    moduleVersion: trial7.MODULE_VERSION,
+    productionTrialId: trial7.PRODUCTION_TRIAL_ID,
+    productionTrialVersion: trial7.TRIAL_VERSION,
+    historicalTrialId: trial7.TRIAL_ID,
+    verifierId: trial7.VERIFIER_ID,
+    verifierVersion: trial7.VERIFIER_VERSION,
+    certificateName: trial7.CERTIFICATE_NAME,
+    programVersion: trial7.PROGRAM_VERSION,
+    prerequisiteCapabilityId: trial6.CAPABILITY_ID,
   },
 ];
 

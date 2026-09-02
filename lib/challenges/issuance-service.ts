@@ -30,6 +30,33 @@ import {
   TRIAL_VERSION as TRIAL4_VERSION,
 } from "../trials/signed-receipt-verification/constants.js";
 import {
+  generateConstraintPolicyComplianceChallenge,
+  type Trial6ChallengeGeneratorDependencies,
+} from "../trials/constraint-policy-compliance/challenge-generator.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL6_PRODUCTION_ID,
+  TRIAL_ID as TRIAL6_ID,
+  TRIAL_VERSION as TRIAL6_VERSION,
+} from "../trials/constraint-policy-compliance/constants.js";
+import {
+  generateFailureRecoveryIdempotencyChallenge,
+  type Trial7ChallengeGeneratorDependencies,
+} from "../trials/failure-recovery-idempotency/challenge-generator.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL7_PRODUCTION_ID,
+  TRIAL_ID as TRIAL7_ID,
+  TRIAL_VERSION as TRIAL7_VERSION,
+} from "../trials/failure-recovery-idempotency/constants.js";
+import {
+  generateStructuredDataTransformationChallenge,
+  type Trial5ChallengeGeneratorDependencies,
+} from "../trials/structured-data-transformation/challenge-generator.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL5_PRODUCTION_ID,
+  TRIAL_ID as TRIAL5_ID,
+  TRIAL_VERSION as TRIAL5_VERSION,
+} from "../trials/structured-data-transformation/constants.js";
+import {
   generateTechnocoreCanonicalMessageChallenge,
   type Trial3ChallengeGeneratorDependencies,
 } from "../trials/technocore-canonical-message/challenge-generator.js";
@@ -192,6 +219,45 @@ export async function issueCapabilityChallenge(
     );
     return persistGeneratedChallenge(
       { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL4_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  if (input.trialId === TRIAL5_ID || input.trialId === TRIAL5_PRODUCTION_ID) {
+    const generatorDeps: Trial5ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
+    const generated = generateStructuredDataTransformationChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL5_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  if (input.trialId === TRIAL6_ID || input.trialId === TRIAL6_PRODUCTION_ID) {
+    const generatorDeps: Trial6ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
+    const generated = generateConstraintPolicyComplianceChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL6_VERSION },
+      generated,
+      deps,
+    );
+  }
+
+  if (input.trialId === TRIAL7_ID || input.trialId === TRIAL7_PRODUCTION_ID) {
+    const generatorDeps: Trial7ChallengeGeneratorDependencies = { now: deps.now, randomBytes: deps.randomBytes };
+    const generated = generateFailureRecoveryIdempotencyChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId },
+      generatorDeps,
+    );
+    return persistGeneratedChallenge(
+      { agentDid: input.agentDid, trialId: input.trialId, trialVersion: TRIAL7_VERSION },
       generated,
       deps,
     );

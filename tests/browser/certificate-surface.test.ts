@@ -67,8 +67,8 @@ describe("capability purpose is visible on the main lab page for Capabilities 1-
 });
 
 describe("completed proof and live verification are explicitly different experiences", () => {
-  it("keeps C1-C4 live containers hidden until either a real run or an explicit recorded replay starts", () => {
-    expect(explainerJs).toContain("for (const number of [1, 2, 3, 4])");
+  it("keeps C1-C7 live containers hidden until either a real run or an explicit recorded replay starts", () => {
+    expect(explainerJs).toContain("for (const number of [1, 2, 3, 4, 5, 6, 7])");
     expect(explainerJs).toContain("!config.flow.dataset.verificationRunning");
     expect(explainerJs).toContain("config.flow.hidden = true");
     expect(ceremonyJs).toContain("container.hidden = true");

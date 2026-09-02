@@ -15,6 +15,16 @@ import {
 } from "../trials/canonical-json-sha256/constants.js";
 import { verifyTrial2Result } from "../trials/canonical-json-sha256/verifier.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL6_PRODUCTION_ID,
+  TRIAL_ID as TRIAL6_ID,
+} from "../trials/constraint-policy-compliance/constants.js";
+import { verifyTrial6Result } from "../trials/constraint-policy-compliance/verifier.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL7_PRODUCTION_ID,
+  TRIAL_ID as TRIAL7_ID,
+} from "../trials/failure-recovery-idempotency/constants.js";
+import { verifyTrial7Result } from "../trials/failure-recovery-idempotency/verifier.js";
+import {
   PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
   TRIAL_ID as TRIAL1_ID,
 } from "../trials/ed25519-signature-verification/constants.js";
@@ -24,6 +34,11 @@ import {
   TRIAL_ID as TRIAL4_ID,
 } from "../trials/signed-receipt-verification/constants.js";
 import { verifyTrial4Result } from "../trials/signed-receipt-verification/verifier.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL5_PRODUCTION_ID,
+  TRIAL_ID as TRIAL5_ID,
+} from "../trials/structured-data-transformation/constants.js";
+import { verifyTrial5Result } from "../trials/structured-data-transformation/verifier.js";
 import {
   PRODUCTION_TRIAL_ID as TRIAL3_PRODUCTION_ID,
   TRIAL_ID as TRIAL3_ID,
@@ -84,6 +99,27 @@ function verifyPersistedResult(context: {
   }
   if (context.trialId === TRIAL4_ID || context.trialId === TRIAL4_PRODUCTION_ID) {
     return verifyTrial4Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL5_ID || context.trialId === TRIAL5_PRODUCTION_ID) {
+    return verifyTrial5Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL6_ID || context.trialId === TRIAL6_PRODUCTION_ID) {
+    return verifyTrial6Result({
+      publicPayload: context.publicPayload,
+      hiddenContext: context.hiddenContext,
+      result: context.resultPayload,
+    });
+  }
+  if (context.trialId === TRIAL7_ID || context.trialId === TRIAL7_PRODUCTION_ID) {
+    return verifyTrial7Result({
       publicPayload: context.publicPayload,
       hiddenContext: context.hiddenContext,
       result: context.resultPayload,

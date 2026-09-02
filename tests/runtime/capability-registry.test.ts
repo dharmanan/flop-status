@@ -7,8 +7,8 @@ import {
 } from "../../lib/runtime/capability-registry.js";
 
 describe("production capability registry", () => {
-  it("defines Capabilities 1-4 in order and starts no work on Capability 5+", () => {
-    expect(PRODUCTION_CAPABILITIES.map((capability) => capability.ordinal)).toEqual([1, 2, 3, 4]);
+  it("defines Capabilities 1-7 in order and starts no work on Capability 8+", () => {
+    expect(PRODUCTION_CAPABILITIES.map((capability) => capability.ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it("chains prerequisites so each capability requires the previous certificate", () => {
@@ -34,6 +34,9 @@ describe("production capability registry", () => {
       "Canonical JSON + SHA256 Certificate",
       "Technocore Canonical Message Certificate",
       "Signed Receipt Verification Certificate",
+      "Structured Data Transformation Certificate",
+      "Constraint & Policy Compliance Certificate",
+      "Failure Recovery & Idempotency Certificate",
     ]);
   });
 
@@ -48,6 +51,9 @@ describe("production capability registry", () => {
 
   it("looks capabilities up by id", () => {
     expect(findProductionCapability("data.canonical-json-sha256")?.ordinal).toBe(2);
-    expect(findProductionCapability("structured.data-transformation")).toBeNull();
+    expect(findProductionCapability("data.structured-transformation")?.ordinal).toBe(5);
+    expect(findProductionCapability("policy.constraint-compliance")?.ordinal).toBe(6);
+    expect(findProductionCapability("runtime.failure-recovery-idempotency")?.ordinal).toBe(7);
+    expect(findProductionCapability("capability.does-not-exist")).toBeNull();
   });
 });

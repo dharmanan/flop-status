@@ -179,14 +179,18 @@ function resultFor(ordinal: number, hiddenContext: unknown, publicPayload: unkno
     const hidden = hiddenContext as { expected_cleaned_text: string; expected_canonical_message: string };
     return { cleaned_text: hidden.expected_cleaned_text, canonical_message: hidden.expected_canonical_message };
   }
-  const hidden = hiddenContext as {
-    expected_status: string;
-    expected_reason_code: string;
-    expected_key_id: string | null;
-  };
-  return {
-    status: hidden.expected_status,
-    reason_code: hidden.expected_reason_code,
-    key_id: hidden.expected_key_id,
-  };
+  if (ordinal === 4) {
+    const hidden = hiddenContext as {
+      expected_status: string;
+      expected_reason_code: string;
+      expected_key_id: string | null;
+    };
+    return {
+      status: hidden.expected_status,
+      reason_code: hidden.expected_reason_code,
+      key_id: hidden.expected_key_id,
+    };
+  }
+  const hidden = hiddenContext as { expected_reason_code: string; expected_result: unknown };
+  return { reason_code: hidden.expected_reason_code, result: hidden.expected_result };
 }

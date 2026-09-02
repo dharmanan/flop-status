@@ -150,6 +150,14 @@ const translations = {
     use_receipt_label: "Signed receipt JSON",
     use_server_keys_label: "Server public keys JSON",
     check_receipt_button: "Check receipt",
+    use_source_label: "Source data JSON",
+    use_spec_label: "Transformation spec JSON",
+    transform_button: "Transform",
+    use_policy_document_label: "Input document JSON",
+    use_policy_label: "Policy JSON",
+    evaluate_policy_button: "Evaluate policy",
+    use_scenario_label: "Recovery scenario JSON",
+    run_recovery_button: "Run recovery simulation",
   },
   tr: {
     app_name: "FLOP Capability Lab",
@@ -300,6 +308,14 @@ const translations = {
     use_receipt_label: "İmzalı receipt JSON",
     use_server_keys_label: "Sunucu public key JSON",
     check_receipt_button: "Receipt'i kontrol et",
+    use_source_label: "Kaynak veri JSON",
+    use_spec_label: "Dönüşüm spesifikasyonu JSON",
+    transform_button: "Dönüştür",
+    use_policy_document_label: "Girdi belgesi JSON",
+    use_policy_label: "Politika JSON",
+    evaluate_policy_button: "Politikayı değerlendir",
+    use_scenario_label: "Kurtarma senaryosu JSON",
+    run_recovery_button: "Kurtarma simülasyonunu çalıştır",
   }
 };
 

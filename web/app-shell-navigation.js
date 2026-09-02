@@ -4,7 +4,11 @@ const CAPABILITIES = {
   2: "Canonical JSON + SHA256",
   3: "Technocore Canonical Message",
   4: "Signed Receipt Verification",
+  5: "Structured Data Transformation",
+  6: "Constraint & Policy Compliance",
+  7: "Failure Recovery & Idempotency",
 };
+const CAPABILITY_NUMBERS = Object.keys(CAPABILITIES).map(Number);
 
 const COPY = {
   en: {
@@ -198,7 +202,7 @@ function overviewScreen() {
   view.appendChild(stats);
   const section = node("section", "shell-screen-section");
   section.appendChild(node("h2", "shell-screen-section-title", t("capabilityState")));
-  for (const number of [1,2,3,4]) section.appendChild(capabilityRow(number));
+  for (const number of CAPABILITY_NUMBERS) section.appendChild(capabilityRow(number));
   view.appendChild(section);
   const boundary = node("section", "shell-boundary-card");
   boundary.append(node("strong", "", t("executionBoundary")), node("p", "", t("boundaryBody")));
@@ -210,7 +214,7 @@ function verificationsScreen() {
   const view = node("section", "shell-screen");
   view.appendChild(heading(t("verifications"), t("verificationsIntro")));
   const section = node("section", "shell-screen-section");
-  for (const number of [1,2,3,4]) section.appendChild(capabilityRow(number, "verification"));
+  for (const number of CAPABILITY_NUMBERS) section.appendChild(capabilityRow(number, "verification"));
   view.appendChild(section);
   return view;
 }
@@ -219,7 +223,7 @@ function certificatesScreen() {
   const view = node("section", "shell-screen");
   view.appendChild(heading(t("certificates"), t("certificatesIntro")));
   const section = node("section", "shell-screen-section");
-  for (const number of [1,2,3,4]) section.appendChild(capabilityRow(number, "certificate"));
+  for (const number of CAPABILITY_NUMBERS) section.appendChild(capabilityRow(number, "certificate"));
   view.appendChild(section);
   return view;
 }
@@ -232,7 +236,7 @@ function activityScreen() {
   op.append(node("span", "", t("currentOperation")), node("strong", "", operation || t("noOperation")));
   view.appendChild(op);
   const section = node("section", "shell-screen-section");
-  for (const number of [1,2,3,4]) section.appendChild(capabilityRow(number));
+  for (const number of CAPABILITY_NUMBERS) section.appendChild(capabilityRow(number));
   view.appendChild(section);
   return view;
 }
