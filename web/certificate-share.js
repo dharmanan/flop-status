@@ -1,6 +1,5 @@
 export const PUBLIC_APP_URL = "https://flop-status.vercel.app";
 export const FLOP_X_HANDLE = "@flop_labs";
-export const X_SHARE_CACHE_VERSION = "2";
 
 export const CERTIFICATE_CAPABILITIES = {
   "cryptography.signature-verification": {
@@ -52,10 +51,6 @@ export function certificatePublicUrl(certificateId) {
   return `${PUBLIC_APP_URL}/certificate/${encodeURIComponent(String(certificateId ?? ""))}`;
 }
 
-export function certificateSocialShareUrl(certificateId) {
-  return `${certificatePublicUrl(certificateId)}?share=${encodeURIComponent(X_SHARE_CACHE_VERSION)}`;
-}
-
 export function certificateOgImageUrl(capabilityId) {
   const ordinal = capabilityShareMeta(capabilityId).ordinal || 1;
   return `${PUBLIC_APP_URL}/certificate-card/c${ordinal}.png`;
@@ -90,7 +85,7 @@ export function buildCertificateShareText({
   const meta = capabilityShareMeta(capabilityId);
   const identity = identityParts(profile, did);
   const count = Math.max(1, Number(certificateCount) || 1);
-  const url = certificateSocialShareUrl(certificateId);
+  const url = certificatePublicUrl(certificateId);
   const safeRank = rankName(rank);
 
   if (language === "tr") {

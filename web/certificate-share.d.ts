@@ -18,7 +18,6 @@ export interface CertificateShareInput {
 }
 export declare const PUBLIC_APP_URL: string;
 export declare const FLOP_X_HANDLE: string;
-export declare const X_SHARE_CACHE_VERSION: string;
 export declare const CERTIFICATE_CAPABILITIES: Record<string, {
   ordinal: number;
   title: { en: string; tr: string };
@@ -30,7 +29,6 @@ export function capabilityShareMeta(capabilityId: string): {
   slug: string;
 };
 export function certificatePublicUrl(certificateId: string): string;
-export function certificateSocialShareUrl(certificateId: string): string;
 export function certificateOgImageUrl(capabilityId: string): string;
 export function rankName(rank: string | AgentRankShape | null | undefined): string;
 export function buildCertificateShareText(input: CertificateShareInput): string;
