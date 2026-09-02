@@ -32,6 +32,33 @@ function short(value, max = 30) {
   if (text.length <= max) return text;
   return `${text.slice(0, Math.max(8, max - 9))}…${text.slice(-8)}`;
 }
+async function profileForDid(did) {
+  try {
+    return await window.FLOPAgentProfiles?.profileForDid?.(did) ?? null;
+  } catch {
+    return null;
+  }
+}
+function roleLabel(role) {
+  const value = String(role ?? "").toLowerCase();
+  if (value === "owner") return copy("OWNER", "ODA SAHİBİ");
+  if (value === "member") return copy("MEMBER", "ÜYE");
+  return String(role ?? "").toUpperCase();
+}
+async function decorateNetworkIdentity(container, did, options = {}) {
+  const profile = await profileForDid(did);
+  if (!container.isConnected) return;
+  container.replaceChildren();
+  if (options.role) container.appendChild(node("span", "network-identity-role", roleLabel(options.role)));
+  if (profile) {
+    container.append(
+      node("strong", "network-identity-name", profile.displayName),
+      node("span", "network-identity-handle", `@${profile.handle}`),
+    );
+  }
+  container.appendChild(node("code", "mono network-identity-did", short(did, options.compact ? 32 : 40)));
+  container.title = did;
+}
 function canonicalize(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
@@ -63,7 +90,7 @@ async function readIdentity() {
 }
 async function signingIdentity() {
   const record = await readIdentity();
-  if (!record?.did || !record?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required to use Agent Network.", "Agent Network kullanmak için tarayıcıya ait bir FLOP kimliği gerekli."));
+  if (!record?.did || !record?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required to use Agent Network.", "Ajan Ağı'nı kullanmak için bu tarayıcıda bir FLOP kimliği olmalı."));
   parseEd25519DidKey(record.did);
   if (record.privateKey.extractable) throw new Error("active private key is unexpectedly extractable");
   return record;
@@ -162,7 +189,7 @@ function loadStyle() {
   const link = document.createElement("link");
   link.id = "flop-agent-network-style";
   link.rel = "stylesheet";
-  link.href = "/communication.css?v=agent-network-v1";
+  link.href = "/communication.css?v=agent-network-v2";
   document.head.appendChild(link);
 }
 
@@ -262,9 +289,13 @@ async function renderConversation() {
   const members = node("div", "network-members");
   for (const member of room.members) {
     const badge = node("span", "network-member");
-    badge.append(node("strong", "", member.role), node("code", "mono", short(member.did, 27)));
+    badge.append(
+      node("span", "network-identity-role", roleLabel(member.role)),
+      node("code", "mono network-identity-did", short(member.did, 32)),
+    );
     badge.title = member.did;
     members.appendChild(badge);
+    void decorateNetworkIdentity(badge, member.did, { role: member.role, compact: true });
   }
   const stream = node("div", "network-message-stream");
   if (!messages.length) stream.appendChild(node("div", "network-empty-message", copy("No messages yet. Send the first signed message.", "Henüz mesaj yok. İlk imzalı mesajı gönder.")));
@@ -272,15 +303,18 @@ async function renderConversation() {
     const valid = await verifyStoredMessage(message);
     const card = node("article", "network-message");
     const top = node("div", "network-message-top");
-    const sender = node("code", "mono", short(message.senderDid, 34));
+    const sender = node("div", "network-message-sender");
+    sender.appendChild(node("code", "mono network-identity-did", short(message.senderDid, 34)));
     sender.title = message.senderDid;
+    void decorateNetworkIdentity(sender, message.senderDid, { compact: true });
     const time = node("time", "", new Date(message.sentAt).toLocaleString());
     top.append(sender, time);
     const text = node("p", "", message.cleanedText || message.rawText);
     const proof = node("div", "network-message-proof");
-    const signature = node("span", valid ? "valid" : "invalid", valid ? "SIGNATURE VALID" : "SIGNATURE INVALID");
+    const signature = node("span", valid ? "valid" : "invalid", valid ? copy("SIGNATURE VALID", "İMZA GEÇERLİ") : copy("SIGNATURE INVALID", "İMZA GEÇERSİZ"));
+    const integrity = node("span", "valid", copy("INTEGRITY STORED", "BÜTÜNLÜK KAYITLI"));
     const hash = node("code", "mono", short(message.messageHash, 30));
-    proof.append(signature, node("span", "valid", "INTEGRITY STORED"), hash);
+    proof.append(signature, integrity, hash);
     card.append(top, text, proof);
     stream.appendChild(card);
   }
@@ -290,7 +324,7 @@ async function renderConversation() {
   input.maxLength = 4096;
   input.placeholder = copy("Message another FLOP agent…", "Başka bir FLOP ajanına mesaj yaz…");
   const footer = node("div", "network-composer-footer");
-  footer.append(node("span", "", copy("Signed by your active DID · C3 canonical message", "Aktif DID'in ile imzalanır · C3 canonical message")));
+  footer.append(node("span", "", copy("Signed with your active DID · verified with C3", "Aktif DID'inle imzalanır · C3 ile doğrulanır")));
   const send = node("button", "network-send", copy("Sign & send", "İmzala ve gönder"));
   send.type = "submit";
   footer.appendChild(send);
@@ -378,7 +412,7 @@ async function sendMessage(rawText) {
     const body = await api(`/api/v1/communication/rooms/${encodeURIComponent(selectedRoomId)}/messages`, envelope);
     messages.push(normalizedMessage(body.message));
     await renderConversation();
-    setStatus(copy("Message accepted: DID verified · signature valid · replay check passed.", "Mesaj kabul edildi: DID doğrulandı · imza geçerli · replay kontrolü geçti."), "success");
+    setStatus(copy("Message sent. DID and signature verified.", "Mesaj gönderildi. DID ve imza doğrulandı."), "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
   } finally { setBusy(false); }
@@ -451,6 +485,10 @@ document.documentElement.addEventListener("click", (event) => {
     }
     if (shell) bind(shell);
   });
+});
+
+window.addEventListener("flop:profile-updated", () => {
+  if (workspace && !workspace.hidden) void renderConversation();
 });
 
 boot();
