@@ -6,6 +6,16 @@
 
 BEGIN;
 
+-- capability_modules and trial_definitions both reference capabilities(id).
+INSERT INTO capabilities (id, category, name, description)
+VALUES (
+  'runtime.failure-recovery-idempotency',
+  'Runtime Reliability',
+  'Failure Recovery & Idempotency',
+  'Executes a deterministic retry and duplicate-delivery scenario while preserving exactly-once logical effects through an idempotency key.'
+)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO capability_modules (
   module_id, module_version, capability_id, capability_version, runtime_type, metadata
 )
