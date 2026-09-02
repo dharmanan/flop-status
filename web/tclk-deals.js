@@ -397,7 +397,10 @@ async function acceptOffer(deal) {
     await saveSecret(accepted.contract, accepted.secret);
     await postLine(OFFER_ROOM, accepted.line);
     boardCache = null;
-    setStatus(copy("Accepted. Secret is stored only in this browser. Keep this browser data until reveal.", "Kabul edildi. Secret yalnızca bu tarayıcıda saklandı. Reveal tamamlanana kadar tarayıcı verisini koru."), "success");
+    setStatus(copy(
+      "Accepted. The agreement code is stored only in this browser. It is not a private key or seed. Keep this browser data until completion.",
+      "Kabul edildi. Anlaşma kodu yalnızca bu tarayıcıda saklandı. Bu kod private key veya seed değildir. Anlaşma tamamlanana kadar tarayıcı verisini koru.",
+    ), "success");
     await showTab("mine");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
@@ -514,23 +517,27 @@ async function appendDealActions(container, context) {
 
   if (state.status === "locked" && isPayee && accept) {
     let secret = await getSecret(accept.contract);
+    container.appendChild(node("p", "tclk-action-note", copy(
+      "This agreement code belongs only to this deal. It is not a private key, wallet key, or seed phrase.",
+      "Bu anlaşma kodu yalnızca bu anlaşmaya aittir. Private key, cüzdan anahtarı veya seed phrase değildir.",
+    )));
     const importRow = node("div", "tclk-secret-import");
     const secretInput = node("input", "mono");
-    secretInput.placeholder = copy("32-byte secret if this browser no longer has it", "Bu tarayıcıda yoksa 32-byte secret");
+    secretInput.placeholder = copy("Agreement code if this browser no longer has it", "Bu tarayıcıda yoksa anlaşma kodu");
     if (secret) secretInput.value = secret;
-    const save = node("button", "tclk-secondary", copy("Save secret locally", "Secret'ı yerel kaydet"));
+    const save = node("button", "tclk-secondary", copy("Save agreement code in this browser", "Anlaşma kodunu bu tarayıcıda sakla"));
     save.type = "button";
     save.addEventListener("click", async () => {
       secret = secretInput.value.trim();
-      if (!/^0x[0-9a-f]{64}$/.test(secret)) return setStatus(copy("Secret format is invalid.", "Secret formatı geçersiz."), "error");
+      if (!/^0x[0-9a-f]{64}$/.test(secret)) return setStatus(copy("Agreement code format is invalid.", "Anlaşma kodu formatı geçersiz."), "error");
       await saveSecret(accept.contract, secret);
-      setStatus(copy("Secret stored in this browser.", "Secret bu tarayıcıda saklandı."), "success");
+      setStatus(copy("Agreement code stored in this browser.", "Anlaşma kodu bu tarayıcıda saklandı."), "success");
     });
     importRow.append(secretInput, save);
     container.appendChild(importRow);
-    addAction(container, copy("Reveal secret & complete the deal", "Secret'ı açıkla ve anlaşmayı tamamla"), async () => {
+    addAction(container, copy("Verify agreement code & complete deal", "Anlaşma kodunu doğrula ve tamamla"), async () => {
       secret = (await getSecret(accept.contract)) ?? secretInput.value.trim();
-      if (!/^0x[0-9a-f]{64}$/.test(secret)) throw new Error(copy("This browser does not have the deal secret.", "Bu tarayıcıda deal secret bulunmuyor."));
+      if (!/^0x[0-9a-f]{64}$/.test(secret)) throw new Error(copy("This browser does not have the agreement code.", "Bu tarayıcıda anlaşma kodu bulunmuyor."));
       const built = await tool("tclk_make_reveal", { from: id.did, contract: accept.contract, secret });
       await postLine(room, built.line);
       await paper("claim", { contract: accept.contract, secret });
