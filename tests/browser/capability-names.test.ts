@@ -23,10 +23,20 @@ describe("localized capability display names", () => {
     expect(capabilityDisplayName(7, "en")).toBe("Failure Recovery & Idempotency");
   });
 
-  it("is loaded with a fresh cache key and watches shell rerenders", () => {
-    expect(profileHint).toContain('import("/capability-names.js?v=capability-names-v3")');
-    expect(namesSource).toContain('renderObserver.observe(workspace, { childList: true, subtree: true })');
+  it("loads the localization module with a fresh cache key", () => {
+    expect(profileHint).toContain('import("/capability-names.js?v=capability-names-v4")');
+  });
+
+  it("covers workspace, proof and ceremony user-facing localization", () => {
+    expect(namesSource).toContain('method: "Doğrulama yöntemi"');
+    expect(namesSource).toContain('workspace: "YETENEK ÇALIŞMA ALANI"');
+    expect(namesSource).toContain('use: "Bu yeteneği FLOP içinde kullan"');
+    expect(namesSource).toContain('proofPackage: "Kanıt Paketi"');
+    expect(namesSource).toContain('receipt: "Makbuz"');
+    expect(namesSource).toContain('publicProof: "Herkese Açık Kanıt"');
+    expect(namesSource).toContain('profile: "Yetenek Profili"');
+    expect(namesSource).toContain('ceremony.querySelector(".ceremony-title")');
+    expect(namesSource).toContain('renderObserver.observe(shell, { childList: true, subtree: true })');
     expect(namesSource).toContain('languageObserver.observe(document.documentElement');
-    expect(namesSource).toContain('row.querySelector(".shell-record-body strong")');
   });
 });
