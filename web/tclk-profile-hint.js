@@ -1,5 +1,16 @@
 void import("/capability-names.js?v=capability-names-v4");
-void import("/practice-ui.js?v=practice-ui-v1");
+void import("/practice-ui.js?v=practice-ui-v2");
+
+function loadPracticeFeedbackStyle() {
+  if (document.getElementById("flop-capability-use-feedback-style")) return;
+  const link = document.createElement("link");
+  link.id = "flop-capability-use-feedback-style";
+  link.rel = "stylesheet";
+  link.href = "/capability-use-feedback.css?v=practice-feedback-v1";
+  document.head.appendChild(link);
+}
+
+loadPracticeFeedbackStyle();
 
 function attachProtocolHint() {
   const card = document.querySelector(".product-shell .agent-status-card");
