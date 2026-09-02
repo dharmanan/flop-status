@@ -32,64 +32,69 @@ function language() {
   return document.documentElement.lang === "tr" ? "tr" : "en";
 }
 
-function syncStaticCards() {
-  for (const number of Object.keys(CAPABILITY_NAMES).map(Number)) {
-    const card = document.getElementById(`capability-${number}-status`)?.closest(".capability-card");
-    const title = card?.querySelector(".trial-copy strong");
-    if (title) title.textContent = capabilityDisplayName(number, language());
-  }
+function setTextIfChanged(target, value) {
+  if (target && value && target.textContent !== value) target.textContent = value;
 }
 
 function syncSecondaryRows() {
   document.querySelectorAll(".shell-record-row").forEach((row) => {
     const index = row.querySelector(".shell-record-index")?.textContent?.trim() ?? "";
     const number = Number(index.replace(/^C/i, ""));
-    const title = row.querySelector(".shell-record-body strong");
-    const name = capabilityDisplayName(number, language());
-    if (title && name) title.textContent = name;
+    setTextIfChanged(
+      row.querySelector(".shell-record-body strong"),
+      capabilityDisplayName(number, language()),
+    );
   });
 }
 
 function syncWorkspaceTitle() {
   const capabilityId = document.querySelector(".workspace-id")?.textContent?.trim();
   const number = capabilityNumberFromId(capabilityId);
-  const title = document.querySelector(".workspace-title");
   const name = capabilityDisplayName(number, language());
-  if (title && name) title.textContent = name;
+  if (!name) return;
+  setTextIfChanged(document.querySelector(".workspace-title"), name);
 }
 
 export function syncCapabilityDisplayNames() {
   if (typeof document === "undefined") return;
-  syncStaticCards();
   syncSecondaryRows();
   syncWorkspaceTitle();
 }
 
+let syncQueued = false;
 function scheduleSync() {
-  queueMicrotask(syncCapabilityDisplayNames);
-  requestAnimationFrame(() => {
+  if (syncQueued) return;
+  syncQueued = true;
+  queueMicrotask(() => {
+    syncQueued = false;
     syncCapabilityDisplayNames();
-    requestAnimationFrame(syncCapabilityDisplayNames);
   });
 }
 
-function boot() {
-  if (document.querySelector(".product-shell")) {
-    scheduleSync();
-  } else {
-    const observer = new MutationObserver(() => {
-      if (!document.querySelector(".product-shell")) return;
-      observer.disconnect();
-      scheduleSync();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+function watchShell(shell) {
+  scheduleSync();
+  const workspace = shell.querySelector(".product-workspace");
+  if (workspace) {
+    const renderObserver = new MutationObserver(scheduleSync);
+    renderObserver.observe(workspace, { childList: true, subtree: true });
   }
+  const languageObserver = new MutationObserver(scheduleSync);
+  languageObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+}
 
-  document.documentElement.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    if (target.closest(".lang-button, .capability-selector-button, .product-nav-item")) scheduleSync();
+function boot() {
+  const shell = document.querySelector(".product-shell");
+  if (shell) {
+    watchShell(shell);
+    return;
+  }
+  const observer = new MutationObserver(() => {
+    const next = document.querySelector(".product-shell");
+    if (!next) return;
+    observer.disconnect();
+    watchShell(next);
   });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 if (typeof document !== "undefined") boot();
