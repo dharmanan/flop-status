@@ -18,6 +18,55 @@ const CAPABILITY_IDS = {
   "runtime.failure-recovery-idempotency": 7,
 };
 
+const UI_COPY = {
+  en: {
+    method: "Verification method",
+    methodBody: "Fresh challenge + deterministic FLOP verifier",
+    passBody: "Individual certificate + signed receipt + public proof",
+    boundary: "Execution boundary",
+    boundaryBody: "Capability execution stays inside FLOP. Proof is portable.",
+    workspace: "CAPABILITY WORKSPACE",
+    use: "Use this capability inside FLOP",
+    proofPackage: "Proof Package",
+    certificate: "Certificate",
+    receipt: "Receipt",
+    publicProof: "Public Proof",
+    profile: "Capability Profile",
+    proofSemantics: "This certificate proves that the FLOP agent bound to this DID successfully used the stated capability version on a fresh verification challenge.",
+    whyAcquire: "Capability acquired inside FLOP",
+    whyFresh: "Fresh challenge solved",
+    whyDid: "DID signed submission verified",
+    whyVerifier: "Deterministic verifier returned PASS",
+    receiptMeta: "Signed verification receipt",
+    publicMeta: "PASS · Portable & independently verifiable",
+    profileMeta: "Added to this FLOP agent",
+    capabilityPrefix: "Capability",
+  },
+  tr: {
+    method: "Doğrulama yöntemi",
+    methodBody: "Yeni doğrulama girdisi + deterministik FLOP doğrulayıcısı",
+    passBody: "Bireysel sertifika + imzalı makbuz + herkese açık kanıt",
+    boundary: "Çalıştırma sınırı",
+    boundaryBody: "Yetenek FLOP içinde çalışır. Kanıt taşınabilir.",
+    workspace: "YETENEK ÇALIŞMA ALANI",
+    use: "Bu yeteneği FLOP içinde kullan",
+    proofPackage: "Kanıt Paketi",
+    certificate: "Sertifika",
+    receipt: "Makbuz",
+    publicProof: "Herkese Açık Kanıt",
+    profile: "Yetenek Profili",
+    proofSemantics: "Bu sertifika, bu DID'e bağlı FLOP ajanının belirtilen yetenek sürümünü yeni bir doğrulama girdisinde başarıyla kullandığını kanıtlar.",
+    whyAcquire: "Yetenek FLOP içinde kazanıldı",
+    whyFresh: "Yeni doğrulama girdisi çözüldü",
+    whyDid: "DID imzalı gönderim doğrulandı",
+    whyVerifier: "Deterministik doğrulayıcı PASS döndürdü",
+    receiptMeta: "İmzalı doğrulama makbuzu",
+    publicMeta: "PASS · Taşınabilir ve bağımsız doğrulanabilir",
+    profileMeta: "Bu FLOP ajanına eklendi",
+    capabilityPrefix: "Yetenek",
+  },
+};
+
 export function capabilityDisplayName(number, language = "en") {
   const entry = CAPABILITY_NAMES[Number(number)];
   if (!entry) return null;
@@ -30,6 +79,10 @@ export function capabilityNumberFromId(capabilityId) {
 
 function language() {
   return document.documentElement.lang === "tr" ? "tr" : "en";
+}
+
+function copy() {
+  return UI_COPY[language()];
 }
 
 function setTextIfChanged(target, value) {
@@ -55,10 +108,73 @@ function syncWorkspaceTitle() {
   setTextIfChanged(document.querySelector(".workspace-title"), name);
 }
 
+function syncWorkspaceCopy() {
+  const c = copy();
+  const rows = [...document.querySelectorAll(".workspace-summary-row")];
+  if (rows[1]) {
+    setTextIfChanged(rows[1].querySelector(".workspace-summary-copy strong"), c.method);
+    setTextIfChanged(rows[1].querySelector(".workspace-summary-copy span"), c.methodBody);
+  }
+  if (rows[2]) setTextIfChanged(rows[2].querySelector(".workspace-summary-copy span"), c.passBody);
+  if (rows[3]) {
+    setTextIfChanged(rows[3].querySelector(".workspace-summary-copy strong"), c.boundary);
+    setTextIfChanged(rows[3].querySelector(".workspace-summary-copy span"), c.boundaryBody);
+  }
+  setTextIfChanged(document.querySelector(".workspace-stage-label > span:first-child"), c.workspace);
+
+  document.querySelectorAll(".capability-card > details.technical-details > summary").forEach((summary) => {
+    setTextIfChanged(summary, c.use);
+  });
+}
+
+function syncProofCopy() {
+  const c = copy();
+  setTextIfChanged(document.querySelector(".proof-heading"), c.proofPackage);
+  setTextIfChanged(document.querySelector(".proof-certificate .proof-item-title"), c.certificate);
+  setTextIfChanged(document.querySelector(".proof-receipt .proof-item-title"), c.receipt);
+  setTextIfChanged(document.querySelector(".proof-public .proof-item-title"), c.publicProof);
+  setTextIfChanged(document.querySelector(".proof-profile .proof-item-title"), c.profile);
+  setTextIfChanged(document.querySelector(".proof-semantics"), c.proofSemantics);
+
+  const whyRows = [...document.querySelectorAll(".proof-why .proof-check")];
+  [c.whyAcquire, c.whyFresh, c.whyDid, c.whyVerifier].forEach((text, index) => {
+    setTextIfChanged(whyRows[index]?.querySelector("span:last-child"), text);
+  });
+
+  const receiptMeta = document.querySelector(".proof-receipt .proof-item-meta");
+  if (receiptMeta && /signed verification receipt|imzalı doğrulama makbuzu/i.test(receiptMeta.textContent ?? "")) {
+    setTextIfChanged(receiptMeta, c.receiptMeta);
+  }
+  const publicMeta = document.querySelector(".proof-public .proof-item-meta");
+  if (publicMeta && /portable|taşınabilir/i.test(publicMeta.textContent ?? "")) {
+    setTextIfChanged(publicMeta, c.publicMeta);
+  }
+  const profileMeta = document.querySelector(".proof-profile .proof-item-meta");
+  if (profileMeta && /added to this FLOP agent|bu FLOP ajanına eklendi/i.test(profileMeta.textContent ?? "")) {
+    setTextIfChanged(profileMeta, c.profileMeta);
+  }
+}
+
+function syncCeremonyCopy() {
+  const c = copy();
+  document.querySelectorAll(".ceremony-shell").forEach((ceremony) => {
+    const capabilityId = ceremony.closest(".capability-card")?.querySelector(".trial-capability")?.textContent?.trim() ?? "";
+    const number = capabilityNumberFromId(capabilityId);
+    const name = capabilityDisplayName(number, language());
+    if (!number || !name) return;
+    setTextIfChanged(ceremony.querySelector(".ceremony-title"), `${c.capabilityPrefix} ${number} · ${name}`);
+    setTextIfChanged(ceremony.querySelector(".ceremony-module-copy strong"), `${c.capabilityPrefix} ${number}`);
+    setTextIfChanged(ceremony.querySelector(".ceremony-module-copy small"), name);
+  });
+}
+
 export function syncCapabilityDisplayNames() {
   if (typeof document === "undefined") return;
   syncSecondaryRows();
   syncWorkspaceTitle();
+  syncWorkspaceCopy();
+  syncProofCopy();
+  syncCeremonyCopy();
 }
 
 let syncQueued = false;
@@ -73,11 +189,8 @@ function scheduleSync() {
 
 function watchShell(shell) {
   scheduleSync();
-  const workspace = shell.querySelector(".product-workspace");
-  if (workspace) {
-    const renderObserver = new MutationObserver(scheduleSync);
-    renderObserver.observe(workspace, { childList: true, subtree: true });
-  }
+  const renderObserver = new MutationObserver(scheduleSync);
+  renderObserver.observe(shell, { childList: true, subtree: true });
   const languageObserver = new MutationObserver(scheduleSync);
   languageObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
 }
