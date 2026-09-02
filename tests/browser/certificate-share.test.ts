@@ -6,7 +6,9 @@ import {
   capabilityShareMeta,
   certificateOgImageUrl,
   certificatePublicUrl,
+  certificateSocialShareUrl,
   rankName,
+  X_SHARE_CACHE_VERSION,
 } from "../../web/certificate-share.js";
 
 describe("shareable capability certificates", () => {
@@ -30,7 +32,14 @@ describe("shareable capability certificates", () => {
     expect(rankName(null)).toBe("");
   });
 
-  it("builds a clean public X share with FLOP handle, capability, count, rank, URL and @flop_labs", () => {
+  it("keeps the canonical proof URL stable while versioning the X share URL", () => {
+    expect(certificatePublicUrl("cert-123")).toBe("https://flop-status.vercel.app/certificate/cert-123");
+    expect(certificateSocialShareUrl("cert-123")).toBe(
+      `https://flop-status.vercel.app/certificate/cert-123?share=${X_SHARE_CACHE_VERSION}`,
+    );
+  });
+
+  it("builds a clean public X share with FLOP handle, capability, count, rank, versioned URL and @flop_labs", () => {
     const text = buildCertificateShareText({
       certificateId: "cert-123",
       capabilityId: "runtime.failure-recovery-idempotency",
@@ -45,7 +54,7 @@ describe("shareable capability certificates", () => {
     expect(text).toContain("Hata Kurtarma ve İdempotans");
     expect(text).toContain("7 doğrulanmış yetenek");
     expect(text).toContain("Core Verified");
-    expect(text).toContain(certificatePublicUrl("cert-123"));
+    expect(text).toContain(certificateSocialShareUrl("cert-123"));
     expect(text).toContain("@flop_labs");
     expect(text).not.toContain("[object Object]");
     expect(text.length).toBeLessThan(280);
