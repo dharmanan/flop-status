@@ -27,6 +27,49 @@ const short = (value, max = 34) => {
   return text.length <= max ? text : `${text.slice(0, Math.max(8, max - 9))}…${text.slice(-8)}`;
 };
 
+function stateLabel(status) {
+  const value = String(status ?? "unknown").toLowerCase();
+  const labels = {
+    proposed: copy("PROPOSED", "TEKLİF AÇIK"),
+    accepted: copy("ACCEPTED", "KABUL EDİLDİ"),
+    locked: copy("LOCKED", "KİLİTLENDİ"),
+    claimed: copy("CLAIMED", "TAMAMLANDI"),
+    refunded: copy("REFUNDED", "GERİ ALINDI"),
+    cancelled: copy("CANCELLED", "İPTAL EDİLDİ"),
+  };
+  return labels[value] ?? value.toUpperCase();
+}
+
+function stepLabel(type) {
+  const value = String(type ?? "unknown").toLowerCase();
+  const labels = {
+    offer: copy("OFFER", "TEKLİF"),
+    accept: copy("ACCEPT", "KABUL"),
+    lock: copy("LOCK", "KİLİTLEME"),
+    reveal: copy("REVEAL", "KOD DOĞRULAMA"),
+    claim: copy("CLAIM", "TAMAMLAMA"),
+    refund: copy("REFUND", "GERİ ALMA"),
+    cancel: copy("CANCEL", "İPTAL"),
+    receipt: copy("RECEIPT", "KAPANIŞ KAYDI"),
+  };
+  return labels[value] ?? value.toUpperCase();
+}
+
+function paperStateLabel(status) {
+  const value = String(status ?? "unknown").toLowerCase();
+  const labels = {
+    locked: copy("LOCKED", "KİLİTLİ"),
+    claimed: copy("CLAIMED", "TAMAMLANDI"),
+    refunded: copy("REFUNDED", "GERİ ALINDI"),
+    cancelled: copy("CANCELLED", "İPTAL EDİLDİ"),
+  };
+  return labels[value] ?? value.toUpperCase();
+}
+
+function minuteLabel(value) {
+  return tr() ? `${value} dk` : `${value} min`;
+}
+
 function node(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -57,7 +100,7 @@ async function identity() {
   try {
     const tx = db.transaction(IDENTITY_STORE, "readonly");
     const value = await request(tx.objectStore(IDENTITY_STORE).get(ACTIVE_ID));
-    if (!value?.did || !value?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required.", "Tarayıcıya ait FLOP kimliği gerekli."));
+    if (!value?.did || !value?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required.", "Bu işlem için tarayıcıdaki FLOP kimliğin gerekli."));
     parseEd25519DidKey(value.did);
     return value;
   } finally { db.close(); }
@@ -138,7 +181,7 @@ async function postLine(room, line) {
   const challenge = await tool("tclk_post_frame", { room, line });
   if (challenge?.posted === true) return challenge;
   if (!Number.isSafeInteger(challenge?.nonce) || typeof challenge?.canonical !== "string" || typeof challenge?.text !== "string") {
-    throw new Error("TCLK signing challenge is incomplete");
+    throw new Error(copy("TCLK signing challenge is incomplete.", "TCLK imza isteği eksik geldi."));
   }
   const signed = await signCanonical(challenge.canonical);
   return tool("tclk_post_frame", {
@@ -169,7 +212,7 @@ async function collectRoom(room) {
 }
 
 function dealRoom(contract) {
-  if (!/^0x[0-9a-f]{64}$/.test(contract)) throw new Error("invalid TCLK contract id");
+  if (!/^0x[0-9a-f]{64}$/.test(contract)) throw new Error(copy("Invalid TCLK contract id.", "Geçersiz TCLK anlaşma kimliği."));
   return `mb-p-tclk-${contract.slice(2, 18)}`;
 }
 
@@ -208,14 +251,14 @@ function makeWorkspace() {
   root.innerHTML = `
     <header class="tclk-head">
       <div>
-        <span class="tclk-kicker">TCLK / 1 · FLOP LABS PROTOCOL</span>
+        <span class="tclk-kicker">${copy("TCLK / 1 · FLOP LABS PROTOCOL", "TCLK / 1 · FLOP LABS PROTOKOLÜ")}</span>
         <h1>${copy("Agent Deals", "Ajan Anlaşmaları")}</h1>
-        <p>${copy("Agents sign the agreement here. Payment happens on the rail named in the offer.", "Ajanlar anlaşmayı burada imzalar. Ödeme süreci, teklifte belirtilen kanal üzerinden yürür.")}</p>
+        <p>${copy("Agents sign the agreement here. Payment happens on the rail named in the offer.", "Ajanlar burada teklif verir, kabul eder ve anlaşma adımlarını imzalar. Bu sürümde gerçek para hareket etmez.")}</p>
       </div>
-      <div class="tclk-protocol-badges"><span>HASH LOCK</span><span>PAPER</span><span class="alpha">ALPHA</span></div>
+      <div class="tclk-protocol-badges"><span>${copy("HASH LOCK", "HASH KİLİDİ")}</span><span>PAPERRAIL</span><span class="alpha">ALPHA</span></div>
       <div class="tclk-status"></div>
     </header>
-    <div class="tclk-warning"><strong>${copy("No real funds", "Gerçek para yok")}</strong><span>${copy("PaperRail records the choreography but holds no value. This is testnet-style rehearsal only.", "PaperRail akışı kaydeder ama değer tutmaz. Bu yalnızca testnet tarzı prova akışıdır.")}</span></div>
+    <div class="tclk-warning"><strong>${copy("No real funds", "Gerçek para yok")}</strong><span>${copy("PaperRail records the choreography but holds no value. This is testnet-style rehearsal only.", "PaperRail yalnızca anlaşma adımlarını kaydeder; para veya başka bir değer tutmaz. Bu akış test amaçlı bir provadır.")}</span></div>
     <nav class="tclk-tabs">
       <button data-tab="discover" class="active">${copy("Discover offers", "Teklifleri keşfet")}</button>
       <button data-tab="mine">${copy("My deals", "Anlaşmalarım")}</button>
@@ -268,7 +311,7 @@ async function renderDealCards(filter) {
   const main = workspace.querySelector(".tclk-main");
   main.replaceChildren();
   const id = await identity();
-  setStatus(copy("Reading and replaying signed TCLK offer board…", "İmzalı TCLK teklif panosu okunup replay ediliyor…"), "working");
+  setStatus(copy("Reading and verifying the signed TCLK offer board…", "İmzalı teklifler okunuyor ve anlaşma durumları doğrulanıyor…"), "working");
   const data = await board(true);
   let deals = await buildDealIndex(data.records);
   const now = Date.now();
@@ -281,14 +324,14 @@ async function renderDealCards(filter) {
     });
   }
   const header = node("div", "tclk-list-head");
-  header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "TCLK anlaşmalarım")));
+  header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));
   const refresh = node("button", "tclk-secondary", copy("Refresh", "Yenile"));
   refresh.type = "button";
   refresh.addEventListener("click", () => { boardCache = null; void renderDealCards(filter); });
   header.appendChild(refresh);
   main.appendChild(header);
   if (!deals.length) {
-    main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir TCLK anlaşman yok.")));
+    main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir anlaşman yok.")));
     setStatus(filter === "discover"
       ? `${deals.length} ${copy("open offers", "açık teklif")}`
       : `${deals.length} ${copy("deals", "anlaşma")}`, "success");
@@ -299,14 +342,17 @@ async function renderDealCards(filter) {
     const offer = deal.offer.frame;
     const card = node("article", "tclk-deal-card");
     const top = node("div", "tclk-deal-card-top");
-    const title = node("strong", "", offer.job?.id ? `Job · ${offer.job.id}` : `Offer · ${short(offer.id, 20)}`);
-    const state = node("span", "tclk-state", String(deal.boardState.status).toUpperCase());
+    const title = node("strong", "", offer.job?.id
+      ? `${copy("Job", "İş")} · ${offer.job.id}`
+      : `${copy("Offer", "Teklif")} · ${short(offer.id, 20)}`);
+    const state = node("span", "tclk-state", stateLabel(deal.boardState.status));
+    state.dataset.protocolState = String(deal.boardState.status ?? "");
     top.append(title, state);
     const amount = node("div", "tclk-amount", `${offer.amount} ${offer.asset}`);
     const from = node("div", "tclk-party", short(offer.from));
     void decorateParty(from, offer.from);
     const meta = node("div", "tclk-card-meta");
-    meta.innerHTML = `<span>HASH</span><span>PAPER</span><span>${new Date(offer.expiresMs).toLocaleString()}</span>`;
+    meta.innerHTML = `<span>${copy("HASH", "HASH KİLİDİ")}</span><span>PAPERRAIL</span><span>${new Date(offer.expiresMs).toLocaleString()}</span>`;
     const actions = node("div", "tclk-card-actions");
     if (filter === "discover") {
       const accept = node("button", "tclk-primary", copy("Accept offer", "Teklifi kabul et"));
@@ -332,17 +378,17 @@ function renderCreate() {
   const main = workspace.querySelector(".tclk-main");
   main.innerHTML = `
     <section class="tclk-create-card">
-      <h2>${copy("Create a payer offer", "Ödeyen taraf olarak teklif oluştur")}</h2>
-      <p>${copy("The first FLOP release is hash-lock + PaperRail only. No real value moves.", "İlk FLOP sürümü yalnızca hash-lock + PaperRail kullanır. Gerçek değer hareket etmez.")}</p>
+      <h2>${copy("Create a payer offer", "Yeni teklif oluştur")}</h2>
+      <p>${copy("You are the payer in this offer. This rehearsal uses a hash lock and PaperRail; no real value moves.", "Bu teklifte ödeyen taraf sensin. Akış hash kilidi ve PaperRail ile prova edilir; gerçek para veya değer hareket etmez.")}</p>
       <form class="tclk-create-form">
         <label>${copy("Amount", "Miktar")}</label><input name="amount" inputmode="numeric" value="1000" pattern="[1-9][0-9]*" required>
-        <label>${copy("Asset label", "Varlık etiketi")}</label><input name="asset" value="PAPER" maxlength="32" required>
-        <label>${copy("Job id", "İş ID")}</label><input name="job" placeholder="task-001" maxlength="120">
-        <label>${copy("Job context", "İş bağlamı")}</label><input name="context" placeholder="optional reference" maxlength="240">
+        <label>${copy("Asset label", "Birim etiketi")}</label><input name="asset" value="PAPER" maxlength="32" required>
+        <label>${copy("Job id", "İş kodu")}</label><input name="job" placeholder="task-001" maxlength="120">
+        <label>${copy("Job context", "İş notu")}</label><input name="context" placeholder="${copy("optional reference", "isteğe bağlı kısa açıklama")}" maxlength="240">
         <div class="tclk-deadlines">
-          <label>${copy("Offer expires", "Teklif süresi")}<select name="expires"><option value="10">10 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
-          <label>${copy("Safe claim", "Güvenli claim")}<select name="claim"><option value="30">30 min</option><option value="60">60 min</option></select></label>
-          <label>${copy("Refund after", "Refund başlangıcı")}<select name="refund"><option value="60">60 min</option><option value="120">120 min</option></select></label>
+          <label>${copy("Offer expires", "Teklif geçerlilik süresi")}<select name="expires"><option value="10">${minuteLabel(10)}</option><option value="30">${minuteLabel(30)}</option><option value="60">${minuteLabel(60)}</option></select></label>
+          <label>${copy("Safe claim", "Tamamlama son süresi")}<select name="claim"><option value="30">${minuteLabel(30)}</option><option value="60">${minuteLabel(60)}</option></select></label>
+          <label>${copy("Refund after", "Geri alma hakkı")}<select name="refund"><option value="60">${minuteLabel(60)}</option><option value="120">${minuteLabel(120)}</option></select></label>
         </div>
         <button class="tclk-primary" type="submit">${copy("Sign & publish offer", "Teklifi imzala ve yayınla")}</button>
       </form>
@@ -357,13 +403,13 @@ async function createOffer(form) {
   if (busy) return;
   try {
     setBusy(true);
-    setStatus(copy("Building offer with official TCLK implementation…", "Teklif resmi TCLK implementation ile oluşturuluyor…"), "working");
+    setStatus(copy("Preparing and signing the offer with TCLK…", "Teklif hazırlanıyor ve TCLK ile imzalanıyor…"), "working");
     const id = await identity();
     const now = Date.now();
     const expires = Number(form.get("expires")) * 60_000;
     const claim = Number(form.get("claim")) * 60_000;
     const refund = Number(form.get("refund")) * 60_000;
-    if (!(expires < claim && claim < refund)) throw new Error(copy("Deadlines must be offer expiry < claim < refund.", "Süreler teklif bitişi < claim < refund olmalı."));
+    if (!(expires < claim && claim < refund)) throw new Error(copy("Offer expiry must be before completion, and completion before refund.", "Teklif süresi, tamamlama son süresinden; tamamlama son süresi de geri alma süresinden kısa olmalı."));
     const jobId = String(form.get("job") ?? "").trim();
     const context = String(form.get("context") ?? "").trim();
     const built = await tool("tclk_make_offer", {
@@ -380,7 +426,7 @@ async function createOffer(form) {
     });
     await postLine(OFFER_ROOM, built.line);
     boardCache = null;
-    setStatus(copy("Offer signed and published to tclk-offers.", "Teklif imzalandı ve tclk-offers odasına yayınlandı."), "success");
+    setStatus(copy("Offer signed and published.", "Teklif imzalandı ve yayınlandı."), "success");
     await showTab("mine");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
@@ -392,14 +438,14 @@ async function acceptOffer(deal) {
   try {
     setBusy(true);
     const id = await identity();
-    setStatus(copy("Minting hash lock and acceptance…", "Hash lock ve acceptance oluşturuluyor…"), "working");
+    setStatus(copy("Accepting the offer and preparing its hash lock…", "Teklif kabul ediliyor ve anlaşma kodu için hash kilidi hazırlanıyor…"), "working");
     const accepted = await tool("tclk_accept_offer", { offer: deal.offer.line, from: id.did });
     await saveSecret(accepted.contract, accepted.secret);
     await postLine(OFFER_ROOM, accepted.line);
     boardCache = null;
     setStatus(copy(
       "Accepted. The agreement code is stored only in this browser. It is not a private key or seed. Keep this browser data until completion.",
-      "Kabul edildi. Anlaşma kodu yalnızca bu tarayıcıda saklandı. Bu kod private key veya seed değildir. Anlaşma tamamlanana kadar tarayıcı verisini koru.",
+      "Teklif kabul edildi. Anlaşma kodu yalnızca bu tarayıcıda saklanıyor. Bu kod özel anahtar veya kurtarma ifadesi değildir. Anlaşma tamamlanana kadar tarayıcı verisini silme.",
     ), "success");
     await showTab("mine");
   } catch (error) {
@@ -423,7 +469,7 @@ async function openDeal(deal) {
   const main = workspace.querySelector(".tclk-main");
   try {
     setBusy(true);
-    setStatus(copy("Verifying transcript…", "Transcript doğrulanıyor…"), "working");
+    setStatus(copy("Verifying the signed agreement records…", "İmzalı anlaşma kayıtları doğrulanıyor…"), "working");
     const id = await identity();
     const { roomData, state } = await dealTranscript(deal);
     const offer = deal.offer.frame;
@@ -442,25 +488,31 @@ async function openDeal(deal) {
     if (state.parties?.payer) void decorateParty(payer, state.parties.payer);
     if (state.parties?.payee) void decorateParty(payee, state.parties.payee);
     proof.innerHTML = `
-      <div class="tclk-proof-head"><div><span>TCLK DEAL PROOF</span><h2 class="proof-amount-slot"></h2></div><strong class="tclk-proof-state"></strong></div>
+      <div class="tclk-proof-head"><div><span>${copy("TCLK DEAL PROOF", "TCLK ANLAŞMA KANITI")}</span><h2 class="proof-amount-slot"></h2></div><strong class="tclk-proof-state"></strong></div>
       <div class="tclk-proof-grid">
-        <div><span>CONTRACT</span><code class="proof-contract-slot"></code></div>
-        <div class="payer-slot"><span>PAYER</span></div>
-        <div class="payee-slot"><span>PAYEE</span></div>
-        <div><span>RAIL</span><strong class="proof-rail-slot"></strong></div>
-        <div><span>TRANSPORT</span><strong>TECHNOCORE</strong></div>
-        <div><span>VALUE</span><strong>NONE · PAPER ONLY</strong></div>
+        <div><span>${copy("CONTRACT", "ANLAŞMA KİMLİĞİ")}</span><code class="proof-contract-slot"></code></div>
+        <div class="payer-slot"><span>${copy("PAYER", "ÖDEYEN")}</span></div>
+        <div class="payee-slot"><span>${copy("PAYEE", "ÖDEMEYİ ALAN")}</span></div>
+        <div><span>${copy("RAIL", "KANAL")}</span><strong class="proof-rail-slot"></strong></div>
+        <div><span>${copy("TRANSPORT", "İLETİŞİM KATMANI")}</span><strong>TECHNOCORE</strong></div>
+        <div><span>${copy("VALUE", "GERÇEK DEĞER")}</span><strong>${copy("NONE · PAPER ONLY", "YOK · SADECE PROVA")}</strong></div>
       </div>
-      <div class="tclk-proof-note">${copy("The signed transcript proves who said what. PaperRail does not prove payment or hold value.", "İmzalı transcript kimin ne söylediğini kanıtlar. PaperRail ödeme kanıtlamaz ve değer tutmaz.")}</div>`;
+      <div class="tclk-proof-note">${copy("The signed transcript proves who performed each step. PaperRail does not prove payment or hold value.", "İmzalı kayıtlar hangi tarafın hangi adımı yaptığını doğrular. PaperRail gerçek ödeme yapmaz ve para ya da başka bir değer tutmaz.")}</div>`;
     fillTclkProofSlots(proof, offer, state);
+    const proofState = proof.querySelector(".tclk-proof-state");
+    proofState.dataset.protocolState = String(state.status ?? "");
+    proofState.textContent = stateLabel(state.status);
     proof.querySelector(".payer-slot").appendChild(payer);
     proof.querySelector(".payee-slot").appendChild(payee);
 
     const timeline = node("section", "tclk-timeline");
-    timeline.appendChild(node("h3", "", copy("State machine", "State machine")));
+    timeline.appendChild(node("h3", "", copy("Agreement steps", "Anlaşma adımları")));
     for (const step of state.steps ?? []) {
       const row = node("div", `tclk-step ${step.ok ? "ok" : "rejected"}`);
-      row.append(node("span", "", `${step.index + 1}`), node("strong", "", (step.type ?? "unknown").toUpperCase()), node("em", "", step.ok ? "APPLIED" : `REJECTED · ${step.reason ?? "invalid"}`));
+      const result = step.ok
+        ? copy("APPLIED", "TAMAMLANDI")
+        : `${copy("REJECTED", "REDDEDİLDİ")} · ${step.reason ?? copy("invalid", "geçersiz")}`;
+      row.append(node("span", "", `${step.index + 1}`), node("strong", "", stepLabel(step.type)), node("em", "", result));
       timeline.appendChild(row);
     }
 
@@ -469,16 +521,16 @@ async function openDeal(deal) {
     const trustedRoomRecords = roomData.records?.filter((record) => record.trusted).length ?? 0;
     const rejectedRoomRecords = roomData.records?.filter((record) => !record.trusted).length ?? 0;
     checks.innerHTML = `<h3>${copy("Proof checks", "Kanıt kontrolleri")}</h3>
-      <div><span>✓</span>${trustedBoardRecords} ${copy("trusted offer-board frames", "güvenilir offer-board frame")}</div>
-      <div><span>✓</span>${copy("Official TCLK state machine replayed in room sequence", "Resmi TCLK state machine room sırasıyla yeniden oynatıldı")}</div>
-      <div><span>✓</span>${trustedRoomRecords} ${copy("trusted deal-room frames", "güvenilir deal-room frame")}</div>
-      ${rejectedRoomRecords ? `<div class="warn"><span>!</span>${rejectedRoomRecords} ${copy("room frames ignored because transport binding failed", "room frame transport binding başarısız olduğu için yok sayıldı")}</div>` : ""}`;
+      <div><span>✓</span>${trustedBoardRecords} ${copy("verified offer-board records", "imzası doğrulanmış teklif kaydı")}</div>
+      <div><span>✓</span>${copy("TCLK state sequence verified in recorded order", "TCLK durum zinciri kayıt sırasına göre doğrulandı")}</div>
+      <div><span>✓</span>${trustedRoomRecords} ${copy("verified agreement-room records", "imzası doğrulanmış anlaşma kaydı")}</div>
+      ${rejectedRoomRecords ? `<div class="warn"><span>!</span>${copy(`${rejectedRoomRecords} records ignored because transport verification failed`, `İletim doğrulaması başarısız olduğu için ${rejectedRoomRecords} kayıt yok sayıldı`)}</div>` : ""}`;
 
     const actions = node("section", "tclk-actions-panel");
-    actions.appendChild(node("h3", "", copy("Available actions", "Kullanılabilir işlemler")));
+    actions.appendChild(node("h3", "", copy("What you can do now", "Şimdi ne yapabilirsin?")));
     await appendDealActions(actions, { deal, state, paperState, id });
     main.append(back, proof, timeline, checks, actions);
-    setStatus(copy("Deal proof reconstructed from signed transcript.", "Deal proof imzalı transcript üzerinden yeniden oluşturuldu."), "success");
+    setStatus(copy("Agreement proof verified from signed records.", "Anlaşma kanıtı imzalı kayıtlardan doğrulandı."), "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
   } finally { setBusy(false); }
@@ -494,6 +546,7 @@ async function appendDealActions(container, context) {
   const isPayee = state.parties?.payee === id.did || accept?.from === id.did;
 
   if (state.status === "proposed" && offer.from === id.did) {
+    container.appendChild(node("p", "tclk-action-note", copy("Your offer is open. You can cancel it until another agent accepts it.", "Teklifin açık. Başka bir ajan kabul edene kadar iptal edebilirsin.")));
     addAction(container, copy("Cancel offer", "Teklifi iptal et"), async () => {
       const built = await tool("tclk_make_cancel", { from: id.did, contract: offer.id, reason: "cancelled by offer owner" });
       await postLine(OFFER_ROOM, built.line);
@@ -501,11 +554,16 @@ async function appendDealActions(container, context) {
   }
 
   if (state.status === "accepted" && isPayer && accept) {
-    addAction(container, copy("Lock on PaperRail", "PaperRail üzerinde lock oluştur"), async () => {
+    container.appendChild(node("p", "tclk-action-note", copy("The offer was accepted. Your turn: create the PaperRail lock.", "Teklif kabul edildi. Sıra sende: anlaşmayı PaperRail üzerinde kilitle.")));
+    addAction(container, copy("Create PaperRail lock", "PaperRail kilidini oluştur"), async () => {
       await paper("lock", { contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
       const built = await tool("tclk_make_lock", { from: id.did, contract: accept.contract, rail: "paper", ref: accept.contract });
       await postLine(room, built.line);
     });
+  }
+
+  if (state.status === "accepted" && isPayee && !isPayer && accept) {
+    container.appendChild(node("p", "tclk-action-note", copy("You accepted the offer. The payer must create the PaperRail lock before you can continue.", "Teklifi kabul ettin. Devam edebilmen için şimdi ödeyen tarafın PaperRail kilidini oluşturması gerekiyor.")));
   }
 
   if (state.status === "accepted" && (isPayer || isPayee) && accept) {
@@ -518,8 +576,8 @@ async function appendDealActions(container, context) {
   if (state.status === "locked" && isPayee && accept) {
     let secret = await getSecret(accept.contract);
     container.appendChild(node("p", "tclk-action-note", copy(
-      "This agreement code belongs only to this deal. It is not a private key, wallet key, or seed phrase.",
-      "Bu anlaşma kodu yalnızca bu anlaşmaya aittir. Private key, cüzdan anahtarı veya seed phrase değildir.",
+      "The PaperRail lock is ready. Verify the agreement code to complete the deal. This code belongs only to this agreement; it is not a private key, wallet key, or seed phrase.",
+      "PaperRail kilidi hazır. Anlaşmayı tamamlamak için anlaşma kodunu doğrula. Bu kod yalnızca bu anlaşmaya aittir; özel anahtar, cüzdan anahtarı veya kurtarma ifadesi değildir.",
     )));
     const importRow = node("div", "tclk-secret-import");
     const secretInput = node("input", "mono");
@@ -529,7 +587,7 @@ async function appendDealActions(container, context) {
     save.type = "button";
     save.addEventListener("click", async () => {
       secret = secretInput.value.trim();
-      if (!/^0x[0-9a-f]{64}$/.test(secret)) return setStatus(copy("Agreement code format is invalid.", "Anlaşma kodu formatı geçersiz."), "error");
+      if (!/^0x[0-9a-f]{64}$/.test(secret)) return setStatus(copy("Agreement code format is invalid.", "Anlaşma kodunun biçimi geçersiz."), "error");
       await saveSecret(accept.contract, secret);
       setStatus(copy("Agreement code stored in this browser.", "Anlaşma kodu bu tarayıcıda saklandı."), "success");
     });
@@ -537,7 +595,7 @@ async function appendDealActions(container, context) {
     container.appendChild(importRow);
     addAction(container, copy("Verify agreement code & complete deal", "Anlaşma kodunu doğrula ve tamamla"), async () => {
       secret = (await getSecret(accept.contract)) ?? secretInput.value.trim();
-      if (!/^0x[0-9a-f]{64}$/.test(secret)) throw new Error(copy("This browser does not have the agreement code.", "Bu tarayıcıda anlaşma kodu bulunmuyor."));
+      if (!/^0x[0-9a-f]{64}$/.test(secret)) throw new Error(copy("This browser does not have the agreement code.", "Bu tarayıcıda bu anlaşmaya ait kod bulunmuyor."));
       const built = await tool("tclk_make_reveal", { from: id.did, contract: accept.contract, secret });
       await postLine(room, built.line);
       await paper("claim", { contract: accept.contract, secret });
@@ -546,18 +604,19 @@ async function appendDealActions(container, context) {
 
   if (state.status === "locked" && isPayer && accept) {
     if (Date.now() >= offer.refundAfterMs) {
-      addAction(container, copy("Refund PaperRail", "PaperRail refund"), async () => {
+      container.appendChild(node("p", "tclk-action-note", copy("The other party has not completed the agreement and the refund window is now open.", "Karşı taraf anlaşmayı henüz tamamlamadı. Geri alma süresi açıldı.")));
+      addAction(container, copy("Refund PaperRail", "PaperRail kaydını geri al"), async () => {
         await paper("refund", { contract: accept.contract });
         const built = await tool("tclk_make_refund", { from: id.did, contract: accept.contract, reason: "refund window open" });
         await postLine(room, built.line);
       });
     } else {
-      container.appendChild(node("p", "tclk-action-note", `${copy("Right to refund starts", "Geri alma hakkı şu tarihte başlar")}: ${new Date(offer.refundAfterMs).toLocaleString()}`));
+      container.appendChild(node("p", "tclk-action-note", `${copy("Waiting for the other party to verify the agreement code and complete the deal. Refund becomes available", "Karşı tarafın anlaşma kodunu doğrulayıp işlemi tamamlaması bekleniyor. Geri alma hakkın şu tarihte açılır")}: ${new Date(offer.refundAfterMs).toLocaleString()}`));
     }
   }
 
   if (["claimed", "refunded", "cancelled"].includes(state.status) && (isPayer || isPayee) && accept) {
-    addAction(container, copy("Publish terminal receipt", "Terminal receipt yayınla"), async () => {
+    addAction(container, copy("Sign closure record", "Kapanış kaydını imzala"), async () => {
       const built = await tool("tclk_make_receipt", {
         from: id.did,
         contract: accept.contract,
@@ -572,15 +631,15 @@ async function appendDealActions(container, context) {
   if (paperState) {
     const paperCard = node("div", "tclk-paper-state");
     paperCard.append(
-      node("span", "", "PAPER RECORD"),
-      node("strong", "", String(paperState.status).toUpperCase()),
-      node("small", "", copy("World-writable rehearsal record. Not payment proof.", "World-writable prova kaydıdır. Ödeme kanıtı değildir.")),
+      node("span", "", copy("PAPERRAIL RECORD", "PAPERRAIL KAYDI")),
+      node("strong", "", paperStateLabel(paperState.status)),
+      node("small", "", copy("Rehearsal record only. It is not payment proof.", "Bu yalnızca prova kaydıdır; ödeme kanıtı değildir.")),
     );
     container.appendChild(paperCard);
   }
 
-  if (!container.querySelector(".tclk-action-button") && !container.querySelector(".tclk-secret-import")) {
-    container.appendChild(node("p", "tclk-action-note", copy("No action is available for this DID in the current state.", "Bu DID için mevcut state'te kullanılabilir işlem yok.")));
+  if (!container.querySelector(".tclk-action-button") && !container.querySelector(".tclk-secret-import") && !container.querySelector(".tclk-action-note")) {
+    container.appendChild(node("p", "tclk-action-note", copy("There is nothing you need to do in the current state.", "Şu anda senden beklenen bir işlem yok.")));
   }
 }
 
@@ -594,7 +653,7 @@ function addAction(container, label, handler) {
       setStatus(`${label}…`, "working");
       await handler();
       boardCache = null;
-      setStatus(copy("TCLK action completed. Refreshing proof…", "TCLK işlemi tamamlandı. Proof yenileniyor…"), "success");
+      setStatus(copy("Action completed. Refreshing the agreement…", "İşlem tamamlandı. Anlaşma kaydı yenileniyor…"), "success");
       await showTab("mine");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error), "error");
