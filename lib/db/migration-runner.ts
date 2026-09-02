@@ -19,6 +19,7 @@ const MIGRATIONS = [
   { id: "0013_capability7_production_certification", path: new URL("../../db/migrations/0013_capability7_production_certification.sql", import.meta.url) },
   { id: "0014_agent_communication", path: new URL("../../db/migrations/0014_agent_communication.sql", import.meta.url) },
   { id: "0015_agent_communication_auth_nonces", path: new URL("../../db/migrations/0015_agent_communication_auth_nonces.sql", import.meta.url) },
+  { id: "0016_agent_direct_mailbox", path: new URL("../../db/migrations/0016_agent_direct_mailbox.sql", import.meta.url) },
 ] as const;
 
 export interface MigrationResult {
@@ -29,7 +30,6 @@ export interface MigrationResult {
 async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void> {
   const existing = await client.query<{ id: string }>("SELECT id FROM schema_migrations WHERE id = $1", [FOUNDATION_MIGRATION_ID]);
   if (existing.rows.length > 0) return;
-
   const legacy = await client.query<{ foundation_present: boolean }>(`
     SELECT
       to_regclass('public.agents') IS NOT NULL
@@ -38,7 +38,6 @@ async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void>
       AND to_regclass('public.challenge_instances') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challenge_state') AS foundation_present
   `);
-
   if (legacy.rows[0]?.foundation_present === true) {
     await client.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [FOUNDATION_MIGRATION_ID]);
   }
@@ -47,20 +46,16 @@ async function backfillLegacyFoundationMarker(client: PoolClient): Promise<void>
 export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
   const client = await pool.connect();
   let locked = false;
-
   try {
     await client.query("SELECT pg_advisory_lock(hashtextextended($1, 0))", [MIGRATION_LOCK_KEY]);
     locked = true;
-
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
       )
     `);
-
     await backfillLegacyFoundationMarker(client);
-
     const results: MigrationResult[] = [];
     for (const migration of MIGRATIONS) {
       const existing = await client.query<{ id: string }>("SELECT id FROM schema_migrations WHERE id = $1", [migration.id]);
@@ -68,13 +63,11 @@ export async function runMigrations(pool: Pool): Promise<MigrationResult[]> {
         results.push({ id: migration.id, status: "already-applied" });
         continue;
       }
-
       const sql = await readFile(migration.path, "utf8");
       await client.query(sql);
       await client.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", [migration.id]);
       results.push({ id: migration.id, status: "applied" });
     }
-
     return results;
   } finally {
     if (locked) {
