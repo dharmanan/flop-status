@@ -399,9 +399,11 @@ function boot() {
 
 document.documentElement.addEventListener("click", (event) => {
   if (!(event.target instanceof Element) || !event.target.closest(".lang-button")) return;
-  queueMicrotask(() => {
+  queueMicrotask(() => queueMicrotask(() => {
+    const shell = document.querySelector(".product-shell");
+    if (shell) bindNav(shell);
     if (currentView !== "capabilities") renderSecondary();
-  });
+  }));
 });
 
 boot();
