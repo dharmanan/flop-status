@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 
 export interface ArchivedTclkFrame {
   room: string;
@@ -29,6 +29,23 @@ export interface ArchivedTclkDeal {
   updatedAt: string;
 }
 
+type DealRow = {
+  offer_id: string;
+  contract_id: string | null;
+  payer_did: string;
+  payee_did: string | null;
+  amount: string;
+  asset: string;
+  job_id: string | null;
+  job_context: string | null;
+  status: string;
+  offer_expires_ms: string | number | null;
+  claim_by_ms: string | number | null;
+  refund_after_ms: string | number | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+};
+
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -38,6 +55,29 @@ function numeric(value: string | number | null): number | null {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
+
+function mapDeal(row: DealRow): ArchivedTclkDeal {
+  return {
+    offerId: row.offer_id,
+    contractId: row.contract_id,
+    payerDid: row.payer_did,
+    payeeDid: row.payee_did,
+    amount: row.amount,
+    asset: row.asset,
+    jobId: row.job_id,
+    jobContext: row.job_context,
+    status: row.status,
+    offerExpiresMs: numeric(row.offer_expires_ms),
+    claimByMs: numeric(row.claim_by_ms),
+    refundAfterMs: numeric(row.refund_after_ms),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+const DEAL_COLUMNS = `offer_id, contract_id, payer_did, payee_did, amount, asset,
+  job_id, job_context, status, offer_expires_ms, claim_by_ms,
+  refund_after_ms, created_at, updated_at`;
 
 export class PgTclkDealHistoryRepository {
   constructor(private readonly pool: Pool) {}
@@ -139,51 +179,55 @@ export class PgTclkDealHistoryRepository {
   }
 
   async listByDid(did: string, limit = 100): Promise<ArchivedTclkDeal[]> {
-    const result = await this.pool.query<{
-      offer_id: string;
-      contract_id: string | null;
-      payer_did: string;
-      payee_did: string | null;
-      amount: string;
-      asset: string;
-      job_id: string | null;
-      job_context: string | null;
-      status: string;
-      offer_expires_ms: string | number | null;
-      claim_by_ms: string | number | null;
-      refund_after_ms: string | number | null;
-      created_at: Date | string;
-      updated_at: Date | string;
-    }>(
-      `SELECT offer_id, contract_id, payer_did, payee_did, amount, asset,
-              job_id, job_context, status, offer_expires_ms, claim_by_ms,
-              refund_after_ms, created_at, updated_at
+    const result = await this.pool.query<DealRow>(
+      `SELECT ${DEAL_COLUMNS}
        FROM tclk_deals
        WHERE payer_did = $1 OR payee_did = $1
        ORDER BY updated_at DESC
        LIMIT $2`,
       [did, Math.max(1, Math.min(limit, 200))],
     );
-    return result.rows.map((row) => ({
-      offerId: row.offer_id,
-      contractId: row.contract_id,
-      payerDid: row.payer_did,
-      payeeDid: row.payee_did,
-      amount: row.amount,
-      asset: row.asset,
-      jobId: row.job_id,
-      jobContext: row.job_context,
-      status: row.status,
-      offerExpiresMs: numeric(row.offer_expires_ms),
-      claimByMs: numeric(row.claim_by_ms),
-      refundAfterMs: numeric(row.refund_after_ms),
-      createdAt: iso(row.created_at),
-      updatedAt: iso(row.updated_at),
-    }));
+    return result.rows.map(mapDeal);
   }
 
-  async withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-    const client = await this.pool.connect();
-    try { return await fn(client); } finally { client.release(); }
+  async getByOfferId(offerId: string): Promise<{ deal: ArchivedTclkDeal; frames: ArchivedTclkFrame[] } | null> {
+    const dealResult = await this.pool.query<DealRow>(
+      `SELECT ${DEAL_COLUMNS} FROM tclk_deals WHERE offer_id = $1`,
+      [offerId],
+    );
+    const dealRow = dealResult.rows[0];
+    if (!dealRow) return null;
+
+    const frameResult = await this.pool.query<{
+      room: string;
+      seq: string | number;
+      offer_id: string;
+      frame_type: string;
+      from_did: string;
+      line: string;
+      frame: Record<string, unknown>;
+      transport_sig: string;
+      transport_nonce: string;
+    }>(
+      `SELECT room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce
+       FROM tclk_deal_frames
+       WHERE offer_id = $1
+       ORDER BY CASE WHEN room = 'tclk-offers' THEN 0 ELSE 1 END, seq ASC`,
+      [offerId],
+    );
+    return {
+      deal: mapDeal(dealRow),
+      frames: frameResult.rows.map((row) => ({
+        room: row.room,
+        seq: Number(row.seq),
+        offerId: row.offer_id,
+        frameType: row.frame_type,
+        fromDid: row.from_did,
+        line: row.line,
+        frame: row.frame,
+        transportSig: row.transport_sig,
+        transportNonce: row.transport_nonce,
+      })),
+    };
   }
 }
