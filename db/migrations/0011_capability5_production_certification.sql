@@ -5,6 +5,18 @@
 
 BEGIN;
 
+-- capability_modules and trial_definitions both reference capabilities(id).
+-- Seed the canonical capability row first so a fresh production database can
+-- apply this migration without a foreign-key violation.
+INSERT INTO capabilities (id, category, name, description)
+VALUES (
+  'data.structured-transformation',
+  'Data Transformation',
+  'Structured Data Transformation',
+  'Transforms structured source data into an exact target structure using an explicit deterministic transformation specification.'
+)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO capability_modules (
   module_id, module_version, capability_id, capability_version, runtime_type, metadata
 )
