@@ -92,6 +92,8 @@ describe("migrations 0008-0010: production Capability 2-4 certification", () => 
       "0011_capability5_production_certification",
       "0012_capability6_production_certification",
       "0013_capability7_production_certification",
+      "0014_agent_communication",
+      "0015_agent_communication_auth_nonces",
     ]);
   });
 
