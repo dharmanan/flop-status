@@ -69,7 +69,7 @@ function syncDealProtocolMetadata() {
   const kicker = head?.querySelector(".tclk-kicker");
   if (!head || !badges || !kicker) return false;
 
-  kicker.textContent = "FLOP LABS PROTOCOL";
+  kicker.textContent = copy("FLOP LABS PROTOCOL", "FLOP LABS PROTOKOLÜ");
   badges.replaceChildren();
   const protocol = document.createElement("span");
   protocol.textContent = "TCLK 1";
@@ -80,7 +80,7 @@ function syncDealProtocolMetadata() {
   alpha.textContent = "ALPHA";
   const lock = document.createElement("span");
   lock.className = "tclk-lock-badge";
-  lock.textContent = "HASH LOCK";
+  lock.textContent = copy("HASH LOCK", "HASH KİLİDİ");
   badges.append(protocol, rail, alpha, lock);
   return true;
 }
@@ -156,15 +156,16 @@ function renameClosureButton() {
 function renderClosureStatus(contract, receipts) {
   const proof = document.querySelector(".tclk-proof");
   const actions = document.querySelector(".tclk-actions-panel");
-  const state = proof?.querySelector(".tclk-proof-state")?.textContent?.trim().toLowerCase() ?? "";
+  const stateElement = proof?.querySelector(".tclk-proof-state");
+  const state = stateElement?.dataset.protocolState?.trim().toLowerCase() || stateElement?.textContent?.trim().toLowerCase() || "";
   if (!proof || !actions || !["claimed", "refunded", "cancelled"].includes(state)) return;
 
   const payer = detailParty(".payer-slot");
   const payee = detailParty(".payee-slot");
   const signedBy = new Set(receipts.map((receipt) => receipt.from).filter(Boolean));
   const parties = [
-    { role: "PAYER", ...payer },
-    { role: "PAYEE", ...payee },
+    { role: copy("PAYER", "ÖDEYEN"), ...payer },
+    { role: copy("PAYEE", "ÖDEMEYİ ALAN"), ...payee },
   ];
   const signedCount = parties.filter((party) => party.did && signedBy.has(party.did)).length;
 
@@ -258,6 +259,7 @@ async function confirmPendingClosure() {
 function scheduleClosureSync(delay = 100) {
   clearTimeout(closureTimer);
   closureTimer = setTimeout(() => {
+    syncDealProtocolMetadata();
     void syncClosureUi();
     void confirmPendingClosure();
   }, delay);
@@ -279,15 +281,6 @@ document.addEventListener("click", (event) => {
   }
 }, true);
 
-if (!syncDealProtocolMetadata()) {
-  const observer = new MutationObserver(() => {
-    syncDealProtocolMetadata();
-    scheduleClosureSync();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-} else {
-  const observer = new MutationObserver(() => scheduleClosureSync());
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
+const observer = new MutationObserver(() => scheduleClosureSync());
+observer.observe(document.body, { childList: true, subtree: true });
 scheduleClosureSync(0);
