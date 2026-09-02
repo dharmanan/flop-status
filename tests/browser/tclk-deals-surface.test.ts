@@ -2,12 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const deals = readFileSync(new URL("../../web/tclk-deals.js", import.meta.url), "utf8");
-const css = readFileSync(new URL("../../web/tclk-deals.css", import.meta.url), "utf8");
 const network = readFileSync(new URL("../../web/communication-nav.js", import.meta.url), "utf8");
 const profileHint = readFileSync(new URL("../../web/tclk-profile-hint.js", import.meta.url), "utf8");
-// The raw transport signature re-verification and frame.from trust check used to be
-// inline in tclk-deals.js; they were extracted to tclk-transport.js so they could be
-// executed directly in tests/browser/tclk-transport.test.ts instead of only string-matched.
 const transport = readFileSync(new URL("../../web/tclk-transport.js", import.meta.url), "utf8");
 
 describe("TCLK Deals browser surface", () => {
@@ -17,9 +13,15 @@ describe("TCLK Deals browser surface", () => {
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
     expect(deals).not.toContain("Capability 8");
-    expect(profileHint).toContain("TCLK 1");
-    expect(profileHint).toContain("PAPER");
-    expect(profileHint).toContain("ALPHA");
+  });
+
+  it("keeps protocol metadata in the Deals header, not the Agent Status card", () => {
+    expect(profileHint).toContain('protocol.textContent = "TCLK 1"');
+    expect(profileHint).toContain('rail.textContent = "PAPERRAIL"');
+    expect(profileHint).toContain('alpha.textContent = "ALPHA"');
+    expect(profileHint).toContain('lock.textContent = "HASH LOCK"');
+    expect(profileHint).not.toContain("agent-protocol-hint");
+    expect(profileHint).not.toContain("agent-status-card");
   });
 
   it("uses official rooms and replays board records through the official state machine", () => {
@@ -47,6 +49,5 @@ describe("TCLK Deals browser surface", () => {
     expect(deals).toContain('lock: "hash"');
     expect(deals).toContain('rails: ["paper"]');
     expect(deals).not.toContain("schnorrAdaptor");
-    expect(css).toContain("agent-protocol-hint");
   });
 });
