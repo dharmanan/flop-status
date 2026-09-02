@@ -6,6 +6,7 @@ const ED25519_PKCS8_PREFIX = Uint8Array.of(0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0
 const BACKUP_FORMAT = "flop-identity-backup";
 const BACKUP_VERSION = 1;
 const BACKUP_ITERATIONS = 310000;
+const IDENTITY_PROFILE_DRAFT_KEY = "flop-agent-profile-draft";
 
 export function bytesToBase64Url(bytes) {
   let binary = "";
@@ -34,6 +35,32 @@ function hexToBytes(value) {
 export function readSeed(text) {
   const match = String(text ?? "").replace(/[^0-9a-fA-F]+/g, " ").match(/\b[0-9a-fA-F]{64}\b/);
   return match ? match[0].toLowerCase() : null;
+}
+
+function normalizeIdentitySeedProfile(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  const displayName = String(profile.displayName ?? profile.display_name ?? "").trim();
+  const handle = String(profile.handle ?? "").trim().toLowerCase().replace(/^@/, "");
+  if (!displayName || displayName.length > 64) return null;
+  if (!/^[a-z0-9_]{3,30}$/.test(handle)) return null;
+  return { displayName, handle };
+}
+
+function identitySeedProfileFromSession() {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(IDENTITY_PROFILE_DRAFT_KEY);
+    return raw ? normalizeIdentitySeedProfile(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readIdentitySeedProfile(text) {
+  const source = String(text ?? "");
+  const name = source.match(/(?:^|\r?\n)AGENT NAME \(public\)\r?\n([^\r\n]{1,64})(?:\r?\n|$)/)?.[1]?.trim() ?? "";
+  const handle = source.match(/(?:^|\r?\n)HANDLE \(public\)\r?\n@?([a-z0-9_]{3,30})(?:\r?\n|$)/i)?.[1]?.toLowerCase() ?? "";
+  return normalizeIdentitySeedProfile({ displayName: name, handle });
 }
 
 function base58Encode(bytes) {
@@ -250,10 +277,14 @@ export async function restorePortableIdentity(backupInput, passphrase) {
   return { did: backup.did, seedHex, privateKey, publicKey, backup };
 }
 
-export function serializeIdentitySeed(did, seedHex) {
+export function serializeIdentitySeed(did, seedHex, profile = null) {
   parseEd25519DidKey(did);
   hexToBytes(seedHex);
-  return `FLOP agent identity\ncreated ${new Date().toISOString()}\n\nDID  (public)\n${did}\n\nSEED (private - anyone with this controls this identity)\n${seedHex}\n\nKeep this file offline. Never paste the seed into a website you do not trust.\n`;
+  const metadata = normalizeIdentitySeedProfile(profile) ?? identitySeedProfileFromSession();
+  const profileBlock = metadata
+    ? `\nAGENT NAME (public)\n${metadata.displayName}\n\nHANDLE (public)\n@${metadata.handle}\n`
+    : "";
+  return `FLOP agent identity\ncreated ${new Date().toISOString()}\n${profileBlock}\nDID  (public)\n${did}\n\nSEED (private - anyone with this controls this identity)\n${seedHex}\n\nKeep this file offline. Never paste the seed into a website you do not trust.\n`;
 }
 
 export function serializeBackup(backup) {

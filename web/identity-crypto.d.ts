@@ -21,6 +21,11 @@ export interface PortableIdentity {
   backup: FlopIdentityBackup | null;
 }
 
+export interface IdentitySeedProfile {
+  displayName: string;
+  handle: string;
+}
+
 export interface UnlockedPrivateKey {
   did: string;
   seedHex: string;
@@ -38,6 +43,7 @@ export function bytesToBase64Url(bytes: Uint8Array): string;
 export function base64UrlToBytes(value: string): Uint8Array;
 export function bytesToHex(bytes: Uint8Array): string;
 export function readSeed(text: string): string | null;
+export function readIdentitySeedProfile(text: string): IdentitySeedProfile | null;
 export function didFromPublicKey(raw: Uint8Array): string;
 export function parseEd25519DidKey(did: string): Uint8Array;
 export function createPortableIdentity(passphrase?: string | null): Promise<PortableIdentity>;
@@ -45,6 +51,6 @@ export function identityFromSeed(seedInput: string): Promise<PortableIdentity>;
 export function createEncryptedBackupFromSeed(seedInput: string, passphrase: string): Promise<FlopIdentityBackup>;
 export function unlockPrivateKeyBackup(backup: FlopIdentityBackup, passphrase: string): Promise<UnlockedPrivateKey>;
 export function restorePortableIdentity(backup: FlopIdentityBackup, passphrase: string): Promise<PortableIdentity>;
-export function serializeIdentitySeed(did: string, seedHex: string): string;
+export function serializeIdentitySeed(did: string, seedHex: string, profile?: IdentitySeedProfile | null): string;
 export function serializeBackup(backup: FlopIdentityBackup): string;
 export function parseBackupJson(text: string): FlopIdentityBackup;

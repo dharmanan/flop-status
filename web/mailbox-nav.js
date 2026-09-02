@@ -1,4 +1,5 @@
 void import("/agent-profile-ui.js?v=profile-v1");
+void import("/agent-profile-seed-bridge.js?v=portable-profile-v1");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
 
 const API_BASE="https://flop-status-production.up.railway.app",DB_NAME="flop-agent-key-v1",STORE_NAME="identity",ACTIVE_ID="active",encoder=new TextEncoder();

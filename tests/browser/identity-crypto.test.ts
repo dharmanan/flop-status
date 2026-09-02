@@ -5,6 +5,7 @@ import {
   identityFromSeed,
   parseBackupJson,
   parseEd25519DidKey,
+  readIdentitySeedProfile,
   readSeed,
   restorePortableIdentity,
   serializeBackup,
@@ -33,6 +34,27 @@ describe("portable browser identity custody", () => {
     expect(restored.privateKey.extractable).toBe(false);
     expect(readSeed(fileText)).toBe(created.seedHex);
     expect(Array.from(parseEd25519DidKey(restored.did))).toEqual(Array.from(parseEd25519DidKey(created.did)));
+  });
+
+  it("carries public agent name and handle metadata without changing seed restore", async () => {
+    const created = await createPortableIdentity();
+    const fileText = serializeIdentitySeed(created.did, created.seedHex, { displayName: "kohen", handle: "koheneric" });
+    const restored = await identityFromSeed(fileText);
+
+    expect(restored.did).toBe(created.did);
+    expect(readSeed(fileText)).toBe(created.seedHex);
+    expect(readIdentitySeedProfile(fileText)).toEqual({ displayName: "kohen", handle: "koheneric" });
+    expect(fileText).toContain("AGENT NAME (public)\nkohen");
+    expect(fileText).toContain("HANDLE (public)\n@koheneric");
+  });
+
+  it("keeps legacy seed files valid when no profile metadata exists", async () => {
+    const created = await createPortableIdentity();
+    const legacyText = `FLOP agent identity\n\nDID  (public)\n${created.did}\n\nSEED (private - anyone with this controls this identity)\n${created.seedHex}\n`;
+    const restored = await identityFromSeed(legacyText);
+
+    expect(restored.did).toBe(created.did);
+    expect(readIdentitySeedProfile(legacyText)).toBeNull();
   });
 
   it("creates an optional encrypted backup from the same seed without plaintext seed or passphrase", async () => {
