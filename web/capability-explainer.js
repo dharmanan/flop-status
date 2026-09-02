@@ -21,6 +21,104 @@ function copy(en, tr) {
   return getLanguage() === "tr" ? tr : en;
 }
 
+const CEREMONY_COPY_PAIRS = [
+  ["MY AGENT / LIVE VERIFICATION", "AJANIM / CANLI DOĞRULAMA"],
+  ["Watch real verification events become portable proof.", "Gerçek doğrulama eventlerinin taşınabilir kanıta dönüşmesini izle."],
+  ["REAL EVENTS", "GERÇEK EVENTLER"],
+  ["Unseen test input", "Daha önce görülmemiş test girdisi"],
+  ["YOUR FLOP AGENT", "FLOP AJANIN"],
+  ["Agent Core", "Ajan Core"],
+  ["Independent verifier", "Bağımsız verifier"],
+  ["INSTALLED", "YÜKLÜ"],
+  ["EXECUTED", "ÇALIŞTI"],
+  ["CREATED", "OLUŞTU"],
+  ["Capability result", "Capability sonucu"],
+  ["AGENT RESULT", "AJAN SONUCU"],
+  ["FLOP RESULT", "FLOP SONUCU"],
+  ["WAITING", "BEKLİYOR"],
+  ["COMPARING", "KARŞILAŞTIRILIYOR"],
+  ["RESULTS MATCH", "SONUÇLAR EŞLEŞTİ"],
+  ["RESULTS DO NOT MATCH", "SONUÇLAR EŞLEŞMEDİ"],
+  ["This FLOP agent used the installed capability successfully on a fresh verification challenge.", "Bu FLOP ajanı yüklü capability'yi fresh verification challenge üzerinde başarıyla kullandı."],
+  ["PROOF CAN LEAVE FLOP", "KANIT FLOP DIŞINA ÇIKABİLİR"],
+  ["Execution stays. Proof travels.", "Çalıştırma kalır. Kanıt taşınır."],
+  ["STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR"],
+  ["Agent Core + Capability", "Ajan Core + Capability"],
+  ["PORTABLE PROOF", "TAŞINABİLİR KANIT"],
+  ["SYSTEM EVENT", "SİSTEM EVENTİ"],
+  ["Waiting for verification to start", "Doğrulamanın başlaması bekleniyor"],
+  ["present", "mevcut"],
+
+  ["Decode key", "Anahtarı çöz"],
+  ["Bind message", "Mesajı bağla"],
+  ["Check signature", "İmzayı doğrula"],
+  ["Normalize JSON", "JSON normalize et"],
+  ["Build canonical form", "Canonical biçimi üret"],
+  ["Encode bytes", "Byte dizisini üret"],
+  ["Calculate digest", "Digest hesapla"],
+  ["Clean text", "Metni temizle"],
+  ["Bind room", "Room bağla"],
+  ["Bind nonce", "Nonce bağla"],
+  ["Build message", "Mesajı üret"],
+  ["Match key id", "Key ID eşleştir"],
+  ["Check payload", "Payload kontrol et"],
+  ["Classify receipt", "Receipt sınıflandır"],
+  ["Read source paths", "Kaynak path'leri oku"],
+  ["Apply operations", "Operasyonları uygula"],
+  ["Coerce types", "Tipleri dönüştür"],
+  ["Build result", "Sonucu oluştur"],
+  ["Read input document", "Girdi belgesini oku"],
+  ["Evaluate rules in order", "Kuralları sırayla değerlendir"],
+  ["Collect violations", "İhlalleri topla"],
+  ["Build compliance result", "Uyumluluk sonucunu oluştur"],
+  ["Process attempts in order", "Denemeleri sırayla işle"],
+  ["Retry on transient failure", "Geçici hatada yeniden dene"],
+  ["Apply operation once", "Operasyonu bir kez uygula"],
+  ["Absorb duplicate delivery", "Tekrar teslimatı absorbe et"],
+];
+
+function localizeCeremonyDom(flow) {
+  if (!flow) return;
+  const tr = getLanguage() === "tr";
+  const dictionary = new Map();
+  for (const [en, trText] of CEREMONY_COPY_PAIRS) {
+    dictionary.set(en, tr ? trText : en);
+    dictionary.set(trText, tr ? trText : en);
+  }
+
+  flow.querySelectorAll(".ceremony-shell *").forEach((element) => {
+    if (element.children.length !== 0) return;
+    const value = element.textContent?.trim() ?? "";
+    const translated = dictionary.get(value);
+    if (translated !== undefined) element.textContent = translated;
+
+    if (element.classList.contains("ceremony-seal-detail")) {
+      const raw = element.textContent ?? "";
+      if (tr && raw.startsWith("signed  ")) element.textContent = `imzalı  ${raw.slice("signed  ".length)}`;
+      if (!tr && raw.startsWith("imzalı  ")) element.textContent = `signed  ${raw.slice("imzalı  ".length)}`;
+    }
+  });
+
+  const running = flow.dataset.verificationRunning;
+  const recorded = running === "recorded";
+  const breadcrumb = flow.querySelector(".ceremony-breadcrumb");
+  const subtitle = flow.querySelector(".ceremony-subtitle");
+  const live = flow.querySelector(".ceremony-live span:last-child");
+  if (recorded) {
+    if (breadcrumb) breadcrumb.textContent = tr ? "AJANIM  /  KAYITLI DOĞRULAMA" : "MY AGENT  /  RECORDED VERIFICATION";
+    if (subtitle) subtitle.textContent = tr
+      ? "Bu sahne saklanan gerçek certificate ve receipt kanıtını yeniden oynatır. Canlı test değildir."
+      : "This scene replays the stored certificate and receipt evidence. It is not a live test.";
+    if (live) live.textContent = tr ? "KAYITLI KANIT" : "RECORDED PROOF";
+  } else {
+    if (breadcrumb) breadcrumb.textContent = tr ? "AJANIM / CANLI DOĞRULAMA" : "MY AGENT / LIVE VERIFICATION";
+    if (subtitle) subtitle.textContent = tr
+      ? "Gerçek doğrulama eventlerinin taşınabilir kanıta dönüşmesini izle."
+      : "Watch real verification events become portable proof.";
+    if (live) live.textContent = tr ? "GERÇEK EVENTLER" : "REAL EVENTS";
+  }
+}
+
 function configFor(number) {
   return {
     number,
@@ -69,15 +167,7 @@ async function loadStoredProof(id) {
 }
 
 function labelRecordedScene(flow) {
-  const tr = getLanguage() === "tr";
-  const breadcrumb = flow.querySelector(".ceremony-breadcrumb");
-  const subtitle = flow.querySelector(".ceremony-subtitle");
-  const live = flow.querySelector(".ceremony-live span:last-child");
-  if (breadcrumb) breadcrumb.textContent = tr ? "AJANIM  /  KAYITLI DOĞRULAMA" : "MY AGENT  /  RECORDED VERIFICATION";
-  if (subtitle) subtitle.textContent = tr
-    ? "Bu sahne saklanan gerçek certificate ve receipt kanıtını yeniden oynatır. Canlı test değildir."
-    : "This scene replays the stored certificate and receipt evidence. It is not a live test.";
-  if (live) live.textContent = tr ? "KAYITLI KANIT" : "RECORDED PROOF";
+  localizeCeremonyDom(flow);
 }
 
 async function replayStoredVerification(config, button) {
@@ -194,6 +284,8 @@ function keepCertifiedProofCompact() {
     const config = configFor(number);
     if (config.flow && !config.flow.dataset.verificationRunning) config.flow.hidden = true;
     ensureReplayButton(config);
+    replayScenes.get(number)?.localize();
+    localizeCeremonyDom(config.flow);
   }
 }
 
