@@ -40,6 +40,21 @@ describe("Agent Network browser surface", () => {
     expect(network).toContain("message.senderSignature");
   });
 
+  it("uses profiles only as presentation metadata while keeping DID visible as technical identity", () => {
+    expect(network).toContain("window.FLOPAgentProfiles?.profileForDid?.(did)");
+    expect(network).toContain("decorateNetworkIdentity");
+    expect(network).toContain("profile.displayName");
+    expect(network).toContain('`@${profile.handle}`');
+    expect(network).toContain("network-identity-did");
+    expect(network).toContain("message.senderDid");
+  });
+
+  it("keeps room-message proof labels human-readable in Turkish without changing cryptographic verification", () => {
+    expect(network).toContain('copy("SIGNATURE VALID", "İMZA GEÇERLİ")');
+    expect(network).toContain('copy("INTEGRITY STORED", "BÜTÜNLÜK KAYITLI")');
+    expect(network).toContain('copy("Signed with your active DID · verified with C3", "Aktif DID\'inle imzalanır · C3 ile doğrulanır")');
+  });
+
   it("creates a fresh nonce and timestamp for every signed communication action", () => {
     expect(network).toContain("nonce: crypto.randomUUID()");
     expect(network).toContain("issued_at: new Date().toISOString()");
