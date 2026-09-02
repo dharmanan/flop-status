@@ -1,3 +1,5 @@
+import "/capability-names.js?v=localized-capabilities-v1";
+
 function attachProtocolHint() {
   const card = document.querySelector(".product-shell .agent-status-card");
   if (!card || card.querySelector(".agent-protocol-hint")) return Boolean(card);
