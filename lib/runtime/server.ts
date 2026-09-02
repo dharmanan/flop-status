@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { PgChallengeStateRepository } from "../db/challenge-state-repository.js";
 import { PgCertificationRepository } from "../db/certification-repository.js";
 import { PgCommunicationRepository } from "../db/communication-repository.js";
+import { PgDirectMailboxRepository } from "../db/direct-mailbox-repository.js";
 import { PgTrial1FinalizationRepository } from "../db/finalization-recovery-repository.js";
 import { PgPublicAgentRepository } from "../db/public-agent-repository.js";
 import { PgPublicVerificationRepository } from "../db/public-verification-repository.js";
@@ -13,6 +14,8 @@ import { loadAttestationSignerFromEnv } from "../receipts/attestation-signer.js"
 import { PublicVerificationService } from "../verification/public-verification-service.js";
 import { CapabilityProductService } from "./capability-product-service.js";
 import { CommunicationService } from "./communication-service.js";
+import { DirectMailboxService } from "./direct-mailbox-service.js";
+import { createDirectMailboxAwareHandler } from "./direct-mailbox-router.js";
 import { createRuntimeRequestHandler } from "./router.js";
 import { Trial1ApiService } from "./trial1-api-service.js";
 
@@ -31,6 +34,7 @@ async function main(): Promise<void> {
   const publicAgent = new PgPublicAgentRepository(pool);
   const capabilityProduct = new CapabilityProductService(new PgCertificationRepository(pool));
   const communication = new CommunicationService(new PgCommunicationRepository(pool));
+  const mailbox = new DirectMailboxService(new PgDirectMailboxRepository(pool));
   const trial1Api = new Trial1ApiService({
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),
@@ -39,14 +43,15 @@ async function main(): Promise<void> {
     signer,
     capabilityProduct,
   });
-  const server = createServer(createRuntimeRequestHandler({
+  const runtimeHandler = createRuntimeRequestHandler({
     publicVerification,
     publicAgent,
     trial1Api,
     capabilityProduct,
     communication,
     health: migrations,
-  }));
+  });
+  const server = createServer(createDirectMailboxAwareHandler(runtimeHandler, mailbox));
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
