@@ -80,9 +80,10 @@ describe("C1-C7 human-readable use feedback", () => {
     expect(interpretCapabilityUseResult(7, { reason_code: "RETRY_LIMIT_EXCEEDED", result: { status: "FAILED" } }, "tr").tone).toBe("warning");
   });
 
-  it("loads CSP-safe external feedback CSS with separated title and detail blocks", () => {
+  it("loads CSP-safe external feedback CSS and the positive C1 practice controller before the shared practice UI", () => {
     expect(profileHint).toContain('/capability-use-feedback.css?v=practice-feedback-v1');
-    expect(profileHint).toContain('import("/practice-ui.js?v=practice-ui-v2")');
+    expect(profileHint).toContain('import("/c1-practice-positive.js?v=c1-practice-v1")');
+    expect(profileHint).toContain('import("/practice-ui.js?v=practice-ui-v3")');
     expect(feedbackCss).toContain(".capability-use-feedback strong");
     expect(feedbackCss).toContain("display: block;");
     expect(feedbackCss).toContain(".capability-use-feedback span");
