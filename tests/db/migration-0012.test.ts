@@ -6,6 +6,18 @@ const MIGRATION_URL = new URL("../../db/migrations/0012_capability6_production_c
 const sql = () => readFileSync(MIGRATION_URL, "utf8");
 
 describe("migration 0012: production Capability 6 certification", () => {
+  it("seeds the canonical capability row before foreign-key dependent metadata", () => {
+    const text = sql();
+    const capabilityInsert = text.indexOf("INSERT INTO capabilities");
+    const moduleInsert = text.indexOf("INSERT INTO capability_modules");
+    const trialInsert = text.indexOf("INSERT INTO trial_definitions");
+    expect(capabilityInsert).toBeGreaterThanOrEqual(0);
+    expect(capabilityInsert).toBeLessThan(moduleInsert);
+    expect(capabilityInsert).toBeLessThan(trialInsert);
+    expect(text).toContain("'policy.constraint-compliance'");
+    expect(text).toContain("'Constraint & Policy Compliance'");
+  });
+
   it("seeds the browser deterministic Capability 6 module", () => {
     const text = sql();
     expect(text).toContain("INSERT INTO capability_modules");
@@ -22,16 +34,12 @@ describe("migration 0012: production Capability 6 certification", () => {
     expect(text).toContain("constraint-policy-compliance-certification");
     expect(text).toContain("constraint-policy-compliance-verifier");
     expect(text).toContain("policy.constraint-compliance");
-    // Unlike migrations 0008-0010, Capability 6 never seeds a row for its
-    // reserved (never-issuable) historical trial id.
     expect(text).not.toContain("'constraint-policy-compliance',");
   });
 
   it("declares the deterministic case class vocabulary in trial metadata", () => {
     const text = sql();
-    for (const caseClass of ["COMPLIANT", "SINGLE_VIOLATION", "MULTIPLE_VIOLATIONS", "UNSUPPORTED_RULE", "INVALID_POLICY"]) {
-      expect(text).toContain(caseClass);
-    }
+    for (const caseClass of ["COMPLIANT", "SINGLE_VIOLATION", "MULTIPLE_VIOLATIONS", "UNSUPPORTED_RULE", "INVALID_POLICY"]) expect(text).toContain(caseClass);
   });
 
   it("records its program sequence number as durable metadata, matching the 0008-0011 convention", () => {
@@ -48,6 +56,7 @@ describe("migration 0012: production Capability 6 certification", () => {
 
   it("uses idempotent inserts, safe to re-run", () => {
     const text = sql();
+    expect(text).toContain("ON CONFLICT (id) DO NOTHING");
     expect(text).toContain("ON CONFLICT (module_id, module_version) DO NOTHING");
     expect(text).toContain("ON CONFLICT (trial_id, trial_version) DO NOTHING");
   });
