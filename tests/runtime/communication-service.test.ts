@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { encodeBase58btc } from "../../lib/crypto/base58.js";
 import { encodeBase64Url } from "../../lib/crypto/base64url.js";
 import { canonicalizeJsonToBytes } from "../../lib/crypto/canonical-json.js";
-import { CommunicationError, CommunicationService } from "../../lib/runtime/communication-service.js";
+import { CommunicationService } from "../../lib/runtime/communication-service.js";
 
 function agent() {
   const pair = generateKeyPairSync("ed25519");
@@ -102,7 +102,7 @@ describe("CommunicationService", () => {
       version: "1", action: "LIST_ROOMS", actor_did: owner.did,
       nonce: crypto.randomUUID(), issued_at: new Date().toISOString(),
     };
-    await expect(service.listRooms(envelope(member, payload))).rejects.toMatchObject<Partial<CommunicationError>>({
+    await expect(service.listRooms(envelope(member, payload))).rejects.toMatchObject({
       code: "INVALID_COMMUNICATION_SIGNATURE",
     });
   });
@@ -114,7 +114,7 @@ describe("CommunicationService", () => {
     };
     const signed = envelope(owner, payload);
     await service.listRooms(signed);
-    await expect(service.listRooms(signed)).rejects.toMatchObject<Partial<CommunicationError>>({ code: "COMMUNICATION_REPLAY" });
+    await expect(service.listRooms(signed)).rejects.toMatchObject({ code: "COMMUNICATION_REPLAY" });
   });
 
   it("rejects expired signed actions", async () => {
@@ -122,7 +122,7 @@ describe("CommunicationService", () => {
       version: "1", action: "LIST_ROOMS", actor_did: owner.did,
       nonce: crypto.randomUUID(), issued_at: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
     };
-    await expect(service.listRooms(envelope(owner, payload))).rejects.toMatchObject<Partial<CommunicationError>>({
+    await expect(service.listRooms(envelope(owner, payload))).rejects.toMatchObject({
       code: "COMMUNICATION_ACTION_EXPIRED",
     });
   });
@@ -165,12 +165,12 @@ describe("CommunicationService", () => {
       version: "1", action: "LIST_MESSAGES", actor_did: outsider.did,
       nonce: crypto.randomUUID(), issued_at: new Date().toISOString(), room_id: room.id,
     };
-    await expect(service.listMessages(envelope(outsider, readPayload), room.id)).rejects.toMatchObject<Partial<CommunicationError>>({ code: "ROOM_ACCESS_DENIED" });
+    await expect(service.listMessages(envelope(outsider, readPayload), room.id)).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
 
     const sendPayload = {
       version: "1", action: "SEND_MESSAGE", actor_did: outsider.did,
       nonce: crypto.randomUUID(), issued_at: new Date().toISOString(), room_id: room.id, text: "not allowed",
     };
-    await expect(service.sendMessage(envelope(outsider, sendPayload), room.id)).rejects.toMatchObject<Partial<CommunicationError>>({ code: "ROOM_ACCESS_DENIED" });
+    await expect(service.sendMessage(envelope(outsider, sendPayload), room.id)).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
   });
 });
