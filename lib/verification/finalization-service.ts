@@ -224,9 +224,12 @@ export async function finalizeCapabilityVerification(
     const productionCapability = findProductionCapabilityByTrialId(context.trialId);
     let certificateId: string | undefined;
     if (productionCapability) {
-      certificateId = uuid();
-      await tx.insertCapabilityCertificate({
-        id: certificateId,
+      // insertCapabilityCertificate returns the actual persisted row id: a fresh one for
+      // a genuine first PASS, or the pre-existing certificate's id if this exact
+      // agent/capability/version/program tuple was already certified by an earlier PASS.
+      // The candidate id below is only a proposal for the INSERT; never assume it was used.
+      certificateId = await tx.insertCapabilityCertificate({
+        id: uuid(),
         agentId: context.agentId,
         capabilityId: context.capabilityId,
         certificateName: productionCapability.certificateName,

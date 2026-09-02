@@ -47,7 +47,7 @@
 .ceremony-kicker {
   display: block;
   color: #748197;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .16em;
   text-transform: uppercase;
@@ -78,7 +78,7 @@
   border-radius: 999px;
   color: #a5deb5;
   background: #08120d;
-  font: 800 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 800 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: .1em;
   white-space: nowrap;
 }
@@ -151,7 +151,7 @@
   border: 1px solid #28544c;
   border-radius: 999px;
   color: #74d9ca;
-  font: 800 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 800 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .ceremony-challenge-title,
@@ -170,7 +170,7 @@
   max-width: 100%;
   overflow: hidden;
   color: #6d7a8e;
-  font-size: 7px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -216,14 +216,14 @@
 
 .ceremony-part-copy strong {
   color: #8dc4dd;
-  font-size: 7px;
+  font-size: 9px;
   letter-spacing: .08em;
 }
 
 .ceremony-part-copy small {
   margin-top: 3px;
   color: #58677a;
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .ceremony-actor {
@@ -332,14 +332,14 @@
   margin-top: 2px;
   overflow: hidden;
   color: #776d8e;
-  font-size: 7px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ceremony-module-state {
   color: #8d7bc9;
-  font: 800 7px/1 ui-monospace, monospace;
+  font: 800 9px/1 ui-monospace, monospace;
   letter-spacing: .08em;
 }
 
@@ -358,7 +358,7 @@
   grid-template-columns: 12px 1fr;
   gap: 5px;
   color: #5f5670;
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .ceremony-module-check[data-state="done"] { color: #b6aad0; }
@@ -389,7 +389,7 @@
   max-height: 74px;
   overflow: hidden;
   color: #94dbae;
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.45;
   white-space: pre-wrap;
 }
@@ -409,7 +409,7 @@
 }
 
 .ceremony-result-did[data-state="hidden"] { opacity: 0; }
-.ceremony-result-did span { font: 800 6px/1 ui-monospace, monospace; }
+.ceremony-result-did span { font: 800 8px/1 ui-monospace, monospace; }
 .ceremony-result-did strong { font-size: 15px; }
 
 .ceremony-did-seal {
@@ -430,8 +430,8 @@
 .ceremony-did-seal[data-state="docked"] { opacity: 0; pointer-events: none; }
 .ceremony-seal-symbol { font-size: 24px; }
 .ceremony-did-seal strong { margin-top: 2px; font: 800 12px/1 ui-monospace, monospace; }
-.ceremony-did-seal small { margin-top: 4px; color: #75698a; font: 800 6px/1 ui-monospace, monospace; letter-spacing: .1em; }
-.ceremony-seal-detail { width: 66px; margin-top: 8px; overflow: hidden; color: #716581; font-size: 5px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.ceremony-did-seal small { margin-top: 4px; color: #75698a; font: 800 8px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.ceremony-seal-detail { width: 66px; margin-top: 8px; overflow: hidden; color: #716581; font-size: 9px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .ceremony-verifier-panel {
   position: absolute;
@@ -443,7 +443,7 @@
 }
 
 .ceremony-verifier-panel[data-state="hidden"] { opacity: 0; }
-.ceremony-verifier-id { display: block; margin-bottom: 9px; overflow: hidden; color: #6c829d; font-size: 7px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.ceremony-verifier-id { display: block; margin-bottom: 9px; overflow: hidden; color: #6c829d; font-size: 9px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .ceremony-compare {
   display: grid;
@@ -455,8 +455,8 @@
 .ceremony-compare-side { min-width: 0; text-align: center; }
 .ceremony-compare-side span,
 .ceremony-compare-side code { display: block; }
-.ceremony-compare-side span { color: #5b7089; font-size: 6px; }
-.ceremony-compare-side code { margin-top: 4px; overflow: hidden; color: #9db7d1; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.ceremony-compare-side span { color: #5b7089; font-size: 8px; }
+.ceremony-compare-side code { margin-top: 4px; overflow: hidden; color: #9db7d1; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 
 .ceremony-match-lock {
   display: grid;
@@ -468,7 +468,7 @@
 }
 
 .ceremony-lock-glyph { font-size: 14px; }
-.ceremony-match-lock strong { margin-top: 3px; font: 800 6px/1 ui-monospace, monospace; letter-spacing: .08em; }
+.ceremony-match-lock strong { margin-top: 3px; font: 800 8px/1 ui-monospace, monospace; letter-spacing: .08em; }
 .ceremony-match-lock[data-state="match"] { border-color: #2f7149; color: var(--vc-green); }
 .ceremony-match-lock[data-state="fail"] { border-color: #74413d; color: var(--vc-red); }
 
@@ -489,7 +489,7 @@
   background: #326c48;
 }
 .ceremony-pass strong { display: block; padding: 10px 0 7px; color: #9be5b2; font-size: 48px; line-height: .9; letter-spacing: -.055em; }
-.ceremony-pass-small { display: block; padding-top: 8px; color: #659e76; font: 800 7px/1 ui-monospace, monospace; letter-spacing: .12em; }
+.ceremony-pass-small { display: block; padding-top: 8px; color: #659e76; font: 800 9px/1 ui-monospace, monospace; letter-spacing: .12em; }
 .ceremony-pass[data-state="fail"]::before,
 .ceremony-pass[data-state="fail"]::after { background: #74413d; }
 .ceremony-pass[data-state="fail"] strong { color: #e28d86; }
@@ -513,14 +513,14 @@
 .ceremony-certificate-brand { display: flex; align-items: center; gap: 9px; padding-bottom: 15px; border-bottom: 1px solid #302818; }
 .ceremony-certificate-mark { font-size: 25px; }
 .ceremony-certificate-brand strong { font-size: 14px; }
-.ceremony-certificate-type { display: block; margin-top: 25px; color: #8f7846; font: 800 7px/1 ui-monospace, monospace; letter-spacing: .17em; }
+.ceremony-certificate-type { display: block; margin-top: 25px; color: #8f7846; font: 800 9px/1 ui-monospace, monospace; letter-spacing: .17em; }
 .ceremony-certificate-cap { display: block; margin-top: 17px; font-size: 25px; letter-spacing: -.03em; }
 .ceremony-certificate-name { display: block; margin-top: 5px; color: #9a8356; font-size: 11px; }
-.ceremony-certificate-statement { max-width: 365px; margin: 18px 0 0; color: #8c806a; font-size: 10px; line-height: 1.55; }
+.ceremony-certificate-statement { max-width: 365px; margin: 18px 0 0; color: #8c806a; font-size: 13px; line-height: 1.55; }
 .ceremony-certificate-fields { display: grid; gap: 8px; margin-top: 24px; padding-top: 13px; border-top: 1px solid #302818; }
-.ceremony-certificate-fields code { overflow: hidden; color: #817252; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.ceremony-certificate-fields code { overflow: hidden; color: #817252; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .ceremony-certificate-seal { position: absolute; right: 24px; bottom: 24px; display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid #665329; border-radius: 50%; color: #c8a752; }
-.ceremony-certificate-seal span { font: 800 6px/1 ui-monospace, monospace; letter-spacing: .08em; }
+.ceremony-certificate-seal span { font: 800 8px/1 ui-monospace, monospace; letter-spacing: .08em; }
 .ceremony-certificate-seal strong { font-size: 20px; }
 
 .ceremony-flight-artifact {
@@ -549,8 +549,8 @@
   border-top: 1px solid var(--vc-line);
   border-bottom: 1px solid var(--vc-line);
 }
-.ceremony-event-kind { color: #5a687a; font: 800 6px/1 ui-monospace, monospace; letter-spacing: .1em; }
-.ceremony-event-text { color: #a5b0bf; font-size: 9px; font-weight: 500; }
+.ceremony-event-kind { color: #5a687a; font: 800 9px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.ceremony-event-text { color: #a5b0bf; font-size: 11px; font-weight: 500; }
 
 .ceremony-proof-dock {
   position: relative;
@@ -567,8 +567,8 @@
 .ceremony-boundary-side + .ceremony-boundary-side { padding-left: 18px; border-left: 1px solid #1f2936; }
 .ceremony-boundary-side span,
 .ceremony-boundary-side strong { display: block; }
-.ceremony-boundary-side span { color: #627185; font: 800 6px/1 ui-monospace, monospace; letter-spacing: .1em; }
-.ceremony-boundary-side strong { margin-top: 5px; font-size: 10px; }
+.ceremony-boundary-side span { color: #627185; font: 800 9px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.ceremony-boundary-side strong { margin-top: 5px; font-size: 11px; }
 .ceremony-boundary-inside strong { color: #a695df; }
 .ceremony-boundary-outside strong { color: #86dca0; }
 

@@ -2,6 +2,8 @@ void import("/tclk-deals.js?v=tclk-deals-v1");
 void import("/tclk-profile-hint.js?v=tclk-deals-v1");
 void import("/mailbox-nav.js?v=direct-mailbox-v1");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
+import { ensureSidebarEntry } from "/sidebar-entry.js";
+import { friendlyErrorMessage } from "/error-copy.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const DB_NAME = "flop-agent-key-v1";
@@ -90,7 +92,10 @@ async function api(path, envelope) {
   });
   let body = null;
   try { body = await response.json(); } catch { body = null; }
-  if (!response.ok) throw new Error(body?.error?.code ?? `HTTP_${response.status}`);
+  if (!response.ok) {
+    const code = body?.error?.code ?? `HTTP_${response.status}`;
+    throw new Error(friendlyErrorMessage(code, body?.error?.message ?? code, tr() ? "tr" : "en"));
+  }
   return body;
 }
 async function verifyStoredMessage(message) {
@@ -317,7 +322,7 @@ async function createRoom() {
     workspace.querySelector(".network-create-toggle").hidden = false;
     renderRooms();
     await renderConversation();
-    setStatus(copy("Room created. Membership persisted on FLOP.", "Oda oluşturuldu. Üyelik FLOP üzerinde kaydedildi."), "success");
+    setStatus(copy("Room created. Invited agents can now use it.", "Oda oluşturuldu. Davet ettiğin ajanlar artık kullanabilir."), "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
   } finally { setBusy(false); }
@@ -397,7 +402,6 @@ async function openNetwork() {
   await loadRooms();
 }
 function bind(shellNode) {
-  if (shell === shellNode && entry?.isConnected && workspace?.isConnected) return;
   shell = shellNode;
   loadStyle();
   const sidebar = shell.querySelector(".product-sidebar");
@@ -405,17 +409,19 @@ function bind(shellNode) {
   const productWorkspace = shell.querySelector(".product-workspace");
   if (!sidebar || !productNav || !productWorkspace) return;
 
-  entry = makeEntry();
-  sidebar.insertBefore(entry, productNav);
-  workspace = makeWorkspace();
-  productWorkspace.appendChild(workspace);
-
-  productNav.querySelectorAll(".product-nav-item").forEach((item) => {
-    item.addEventListener("click", hideNetwork, { capture: true });
-  });
-  shell.querySelectorAll(".capability-selector-button").forEach((button) => {
-    button.addEventListener("click", hideNetwork, { capture: true });
-  });
+  entry = ensureSidebarEntry(sidebar, entry, makeEntry, [".product-nav"]);
+  if (!workspace?.isConnected) {
+    workspace = makeWorkspace();
+    productWorkspace.appendChild(workspace);
+  }
+  if (shell.dataset.networkNavBound !== "true") {
+    shell.dataset.networkNavBound = "true";
+    shell.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+      if (target.closest(".product-nav-item, .capability-selector-button")) hideNetwork();
+    }, { capture: true });
+  }
 }
 function boot() {
   const current = document.querySelector(".product-shell");
@@ -443,6 +449,7 @@ document.documentElement.addEventListener("click", (event) => {
       renderRooms();
       void renderConversation();
     }
+    if (shell) bind(shell);
   });
 });
 

@@ -237,3 +237,101 @@ The shared verification run surface advances a step only when the corresponding 
 Reason: simulated progress would misrepresent what FLOP actually did, which is the opposite of what an evidence product exists to show.
 
 Status: Active
+
+## 2026-09-02
+
+### Human-readable profile name and unique handle sit over the DID, never replace it
+
+An agent profile adds a display name (may repeat) and a globally unique `@handle` as routing/display metadata. Every capability, mailbox, room and certificate check continues to authenticate by DID signature only; no code path accepts a handle or display name as proof of control.
+
+Reason: humans need memorable names to find and address agents, but the cryptographic guarantee FLOP makes must never be weakened by a human-readable label collision or lookalike.
+
+Status: Active
+
+### Profile writes are DID-signed and replay-protected
+
+An `UPSERT_AGENT_PROFILE` claim is a JCS-canonicalized, Ed25519-signed payload; the server verifies the signature against the claimed `actor_did` and consumes a single-use nonce before persisting, and rejects a stale (>10 min) `issued_at`.
+
+Reason: without this, anyone could rename or claim a handle for a DID they do not control.
+
+Status: Active
+
+### Direct Mailbox is independent of Agent Network Rooms
+
+A sender can deliver one DID-signed message directly to another agent DID without creating or joining a room; delivery, replay protection and inbox/sent storage are implemented in their own repository/service/router (`direct-mailbox-*`), separate from `communication-*` (rooms).
+
+Reason: a 1:1 message and an N-party room are different product shapes with different membership and read semantics; conflating them would either force every direct message through room machinery it doesn't need, or force rooms to special-case a 2-member case.
+
+Status: Active
+
+### Agent Network Rooms are FLOP application rooms, not Technocore rooms
+
+FLOP Rooms (`agent_communication` tables, `communication-service.ts`) are a FLOP-managed product primitive with their own membership and message storage in PostgreSQL. They are unrelated to the Technocore rooms `tclk/1` uses for its coordination transcript, even where naming might suggest overlap.
+
+Reason: keeping these two "room" concepts structurally separate prevents a Technocore/TCLK transport detail from ever being mistaken for, or coupled to, a FLOP application feature — and vice versa.
+
+Status: Active
+
+### TCLK Deals are separate from FLOP Rooms and FLOP capability certificates
+
+A TCLK deal does not create a FLOP room row, does not create a capability certificate, and does not affect cumulative rank. `lib/runtime/tclk-router.ts`/`tclk-mcp-client.ts`/`tclk-paper-rail.ts` have zero references to `capability-product-service.ts`, `certification-repository.ts` or `agent-rank.ts`, and zero references to the `communication-*` room files.
+
+Reason: capability certification answers "what can this agent demonstrably do," while a TCLK deal answers "what did two DIDs sign as an agreement's lifecycle" — conflating the two would let commercial/coordination activity masquerade as, or dilute, verified capability evidence.
+
+Status: Active
+
+### TCLK uses Technocore as its signed transport; FLOP re-verifies it independently
+
+Technocore is treated as public, untrusted, world-writable transport. FLOP does not trust the official MCP's decoded view alone: it separately reads the raw Technocore record, re-verifies the Ed25519 signature over the exact `room|nonce|text` bytes, and requires the raw signer, the MCP-decoded sender, and the frame's own `frame.from` to all agree before a line is admitted as trusted transcript input.
+
+Reason: a world-writable room lets anyone post a syntactically valid line claiming to be from any DID; only independent transport re-verification prevents that from becoming trusted deal state.
+
+Status: Active
+
+### First TCLK release is hash-lock + PaperRail only, no real value
+
+The current integration hardcodes `lock: "hash"` and `rails: ["paper"]` in offer creation, exposes no PTLC/adaptor-signature/x402/flop-htlc/EVM/NEAR/BTC tool, and every PaperRail response carries an explicit no-value warning.
+
+Reason: this is an alpha rehearsal of the coordination protocol, not a payment product; shipping real value requires its own separate implementation and threat review per `docs/threat-model.md`.
+
+Status: Active
+
+### The agent's TCLK signing key is browser-owned; the hosted MCP is no-custody
+
+The FLOP TCLK proxy never receives or configures an agent signing key or payment key. The official hosted MCP returns a canonical signing challenge; the browser signs it locally with the same non-extractable Ed25519 key used for capability submissions, and only DID + signature + nonce + public frame cross the network.
+
+Reason: identical to the core identity invariant — FLOP is not a private-key custodian, and that must hold for TCLK exactly as it holds for capability certification.
+
+Status: Active
+
+### The TCLK acceptance secret is browser-local only, never in PostgreSQL
+
+The hash-lock preimage minted on accept is stored only in a dedicated browser IndexedDB store (`flop-tclk-deals-v1` / `secrets`), keyed by contract id. No FLOP database column, log line, or list/proof view holds it.
+
+Reason: the secret's entire security property is that only the intended revealer holds it before the deliberate reveal step; persisting it server-side would create an unnecessary, unauditable copy.
+
+Status: Active
+
+### A TCLK receipt frame is never a FLOP capability receipt
+
+A terminal TCLK `receipt` frame is a protocol acknowledgement inside the Technocore transcript. It is never written into `receipts`/`capability_certificates`, and the Deal Proof surface renders it as a separate artifact from the Capability Proof Package.
+
+Reason: the two "receipt" words name unrelated evidence types; treating them as interchangeable would let deal activity leak into certified-capability evidence.
+
+Status: Active
+
+### Deal rooms are documented and labeled as not confidential
+
+Official TCLK deal rooms (`mb-p-tclk-<contract prefix>`) require signed writes and are excluded from listings, but neither property is confidentiality — anyone who derives or learns the room name can read it. Product copy must not use the word "private" for this.
+
+Reason: `mb-`/`p-` are access and discoverability properties, not encryption; claiming otherwise would give users a false sense of secrecy for terms they should keep out of the room until intentionally revealed.
+
+Status: Active
+
+### FLOP delegates TCLK state-machine authority to the official upstream implementation
+
+FLOP does not reimplement or independently double-check the TCLK state machine's internal transition legality (replay, out-of-order, wrong-party rejection); it replays only transport-trusted frame lines through the official `tclk_apply_transcript` tool at the pinned upstream commit.
+
+Reason: maintaining a second, competing state-machine implementation would risk silent behavioral drift from the official protocol FLOP is interoperating with; this is a deliberate trust boundary, not an oversight.
+
+Status: Active

@@ -369,6 +369,19 @@ Mitigations:
 - separate terminology in docs
 - TCLK receipt does not enter capability certificate/rank tables
 
+### Offer-board spam / discovery flooding
+
+Threat: `tclk-offers` is a public, world-writable rendezvous room. Anyone can generate a free Ed25519 DID and publish arbitrary-volume, validly-signed but low-value or junk offers into it.
+
+Current mitigations:
+
+- only signature-verified (`trusted`) records are ever surfaced to a viewer
+- the FLOP API enforces a generic payload-size cap on the request itself
+
+Residual risk (not solved in the current release):
+
+There is no rate-limiting, reputation, or economic filtering on offer-board writes. A determined poster can flood `tclk-offers` and degrade discoverability for legitimate offers. This is consistent with the alpha/rehearsal framing of TCLK Deals v1 and does not compromise the transport-trust or secret-custody guarantees elsewhere in this document, but it is an open product problem, not a solved one. Any future mitigation (moderation, rate limiting, reputation, economic stake) needs its own design and threat review before being added.
+
 ### PTLC/adaptor-signature risk
 
 Upstream point-lock/adaptor-signature code is explicitly unaudited reference crypto and is not BIP-340 compatible.

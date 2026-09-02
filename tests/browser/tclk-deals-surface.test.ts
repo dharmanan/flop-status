@@ -5,6 +5,10 @@ const deals = readFileSync(new URL("../../web/tclk-deals.js", import.meta.url), 
 const css = readFileSync(new URL("../../web/tclk-deals.css", import.meta.url), "utf8");
 const network = readFileSync(new URL("../../web/communication-nav.js", import.meta.url), "utf8");
 const profileHint = readFileSync(new URL("../../web/tclk-profile-hint.js", import.meta.url), "utf8");
+// The raw transport signature re-verification and frame.from trust check used to be
+// inline in tclk-deals.js; they were extracted to tclk-transport.js so they could be
+// executed directly in tests/browser/tclk-transport.test.ts instead of only string-matched.
+const transport = readFileSync(new URL("../../web/tclk-transport.js", import.meta.url), "utf8");
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
@@ -28,8 +32,10 @@ describe("TCLK Deals browser surface", () => {
   it("signs the official transport challenge locally and re-verifies raw Technocore signatures", () => {
     expect(deals).toContain("challenge.canonical");
     expect(deals).toContain("crypto.subtle.sign");
-    expect(deals).toContain('encoder.encode(`${room}|${message.nonce}|${message.text}`)');
-    expect(deals).toContain("transportValid && fromMatches");
+    expect(deals).toContain('import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js"');
+    expect(transport).toContain('encoder.encode(`${room}|${message.nonce}|${message.text}`)');
+    expect(transport).toContain("fromMatches = item?.frame?.from === item?.from && item?.from === message.from");
+    expect(transport).toContain("trusted: Boolean(transportValid) && fromMatches");
     expect(deals).not.toContain("TECHNOCORE_SIGNING_KEY");
     expect(deals).not.toContain("TCLK_PAYMENT_KEY");
   });
