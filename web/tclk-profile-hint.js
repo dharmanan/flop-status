@@ -1,5 +1,5 @@
 void import("/capability-names.js?v=capability-names-v4");
-void import("/practice-ui.js?v=practice-ui-v2");
+void import("/c1-practice-positive.js?v=c1-practice-v1").then(() => import("/practice-ui.js?v=practice-ui-v3"));
 
 function loadPracticeFeedbackStyle() {
   if (document.getElementById("flop-capability-use-feedback-style")) return;
