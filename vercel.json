@@ -36,16 +36,7 @@
     },
     {
       "source": "/certificate/:certificateId",
-      "destination": "/api/certificate-page?certificateId=:certificateId"
-    },
-    {
-      "source": "/certificate-card/c:capability.png",
-      "destination": "/api/certificate-card?capability=:capability"
+      "destination": "/certificate.html"
     }
-  ],
-  "functions": {
-    "api/certificate-page.js": {
-      "includeFiles": "web/certificate.html"
-    }
-  }
+  ]
 }

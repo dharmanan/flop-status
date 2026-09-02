@@ -6,9 +6,7 @@ import {
   capabilityShareMeta,
   certificateOgImageUrl,
   certificatePublicUrl,
-  certificateSocialShareUrl,
   rankName,
-  X_SHARE_CACHE_VERSION,
 } from "../../web/certificate-share.js";
 
 describe("shareable capability certificates", () => {
@@ -32,14 +30,7 @@ describe("shareable capability certificates", () => {
     expect(rankName(null)).toBe("");
   });
 
-  it("keeps the canonical proof URL stable while versioning the X share URL", () => {
-    expect(certificatePublicUrl("cert-123")).toBe("https://flop-status.vercel.app/certificate/cert-123");
-    expect(certificateSocialShareUrl("cert-123")).toBe(
-      `https://flop-status.vercel.app/certificate/cert-123?share=${X_SHARE_CACHE_VERSION}`,
-    );
-  });
-
-  it("builds a clean public X share with FLOP handle, capability, count, rank, versioned URL and @flop_labs", () => {
+  it("uses the canonical proof URL directly in the X share text", () => {
     const text = buildCertificateShareText({
       certificateId: "cert-123",
       capabilityId: "runtime.failure-recovery-idempotency",
@@ -54,13 +45,14 @@ describe("shareable capability certificates", () => {
     expect(text).toContain("Hata Kurtarma ve İdempotans");
     expect(text).toContain("7 doğrulanmış yetenek");
     expect(text).toContain("Core Verified");
-    expect(text).toContain(certificateSocialShareUrl("cert-123"));
+    expect(text).toContain(certificatePublicUrl("cert-123"));
+    expect(text).not.toContain("?share=");
     expect(text).toContain("@flop_labs");
     expect(text).not.toContain("[object Object]");
     expect(text.length).toBeLessThan(280);
   });
 
-  it("builds crawler metadata without leaking object stringification", () => {
+  it("keeps social description helpers free of object stringification", () => {
     const description = buildCertificateSocialDescription({
       capabilityId: "cryptography.signature-verification",
       profile: { display_name: "kohen", handle: "koheneric" },
@@ -70,8 +62,6 @@ describe("shareable capability certificates", () => {
     });
     expect(description).toContain("kohen");
     expect(description).toContain("FLOP: koheneric");
-    expect(description).toContain("C1");
-    expect(description).toContain("7 verified capabilities");
     expect(description).toContain("Core Verified");
     expect(description).not.toContain("[object Object]");
     expect(buildXIntentUrl("hello FLOP")).toContain("twitter.com/intent/tweet?text=");
