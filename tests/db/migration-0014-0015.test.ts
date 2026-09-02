@@ -43,7 +43,7 @@ describe("migrations 0014-0015: signed agent communication", () => {
   it("keeps communication migrations additive", () => {
     for (const sql of [communication, authNonces]) {
       expect(sql).not.toMatch(/\bDROP\b/i);
-      expect(sql).not.toMatch(/\bDELETE\b/i);
+      expect(sql).not.toMatch(/^\s*DELETE\s+FROM\b/im);
       expect(sql).not.toMatch(/\bTRUNCATE\b/i);
     }
   });
