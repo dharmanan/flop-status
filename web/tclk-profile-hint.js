@@ -1,4 +1,4 @@
-void import("/capability-names.js?v=capability-names-v2");
+void import("/capability-names.js?v=capability-names-v3");
 
 function attachProtocolHint() {
   const card = document.querySelector(".product-shell .agent-status-card");

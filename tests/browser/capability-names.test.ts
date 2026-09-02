@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { capabilityDisplayName, capabilityNumberFromId } from "../../web/capability-names.js";
 
 const profileHint = readFileSync(new URL("../../web/tclk-profile-hint.js", import.meta.url), "utf8");
+const namesSource = readFileSync(new URL("../../web/capability-names.js", import.meta.url), "utf8");
 
 describe("localized capability display names", () => {
   it("returns Turkish user-facing names without changing capability ids", () => {
@@ -22,7 +23,10 @@ describe("localized capability display names", () => {
     expect(capabilityDisplayName(7, "en")).toBe("Failure Recovery & Idempotency");
   });
 
-  it("is loaded by the live dashboard module chain", () => {
-    expect(profileHint).toContain('import("/capability-names.js?v=capability-names-v2")');
+  it("is loaded with a fresh cache key and watches shell rerenders", () => {
+    expect(profileHint).toContain('import("/capability-names.js?v=capability-names-v3")');
+    expect(namesSource).toContain('renderObserver.observe(workspace, { childList: true, subtree: true })');
+    expect(namesSource).toContain('languageObserver.observe(document.documentElement');
+    expect(namesSource).toContain('row.querySelector(".shell-record-body strong")');
   });
 });
