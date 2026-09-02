@@ -129,7 +129,7 @@ function loadStyle() {
   const link = document.createElement("link");
   link.id = "flop-product-navigation-style";
   link.rel = "stylesheet";
-  link.href = "/app-shell-navigation.css?v=workspace-navigation-v2";
+  link.href = "/app-shell-navigation.css?v=workspace-navigation-v3";
   document.head.appendChild(link);
 }
 
@@ -363,41 +363,45 @@ function queueRefresh() {
   });
 }
 
-function observeSources() {
+function observeSource() {
   sourceObserver?.disconnect();
-  sourceObserver = new MutationObserver(queueRefresh);
   const active = document.getElementById("active-actions");
-  if (active) sourceObserver.observe(active, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden", "href", "class", "data-verification-running"] });
-  const progress = document.getElementById("certificate-progress");
-  if (progress) sourceObserver.observe(progress, { childList: true, subtree: true, characterData: true });
-  const rankNode = document.getElementById("rank-progress");
-  if (rankNode) sourceObserver.observe(rankNode, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
-  const didNode = document.getElementById("did");
-  if (didNode) sourceObserver.observe(didNode, { childList: true, subtree: true, characterData: true });
+  if (!active) return;
+  sourceObserver = new MutationObserver(queueRefresh);
+  sourceObserver.observe(active, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributeFilter: ["hidden", "href", "class"],
+  });
 }
 
-loadStyle();
-
-const shellBootstrap = new MutationObserver(() => {
+function boot() {
+  loadStyle();
   const shell = document.querySelector(".product-shell");
-  if (!shell) return;
-  shellBootstrap.disconnect();
-  bindNav(shell);
-  observeSources();
-  showView(currentView);
-});
-shellBootstrap.observe(document.body, { childList: true, subtree: true });
-
-if (document.querySelector(".product-shell")) {
-  shellBootstrap.disconnect();
-  bindNav(document.querySelector(".product-shell"));
-  observeSources();
-  showView(currentView);
+  if (shell) {
+    bindNav(shell);
+    observeSource();
+    showView(currentView);
+    return;
+  }
+  const observer = new MutationObserver(() => {
+    const next = document.querySelector(".product-shell");
+    if (!next) return;
+    observer.disconnect();
+    bindNav(next);
+    observeSource();
+    showView(currentView);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 document.documentElement.addEventListener("click", (event) => {
-  if (event.target instanceof Element && event.target.closest(".lang-button")) queueMicrotask(() => {
-    bindNav(document.querySelector(".product-shell"));
+  if (!(event.target instanceof Element) || !event.target.closest(".lang-button")) return;
+  queueMicrotask(() => {
     if (currentView !== "capabilities") renderSecondary();
   });
 });
+
+boot();
