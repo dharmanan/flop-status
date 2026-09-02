@@ -43,6 +43,28 @@ async function ensureAgent(client: PoolClient, did: string): Promise<string> {
 export class PgCommunicationRepository {
   constructor(private readonly pool: Pool) {}
 
+  async consumeActionNonce(did: string, nonce: string, action: string, consumedAt: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const agentId = await ensureAgent(client, did);
+      const inserted = await client.query(
+        `INSERT INTO agent_action_nonces (agent_id, nonce, action, consumed_at)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (agent_id, nonce) DO NOTHING
+         RETURNING nonce`,
+        [agentId, nonce, action, consumedAt],
+      );
+      await client.query("COMMIT");
+      return inserted.rowCount === 1;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async createRoom(input: {
     creatorDid: string;
     title: string;
