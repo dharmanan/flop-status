@@ -11,6 +11,7 @@ import { ensureActiveServerSigningKey } from "../db/server-key-repository.js";
 import { PgSubmissionRepository } from "../db/pg-adapter.js";
 import { runMigrations } from "../db/migration-runner.js";
 import { createPgPool, PgChallengeRepository } from "../db/pg-adapter.js";
+import { PgTclkDealHistoryRepository } from "../db/tclk-deal-history-repository.js";
 import { loadAttestationSignerFromEnv } from "../receipts/attestation-signer.js";
 import { PublicVerificationService } from "../verification/public-verification-service.js";
 import { AgentProfileService } from "./agent-profile-service.js";
@@ -20,6 +21,9 @@ import { CommunicationService } from "./communication-service.js";
 import { DirectMailboxService } from "./direct-mailbox-service.js";
 import { createDirectMailboxAwareHandler } from "./direct-mailbox-router.js";
 import { createRuntimeRequestHandler } from "./router.js";
+import { TclkDealHistoryService } from "./tclk-deal-history-service.js";
+import { TclkMcpClient } from "./tclk-mcp-client.js";
+import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
 import { createTclkAwareHandler } from "./tclk-router.js";
 import { Trial1ApiService } from "./trial1-api-service.js";
 
@@ -40,6 +44,9 @@ async function main(): Promise<void> {
   const communication = new CommunicationService(new PgCommunicationRepository(pool));
   const mailbox = new DirectMailboxService(new PgDirectMailboxRepository(pool));
   const profiles = new AgentProfileService(new PgAgentProfileRepository(pool));
+  const tclkMcp = new TclkMcpClient();
+  const tclkPaper = new TclkPaperRailAdapter(tclkMcp);
+  const tclkHistory = new TclkDealHistoryService(new PgTclkDealHistoryRepository(pool), tclkMcp);
   const trial1Api = new Trial1ApiService({
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),
@@ -58,7 +65,7 @@ async function main(): Promise<void> {
   });
   const mailboxHandler = createDirectMailboxAwareHandler(runtimeHandler, mailbox);
   const profileHandler = createAgentProfileAwareHandler(mailboxHandler, profiles);
-  const server = createServer(createTclkAwareHandler(profileHandler));
+  const server = createServer(createTclkAwareHandler(profileHandler, tclkMcp, tclkPaper, tclkHistory));
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
