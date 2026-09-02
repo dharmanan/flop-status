@@ -15,6 +15,16 @@ import {
 } from "../trials/canonical-json-sha256/constants.js";
 import { trial2SignedSubmissionEnvelopeSchema } from "../trials/canonical-json-sha256/schema.js";
 import {
+  PRODUCTION_TRIAL_ID as TRIAL6_PRODUCTION_ID,
+  TRIAL_ID as TRIAL6_ID,
+} from "../trials/constraint-policy-compliance/constants.js";
+import { trial6SignedSubmissionEnvelopeSchema } from "../trials/constraint-policy-compliance/schema.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL7_PRODUCTION_ID,
+  TRIAL_ID as TRIAL7_ID,
+} from "../trials/failure-recovery-idempotency/constants.js";
+import { trial7SignedSubmissionEnvelopeSchema } from "../trials/failure-recovery-idempotency/schema.js";
+import {
   PRODUCTION_TRIAL_ID as TRIAL1_PRODUCTION_ID,
   TRIAL_ID as TRIAL1_ID,
 } from "../trials/ed25519-signature-verification/constants.js";
@@ -24,6 +34,11 @@ import {
   TRIAL_ID as TRIAL4_ID,
 } from "../trials/signed-receipt-verification/constants.js";
 import { trial4SignedSubmissionEnvelopeSchema } from "../trials/signed-receipt-verification/schema.js";
+import {
+  PRODUCTION_TRIAL_ID as TRIAL5_PRODUCTION_ID,
+  TRIAL_ID as TRIAL5_ID,
+} from "../trials/structured-data-transformation/constants.js";
+import { trial5SignedSubmissionEnvelopeSchema } from "../trials/structured-data-transformation/schema.js";
 import {
   PRODUCTION_TRIAL_ID as TRIAL3_PRODUCTION_ID,
   TRIAL_ID as TRIAL3_ID,
@@ -79,13 +94,19 @@ type ParsedEnvelope =
   | ReturnType<typeof trial1SignedSubmissionEnvelopeSchema.parse>
   | ReturnType<typeof trial2SignedSubmissionEnvelopeSchema.parse>
   | ReturnType<typeof trial3SignedSubmissionEnvelopeSchema.parse>
-  | ReturnType<typeof trial4SignedSubmissionEnvelopeSchema.parse>;
+  | ReturnType<typeof trial4SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial5SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial6SignedSubmissionEnvelopeSchema.parse>
+  | ReturnType<typeof trial7SignedSubmissionEnvelopeSchema.parse>;
 
 type ParsedEnvelopeSchema =
   | typeof trial1SignedSubmissionEnvelopeSchema
   | typeof trial2SignedSubmissionEnvelopeSchema
   | typeof trial3SignedSubmissionEnvelopeSchema
-  | typeof trial4SignedSubmissionEnvelopeSchema;
+  | typeof trial4SignedSubmissionEnvelopeSchema
+  | typeof trial5SignedSubmissionEnvelopeSchema
+  | typeof trial6SignedSubmissionEnvelopeSchema
+  | typeof trial7SignedSubmissionEnvelopeSchema;
 
 function assertSupportedDid(did: string): void {
   try {
@@ -118,6 +139,12 @@ const ENVELOPE_SCHEMAS_BY_TRIAL_ID = new Map<string, ParsedEnvelopeSchema>([
   [TRIAL3_PRODUCTION_ID, trial3SignedSubmissionEnvelopeSchema],
   [TRIAL4_ID, trial4SignedSubmissionEnvelopeSchema],
   [TRIAL4_PRODUCTION_ID, trial4SignedSubmissionEnvelopeSchema],
+  [TRIAL5_ID, trial5SignedSubmissionEnvelopeSchema],
+  [TRIAL5_PRODUCTION_ID, trial5SignedSubmissionEnvelopeSchema],
+  [TRIAL6_ID, trial6SignedSubmissionEnvelopeSchema],
+  [TRIAL6_PRODUCTION_ID, trial6SignedSubmissionEnvelopeSchema],
+  [TRIAL7_ID, trial7SignedSubmissionEnvelopeSchema],
+  [TRIAL7_PRODUCTION_ID, trial7SignedSubmissionEnvelopeSchema],
 ]);
 
 function parseSupportedEnvelope(envelope: unknown): ParsedEnvelope {

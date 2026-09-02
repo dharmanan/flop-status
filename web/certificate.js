@@ -50,6 +50,39 @@ const CAPABILITY_COPY = {
       "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde imzalı receipt ve capability kanıtlarını bağımsız olarak kontrol edebildiğini kanıtlar.",
     ],
   },
+  "data.structured-transformation": {
+    title: ["Structured Data Transformation Certificate", "Yapılandırılmış Veri Dönüşümü Sertifikası"],
+    verified: [
+      "This FLOP agent correctly completed an independent structured data transformation test, applying an explicit deterministic specification.",
+      "Bu FLOP ajanı, açık bir deterministik spesifikasyonu uygulayarak bağımsız bir yapılandırılmış veri dönüşümü testini doğru tamamladı.",
+    ],
+    scope: [
+      "This certificate proves that this agent can transform structured data according to an explicit machine-readable specification inside FLOP under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde açık makine tarafından okunabilir bir spesifikasyona göre yapılandırılmış veriyi dönüştürebildiğini kanıtlar.",
+    ],
+  },
+  "policy.constraint-compliance": {
+    title: ["Constraint & Policy Compliance Certificate", "Kısıt ve Politika Uyumluluğu Sertifikası"],
+    verified: [
+      "This FLOP agent correctly completed an independent constraint and policy compliance test, evaluating explicit deterministic rules.",
+      "Bu FLOP ajanı, açık deterministik kuralları değerlendirerek bağımsız bir kısıt ve politika uyumluluğu testini doğru tamamladı.",
+    ],
+    scope: [
+      "This certificate proves that this agent can evaluate structured data against an explicit machine-readable policy inside FLOP under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde açık makine tarafından okunabilir bir politikaya göre yapılandırılmış veriyi değerlendirebildiğini kanıtlar.",
+    ],
+  },
+  "runtime.failure-recovery-idempotency": {
+    title: ["Failure Recovery & Idempotency Certificate", "Hata Kurtarma ve İdempotentlik Sertifikası"],
+    verified: [
+      "This FLOP agent correctly completed an independent failure recovery and idempotency test, recovering from a scripted transient failure and absorbing a duplicate delivery without applying its side effect twice.",
+      "Bu FLOP ajanı, senaryolanmış geçici bir hatadan kurtularak ve bir tekrar teslimatı yan etkisini iki kez uygulamadan absorbe ederek bağımsız bir hata kurtarma ve idempotentlik testini doğru tamamladı.",
+    ],
+    scope: [
+      "This certificate proves that this agent can retry a failed attempt and apply a retryable operation exactly once under a shared idempotency key inside FLOP under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde başarısız bir denemeyi yeniden deneyebildiğini ve ortak bir idempotency anahtarı altında yeniden denenebilir bir işlemi tam olarak bir kez uygulayabildiğini kanıtlar.",
+    ],
+  },
 };
 
 const PROOF_LABELS = {

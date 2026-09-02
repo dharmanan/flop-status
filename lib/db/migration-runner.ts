@@ -14,6 +14,9 @@ const MIGRATIONS = [
   { id: "0008_capability2_production_certification", path: new URL("../../db/migrations/0008_capability2_production_certification.sql", import.meta.url) },
   { id: "0009_capability3_production_certification", path: new URL("../../db/migrations/0009_capability3_production_certification.sql", import.meta.url) },
   { id: "0010_capability4_production_certification", path: new URL("../../db/migrations/0010_capability4_production_certification.sql", import.meta.url) },
+  { id: "0011_capability5_production_certification", path: new URL("../../db/migrations/0011_capability5_production_certification.sql", import.meta.url) },
+  { id: "0012_capability6_production_certification", path: new URL("../../db/migrations/0012_capability6_production_certification.sql", import.meta.url) },
+  { id: "0013_capability7_production_certification", path: new URL("../../db/migrations/0013_capability7_production_certification.sql", import.meta.url) },
 ] as const;
 
 export interface MigrationResult {

@@ -16,6 +16,9 @@ const EXECUTORS = [
   ["canonical-json-sha256.js", "executeCanonicalJsonSha256"],
   ["technocore-canonical-message.js", "executeTechnocoreCanonicalMessage"],
   ["signed-receipt-verification.js", "executeSignedReceiptVerification"],
+  ["structured-data-transformation.js", "executeStructuredDataTransformation"],
+  ["constraint-policy-compliance.js", "executeConstraintPolicyCompliance"],
+  ["failure-recovery-idempotency.js", "executeFailureRecoveryIdempotency"],
 ] as const;
 
 describe("production capability browser custody boundary", () => {
@@ -28,6 +31,9 @@ describe("production capability browser custody boundary", () => {
     expect(source).not.toContain('trialId: "technocore-canonical-message"');
     expect(source).not.toContain('trialId: "signed-receipt-verification"');
     expect(source).not.toContain('trialId: "ed25519-signature-verification"');
+    expect(source).not.toContain('trialId: "structured-data-transformation"');
+    expect(source).not.toContain('trialId: "constraint-policy-compliance"');
+    expect(source).not.toContain('trialId: "failure-recovery-idempotency"');
   });
 
   it("uses the same installed module for practice, certification and normal use — one executor per capability", () => {
@@ -39,6 +45,9 @@ describe("production capability browser custody boundary", () => {
     expect(source).toContain("executeCanonicalJsonSha256({ document: document_ })");
     expect(source).toContain("executeTechnocoreCanonicalMessage({ room, nonce, text })");
     expect(source).toContain("executeSignedReceiptVerification({ receipt, server_keys: serverKeys })");
+    expect(source).toContain("executeStructuredDataTransformation({ source, spec })");
+    expect(source).toContain("executeConstraintPolicyCompliance({ document: document_, policy })");
+    expect(source).toContain("await executeFailureRecoveryIdempotency(scenario)");
   });
 
   it("submits only the canonical payload and DID signature for certification", () => {

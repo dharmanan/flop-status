@@ -10,6 +10,12 @@ import { generateEd25519SignatureChallenge } from "../../lib/trials/ed25519-sign
 import * as trial1Constants from "../../lib/trials/ed25519-signature-verification/constants.js";
 import { generateSignedReceiptVerificationChallenge } from "../../lib/trials/signed-receipt-verification/challenge-generator.js";
 import * as trial4Constants from "../../lib/trials/signed-receipt-verification/constants.js";
+import { generateConstraintPolicyComplianceChallenge } from "../../lib/trials/constraint-policy-compliance/challenge-generator.js";
+import * as trial6Constants from "../../lib/trials/constraint-policy-compliance/constants.js";
+import { generateFailureRecoveryIdempotencyChallenge } from "../../lib/trials/failure-recovery-idempotency/challenge-generator.js";
+import * as trial7Constants from "../../lib/trials/failure-recovery-idempotency/constants.js";
+import { generateStructuredDataTransformationChallenge } from "../../lib/trials/structured-data-transformation/challenge-generator.js";
+import * as trial5Constants from "../../lib/trials/structured-data-transformation/constants.js";
 import { generateTechnocoreCanonicalMessageChallenge } from "../../lib/trials/technocore-canonical-message/challenge-generator.js";
 import * as trial3Constants from "../../lib/trials/technocore-canonical-message/constants.js";
 import { finalizeCapabilityVerification } from "../../lib/verification/finalization-service.js";
@@ -150,6 +156,72 @@ const CAPABILITY_CASES: CapabilityCase[] = [
     },
     wrongResult: { status: "INVALID", reason_code: "SIGNATURE_INVALID", key_id: "flop-trial4-key-a" },
   },
+  {
+    ordinal: 5,
+    capabilityId: trial5Constants.CAPABILITY_ID,
+    historicalTrialId: trial5Constants.TRIAL_ID,
+    productionTrialId: trial5Constants.PRODUCTION_TRIAL_ID,
+    trialVersion: trial5Constants.TRIAL_VERSION,
+    verifierId: trial5Constants.VERIFIER_ID,
+    verifierVersion: trial5Constants.VERIFIER_VERSION,
+    certificateName: trial5Constants.CERTIFICATE_NAME,
+    generate: (trialId) =>
+      generateStructuredDataTransformationChallenge({
+        agentDid: agent.did,
+        trialId: trialId as typeof trial5Constants.TRIAL_ID,
+        caseClass: "VALID",
+      }),
+    expectedResult: (generated) => {
+      const hidden = generated.hiddenContext as { expected_reason_code: string; expected_result: unknown };
+      return { reason_code: hidden.expected_reason_code, result: hidden.expected_result };
+    },
+    wrongResult: { reason_code: "TRANSFORMATION_MATCH", result: { tampered: true } },
+  },
+  {
+    ordinal: 6,
+    capabilityId: trial6Constants.CAPABILITY_ID,
+    historicalTrialId: trial6Constants.TRIAL_ID,
+    productionTrialId: trial6Constants.PRODUCTION_TRIAL_ID,
+    trialVersion: trial6Constants.TRIAL_VERSION,
+    verifierId: trial6Constants.VERIFIER_ID,
+    verifierVersion: trial6Constants.VERIFIER_VERSION,
+    certificateName: trial6Constants.CERTIFICATE_NAME,
+    generate: (trialId) =>
+      generateConstraintPolicyComplianceChallenge({
+        agentDid: agent.did,
+        trialId: trialId as typeof trial6Constants.TRIAL_ID,
+        caseClass: "COMPLIANT",
+      }),
+    expectedResult: (generated) => {
+      const hidden = generated.hiddenContext as { expected_reason_code: string; expected_result: unknown };
+      return { reason_code: hidden.expected_reason_code, result: hidden.expected_result };
+    },
+    wrongResult: { reason_code: "POLICY_COMPLIANT", result: { compliant: false, violations: [{ rule_id: "tampered", reason: "VALUE_MISMATCH" }], evaluated_rules: [] } },
+  },
+  {
+    ordinal: 7,
+    capabilityId: trial7Constants.CAPABILITY_ID,
+    historicalTrialId: trial7Constants.TRIAL_ID,
+    productionTrialId: trial7Constants.PRODUCTION_TRIAL_ID,
+    trialVersion: trial7Constants.TRIAL_VERSION,
+    verifierId: trial7Constants.VERIFIER_ID,
+    verifierVersion: trial7Constants.VERIFIER_VERSION,
+    certificateName: trial7Constants.CERTIFICATE_NAME,
+    generate: (trialId) =>
+      generateFailureRecoveryIdempotencyChallenge({
+        agentDid: agent.did,
+        trialId: trialId as typeof trial7Constants.TRIAL_ID,
+        caseClass: "SUCCESS_FIRST_ATTEMPT",
+      }),
+    expectedResult: (generated) => {
+      const hidden = generated.hiddenContext as { expected_reason_code: string; expected_result: unknown };
+      return { reason_code: hidden.expected_reason_code, result: hidden.expected_result };
+    },
+    wrongResult: {
+      reason_code: "RECOVERY_SUCCESS",
+      result: { status: "COMMITTED", final_state: { balance: 999999 }, applied_count: 1, idempotency_key: "tampered", attempts: [] },
+    },
+  },
 ];
 
 function contextFor(
@@ -188,7 +260,7 @@ async function finalize(capability: CapabilityCase, trialId: string, resultKind:
   return { repository, outcome };
 }
 
-describe("production certification across Capabilities 1-4", () => {
+describe("production certification across Capabilities 1-7", () => {
   for (const capability of CAPABILITY_CASES) {
     const { ordinal } = capability;
 

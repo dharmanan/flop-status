@@ -43,6 +43,30 @@ import {
   evaluatePractice as evaluateCapability4Practice,
   executeSignedReceiptVerification,
 } from "/capabilities/signed-receipt-verification.js";
+import {
+  CAPABILITY_ID as CAPABILITY5_ID,
+  PRODUCTION_TRIAL_ID as CAPABILITY5_TRIAL_ID,
+  TRIAL_VERSION as CAPABILITY5_TRIAL_VERSION,
+  createPracticeFixture as createCapability5PracticeFixture,
+  evaluatePractice as evaluateCapability5Practice,
+  executeStructuredDataTransformation,
+} from "/capabilities/structured-data-transformation.js";
+import {
+  CAPABILITY_ID as CAPABILITY6_ID,
+  PRODUCTION_TRIAL_ID as CAPABILITY6_TRIAL_ID,
+  TRIAL_VERSION as CAPABILITY6_TRIAL_VERSION,
+  createPracticeFixture as createCapability6PracticeFixture,
+  evaluatePractice as evaluateCapability6Practice,
+  executeConstraintPolicyCompliance,
+} from "/capabilities/constraint-policy-compliance.js";
+import {
+  CAPABILITY_ID as CAPABILITY7_ID,
+  PRODUCTION_TRIAL_ID as CAPABILITY7_TRIAL_ID,
+  TRIAL_VERSION as CAPABILITY7_TRIAL_VERSION,
+  createPracticeFixture as createCapability7PracticeFixture,
+  evaluatePractice as evaluateCapability7Practice,
+  executeFailureRecoveryIdempotency,
+} from "/capabilities/failure-recovery-idempotency.js";
 import { canonicalizeJson } from "/capabilities/jcs.js";
 import { createVerificationFlow } from "/verification-flow.js";
 
@@ -170,6 +194,93 @@ const CAPABILITIES = [
     execute: executeSignedReceiptVerification,
     createPracticeFixture: createCapability4PracticeFixture,
     evaluatePractice: evaluateCapability4Practice,
+  },
+  {
+    number: 5,
+    capabilityId: CAPABILITY5_ID,
+    trialId: CAPABILITY5_TRIAL_ID,
+    trialVersion: CAPABILITY5_TRIAL_VERSION,
+    statusId: "capability-5-status",
+    descriptionId: "capability-5-description",
+    purposeId: "capability-5-purpose",
+    acquireId: "acquire-capability-5",
+    practiceId: "practice-capability-5",
+    verifyId: "verify-capability-5",
+    certificateId: "capability-5-certificate",
+    useId: "capability-5-use",
+    practiceResultId: "practice-result-5",
+    flowId: "capability-5-flow",
+    prerequisiteCapabilityId: CAPABILITY4_ID,
+    name: "Structured Data Transformation",
+    certificateName: {
+      en: "Structured Data Transformation Certificate",
+      tr: "Yapılandırılmış Veri Dönüşümü Sertifikası",
+    },
+    purpose: {
+      en: "Transforms structured source data into an exact target structure according to an explicit machine-readable specification, without inventing, omitting or altering unrelated information.",
+      tr: "Yapılandırılmış kaynak veriyi, açık makine tarafından okunabilir bir spesifikasyona göre tam olarak beklenen hedef yapıya dönüştürür; ilgisiz bilgi uydurmaz, atlamaz veya değiştirmez.",
+    },
+    execute: executeStructuredDataTransformation,
+    createPracticeFixture: createCapability5PracticeFixture,
+    evaluatePractice: evaluateCapability5Practice,
+  },
+  {
+    number: 6,
+    capabilityId: CAPABILITY6_ID,
+    trialId: CAPABILITY6_TRIAL_ID,
+    trialVersion: CAPABILITY6_TRIAL_VERSION,
+    statusId: "capability-6-status",
+    descriptionId: "capability-6-description",
+    purposeId: "capability-6-purpose",
+    acquireId: "acquire-capability-6",
+    practiceId: "practice-capability-6",
+    verifyId: "verify-capability-6",
+    certificateId: "capability-6-certificate",
+    useId: "capability-6-use",
+    practiceResultId: "practice-result-6",
+    flowId: "capability-6-flow",
+    prerequisiteCapabilityId: CAPABILITY5_ID,
+    name: "Constraint & Policy Compliance",
+    certificateName: {
+      en: "Constraint & Policy Compliance Certificate",
+      tr: "Kısıt ve Politika Uyumluluğu Sertifikası",
+    },
+    purpose: {
+      en: "Evaluates structured data against an explicit machine-readable policy and returns a precise compliance verdict with deterministic violations. Not legal or ethical judgment — explicit rules applied consistently.",
+      tr: "Yapılandırılmış veriyi açık, makine tarafından okunabilir bir politikaya göre değerlendirir ve deterministik ihlallerle birlikte kesin bir uyumluluk kararı döndürür. Hukuki veya etik bir değerlendirme değildir — açık kurallar tutarlı biçimde uygulanır.",
+    },
+    execute: executeConstraintPolicyCompliance,
+    createPracticeFixture: createCapability6PracticeFixture,
+    evaluatePractice: evaluateCapability6Practice,
+  },
+  {
+    number: 7,
+    capabilityId: CAPABILITY7_ID,
+    trialId: CAPABILITY7_TRIAL_ID,
+    trialVersion: CAPABILITY7_TRIAL_VERSION,
+    statusId: "capability-7-status",
+    descriptionId: "capability-7-description",
+    purposeId: "capability-7-purpose",
+    acquireId: "acquire-capability-7",
+    practiceId: "practice-capability-7",
+    verifyId: "verify-capability-7",
+    certificateId: "capability-7-certificate",
+    useId: "capability-7-use",
+    practiceResultId: "practice-result-7",
+    flowId: "capability-7-flow",
+    prerequisiteCapabilityId: CAPABILITY6_ID,
+    name: "Failure Recovery & Idempotency",
+    certificateName: {
+      en: "Failure Recovery & Idempotency Certificate",
+      tr: "Hata Kurtarma ve İdempotentlik Sertifikası",
+    },
+    purpose: {
+      en: "Recovers safely from a scripted transient failure and applies a retryable operation exactly once, even when the same delivery is repeated. Not autonomous planning or distributed consensus — a bounded, deterministic simulation inside FLOP.",
+      tr: "Senaryolanmış geçici bir hatadan güvenle kurtulur ve aynı teslimat tekrarlansa bile yeniden denenebilir bir işlemi tam olarak bir kez uygular. Otonom planlama veya dağıtık konsensüs değildir — FLOP içinde sınırlı, deterministik bir simülasyondur.",
+    },
+    execute: executeFailureRecoveryIdempotency,
+    createPracticeFixture: createCapability7PracticeFixture,
+    evaluatePractice: evaluateCapability7Practice,
   },
 ];
 
@@ -663,14 +774,20 @@ function challengeSummary(number) {
   if (number === 1) return { en: "A fresh one-time public key, message and signature were generated for this DID.", tr: "Bu DID için tek kullanımlık yeni bir public key, mesaj ve imza üretildi." };
   if (number === 2) return { en: "A fresh JSON document was generated.", tr: "Yeni bir JSON belgesi üretildi." };
   if (number === 3) return { en: "A fresh room, nonce and raw message text were generated.", tr: "Yeni bir room, nonce ve ham mesaj metni üretildi." };
-  return { en: "A fresh signed receipt and a bounded server key set were generated.", tr: "Yeni bir imzalı receipt ve sınırlı sunucu anahtar kümesi üretildi." };
+  if (number === 4) return { en: "A fresh signed receipt and a bounded server key set were generated.", tr: "Yeni bir imzalı receipt ve sınırlı sunucu anahtar kümesi üretildi." };
+  if (number === 5) return { en: "Fresh source data and a transformation specification were generated.", tr: "Yeni bir kaynak veri ve transformation specification üretildi." };
+  if (number === 6) return { en: "A fresh input document and a policy rule set were generated.", tr: "Yeni bir girdi belgesi ve politika kural kümesi üretildi." };
+  return { en: "A fresh operation, initial state, attempt plan and retry policy were generated.", tr: "Yeni bir operation, initial state, attempt plan ve retry policy üretildi." };
 }
 
 function resultSummary(number, result) {
   if (number === 1) return { en: `Signature evaluated as ${result.reason_code}.`, tr: `İmza ${result.reason_code} olarak değerlendirildi.` };
   if (number === 2) return { en: `Canonical form of ${result.canonical_json.length} characters and its SHA256 digest were produced.`, tr: `${result.canonical_json.length} karakterlik canonical biçim ve SHA256 özeti üretildi.` };
   if (number === 3) return { en: "The text was cleaned and the canonical room|nonce|text message was built.", tr: "Metin temizlendi ve canonical room|nonce|metin mesajı oluşturuldu." };
-  return { en: `The receipt was classified as ${result.status} (${result.reason_code}).`, tr: `Receipt ${result.status} (${result.reason_code}) olarak sınıflandırıldı.` };
+  if (number === 4) return { en: `The receipt was classified as ${result.status} (${result.reason_code}).`, tr: `Receipt ${result.status} (${result.reason_code}) olarak sınıflandırıldı.` };
+  if (number === 5) return { en: `The transformation was evaluated as ${result.reason_code}.`, tr: `Dönüşüm ${result.reason_code} olarak değerlendirildi.` };
+  if (number === 6) return { en: `The policy evaluation was classified as ${result.reason_code}.`, tr: `Politika değerlendirmesi ${result.reason_code} olarak sınıflandırıldı.` };
+  return { en: `The recovery simulation ended as ${result.reason_code}.`, tr: `Kurtarma simülasyonu ${result.reason_code} olarak sonuçlandı.` };
 }
 
 async function certifyCapability(number) {
@@ -818,6 +935,49 @@ async function useCapability4() {
   byId("use-capability-4-result").textContent = JSON.stringify(result, null, 2);
 }
 
+async function useCapability5() {
+  const config = configFor(5);
+  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
+  let source;
+  let spec;
+  try {
+    source = JSON.parse(byId("use-source-5").value);
+    spec = JSON.parse(byId("use-spec-5").value);
+  } catch {
+    throw new Error(uiText("Enter valid JSON.", "Geçerli bir JSON gir."));
+  }
+  const result = await executeStructuredDataTransformation({ source, spec });
+  byId("use-capability-5-result").textContent = JSON.stringify(result, null, 2);
+}
+
+async function useCapability6() {
+  const config = configFor(6);
+  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
+  let document_;
+  let policy;
+  try {
+    document_ = JSON.parse(byId("use-document-6").value);
+    policy = JSON.parse(byId("use-policy-6").value);
+  } catch {
+    throw new Error(uiText("Enter valid JSON.", "Geçerli bir JSON gir."));
+  }
+  const result = await executeConstraintPolicyCompliance({ document: document_, policy });
+  byId("use-capability-6-result").textContent = JSON.stringify(result, null, 2);
+}
+
+async function useCapability7() {
+  const config = configFor(7);
+  if (capabilityStates.get(config.capabilityId)?.installation?.status !== "INSTALLED") throw new Error("CAPABILITY_NOT_INSTALLED");
+  let scenario;
+  try {
+    scenario = JSON.parse(byId("use-scenario-7").value);
+  } catch {
+    throw new Error(uiText("Enter valid JSON.", "Geçerli bir JSON gir."));
+  }
+  const result = await executeFailureRecoveryIdempotency(scenario);
+  byId("use-capability-7-result").textContent = JSON.stringify(result, null, 2);
+}
+
 async function disconnectIdentity() {
   await deleteIdentity();
   identity = null;
@@ -890,6 +1050,18 @@ byId("acquire-capability-4").addEventListener("click", () => acquireCapability(4
 byId("practice-capability-4").addEventListener("click", () => practiceCapability(4).catch(report));
 byId("verify-capability-4").addEventListener("click", () => certifyCapability(4).catch(report));
 byId("use-capability-4-run").addEventListener("click", () => useCapability4().catch(report));
+byId("acquire-capability-5").addEventListener("click", () => acquireCapability(5).catch(report));
+byId("practice-capability-5").addEventListener("click", () => practiceCapability(5).catch(report));
+byId("verify-capability-5").addEventListener("click", () => certifyCapability(5).catch(report));
+byId("use-capability-5-run").addEventListener("click", () => useCapability5().catch(report));
+byId("acquire-capability-6").addEventListener("click", () => acquireCapability(6).catch(report));
+byId("practice-capability-6").addEventListener("click", () => practiceCapability(6).catch(report));
+byId("verify-capability-6").addEventListener("click", () => certifyCapability(6).catch(report));
+byId("use-capability-6-run").addEventListener("click", () => useCapability6().catch(report));
+byId("acquire-capability-7").addEventListener("click", () => acquireCapability(7).catch(report));
+byId("practice-capability-7").addEventListener("click", () => practiceCapability(7).catch(report));
+byId("verify-capability-7").addEventListener("click", () => certifyCapability(7).catch(report));
+byId("use-capability-7-run").addEventListener("click", () => useCapability7().catch(report));
 byId("download-backup").addEventListener("click", () => { if (identity?.backup) downloadBackup(identity.backup); });
 byId("reset-identity").addEventListener("click", () => disconnectIdentity().catch(report));
 

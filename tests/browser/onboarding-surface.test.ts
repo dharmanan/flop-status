@@ -40,10 +40,14 @@ describe("consumer identity and production capability surface", () => {
     });
   }
 
-  it("does not start any Capability 5 or later surface", () => {
-    expect(html).not.toContain('id="acquire-capability-5"');
-    expect(html).not.toContain("structured.data-transformation");
-    expect(html).not.toContain("constraint.policy-compliance");
+  it("exposes Capabilities 5, 6 and 7 but does not start any Capability 8 or later surface", () => {
+    expect(html).toContain('id="acquire-capability-5"');
+    expect(html).toContain("data.structured-transformation");
+    expect(html).toContain('id="acquire-capability-6"');
+    expect(html).toContain("policy.constraint-compliance");
+    expect(html).toContain('id="acquire-capability-7"');
+    expect(html).toContain("runtime.failure-recovery-idempotency");
+    expect(html).not.toContain('id="acquire-capability-8"');
   });
 
   it("shows certificate count and cumulative rank as separate product state", () => {

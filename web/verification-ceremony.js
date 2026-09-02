@@ -27,6 +27,18 @@ const CAPABILITY_VISUALS = {
     parts: [["receipt", "RECEIPT"], ["signature", "SIGNATURE"], ["key_id", "KEY ID"], ["server_keys", "SERVER KEYS"]],
     checks: [["Match key id", "Key ID eşleştir"], ["Check signature", "İmzayı doğrula"], ["Check payload", "Payload kontrol et"], ["Classify receipt", "Receipt sınıflandır"]],
   },
+  5: {
+    parts: [["source", "SOURCE DATA"], ["spec", "TRANSFORM SPEC"], ["result", "RESULT"]],
+    checks: [["Read source paths", "Kaynak path'leri oku"], ["Apply operations", "Operasyonları uygula"], ["Coerce types", "Tipleri dönüştür"], ["Build result", "Sonucu oluştur"]],
+  },
+  6: {
+    parts: [["document", "INPUT"], ["policy", "POLICY"], ["rules", "RULE SET"], ["compliance_result", "COMPLIANCE RESULT"]],
+    checks: [["Read input document", "Girdi belgesini oku"], ["Evaluate rules in order", "Kuralları sırayla değerlendir"], ["Collect violations", "İhlalleri topla"], ["Build compliance result", "Uyumluluk sonucunu oluştur"]],
+  },
+  7: {
+    parts: [["initial_state", "INITIAL STATE"], ["operation", "OPERATION"], ["idempotency_key", "IDEMPOTENCY KEY"], ["attempt_plan", "ATTEMPT PLAN"]],
+    checks: [["Process attempts in order", "Denemeleri sırayla işle"], ["Retry on transient failure", "Geçici hatada yeniden dene"], ["Apply operation once", "Operasyonu bir kez uygula"], ["Absorb duplicate delivery", "Tekrar teslimatı absorbe et"]],
+  },
 };
 
 function isTr() {
