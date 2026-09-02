@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { PgAgentProfileRepository } from "../db/agent-profile-repository.js";
 import { PgChallengeStateRepository } from "../db/challenge-state-repository.js";
 import { PgCertificationRepository } from "../db/certification-repository.js";
 import { PgCommunicationRepository } from "../db/communication-repository.js";
@@ -12,6 +13,8 @@ import { runMigrations } from "../db/migration-runner.js";
 import { createPgPool, PgChallengeRepository } from "../db/pg-adapter.js";
 import { loadAttestationSignerFromEnv } from "../receipts/attestation-signer.js";
 import { PublicVerificationService } from "../verification/public-verification-service.js";
+import { AgentProfileService } from "./agent-profile-service.js";
+import { createAgentProfileAwareHandler } from "./agent-profile-router.js";
 import { CapabilityProductService } from "./capability-product-service.js";
 import { CommunicationService } from "./communication-service.js";
 import { DirectMailboxService } from "./direct-mailbox-service.js";
@@ -35,6 +38,7 @@ async function main(): Promise<void> {
   const capabilityProduct = new CapabilityProductService(new PgCertificationRepository(pool));
   const communication = new CommunicationService(new PgCommunicationRepository(pool));
   const mailbox = new DirectMailboxService(new PgDirectMailboxRepository(pool));
+  const profiles = new AgentProfileService(new PgAgentProfileRepository(pool));
   const trial1Api = new Trial1ApiService({
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),
@@ -51,7 +55,8 @@ async function main(): Promise<void> {
     communication,
     health: migrations,
   });
-  const server = createServer(createDirectMailboxAwareHandler(runtimeHandler, mailbox));
+  const mailboxHandler = createDirectMailboxAwareHandler(runtimeHandler, mailbox);
+  const server = createServer(createAgentProfileAwareHandler(mailboxHandler, profiles));
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
