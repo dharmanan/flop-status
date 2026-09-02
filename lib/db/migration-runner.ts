@@ -21,6 +21,7 @@ const MIGRATIONS = [
   { id: "0015_agent_communication_auth_nonces", path: new URL("../../db/migrations/0015_agent_communication_auth_nonces.sql", import.meta.url) },
   { id: "0016_agent_direct_mailbox", path: new URL("../../db/migrations/0016_agent_direct_mailbox.sql", import.meta.url) },
   { id: "0017_agent_profiles", path: new URL("../../db/migrations/0017_agent_profiles.sql", import.meta.url) },
+  { id: "0018_tclk_deal_history", path: new URL("../../db/migrations/0018_tclk_deal_history.sql", import.meta.url) },
 ] as const;
 
 export interface MigrationResult {
