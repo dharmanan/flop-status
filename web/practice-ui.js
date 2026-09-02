@@ -2,6 +2,7 @@ import { bytesToBase64Url } from "/identity-crypto.js";
 import {
   executeEd25519SignatureVerification,
   evaluatePractice as evaluateCapability1Practice,
+  textMessageToBase64Url,
 } from "/capabilities/ed25519-signature-verification.js";
 import {
   executeCanonicalJsonSha256,
@@ -274,6 +275,133 @@ function practiceStatusTarget(number) {
   return document.getElementById(number === 1 ? "practice-result" : `practice-result-${number}`);
 }
 
+function tr() {
+  return document.documentElement.lang === "tr";
+}
+
+export function interpretCapabilityUseResult(number, result, language = "en") {
+  const isTr = language === "tr";
+  const pair = (tone, enTitle, trTitle, enDetail, trDetail) => ({
+    tone,
+    title: isTr ? trTitle : enTitle,
+    detail: isTr ? trDetail : enDetail,
+  });
+
+  if (number === 1) {
+    return result?.valid === true
+      ? pair("success", "Signature verified", "İmza doğrulandı", "The message, public key and signature match.", "Mesaj, public key ve imza birbiriyle eşleşiyor.")
+      : pair("error", "Signature could not be verified", "İmza doğrulanamadı", "The message, key or signature does not match.", "Mesaj, anahtar veya imza eşleşmiyor.");
+  }
+  if (number === 2) {
+    return typeof result?.canonical_json === "string" && typeof result?.sha256 === "string"
+      ? pair("success", "Canonical fingerprint created", "Kanonik parmak izi oluşturuldu", "The JSON was canonicalized and its SHA256 digest was produced.", "JSON kanonikleştirildi ve SHA256 özeti üretildi.")
+      : pair("error", "JSON could not be processed", "JSON işlenemedi", "Check the input and try again.", "Girdiyi kontrol edip tekrar dene.");
+  }
+  if (number === 3) {
+    return typeof result?.canonical_message === "string"
+      ? pair("success", "Canonical message created", "Kanonik mesaj oluşturuldu", "The room, nonce and message were normalized into the Technocore format.", "Room, nonce ve mesaj Technocore biçimine dönüştürüldü.")
+      : pair("error", "Message could not be built", "Mesaj oluşturulamadı", "Check the room, nonce and message text.", "Room, nonce ve mesaj metnini kontrol et.");
+  }
+  if (number === 4) {
+    if (result?.status === "VALID") return pair("success", "Receipt verified", "Makbuz doğrulandı", "The signed receipt matches a supplied FLOP server key.", "İmzalı makbuz verilen FLOP sunucu anahtarlarından biriyle eşleşiyor.");
+    if (result?.status === "UNKNOWN") return pair("warning", "Verification incomplete", "Doğrulama tamamlanamadı", "The receipt references a server key that is not in the supplied key set.", "Makbuz, verilen anahtar kümesinde bulunmayan bir sunucu anahtarına başvuruyor.");
+    return pair("error", "Receipt is not valid", "Makbuz geçerli değil", "The signature or declared server key does not match.", "İmza veya belirtilen sunucu anahtarı eşleşmiyor.");
+  }
+  if (number === 5) {
+    return result?.reason_code === "TRANSFORMATION_MATCH" && result?.result !== null
+      ? pair("success", "Transformation completed", "Dönüşüm tamamlandı", "The source data was transformed according to the specification.", "Kaynak veri spesifikasyona göre dönüştürüldü.")
+      : pair("error", "Transformation failed", "Dönüşüm başarısız", `Reason: ${result?.reason_code ?? "UNKNOWN"}.`, `Neden: ${result?.reason_code ?? "UNKNOWN"}.`);
+  }
+  if (number === 6) {
+    if (result?.reason_code === "POLICY_COMPLIANT") return pair("success", "Policy compliant", "Politikaya uygun", "All evaluated rules passed.", "Değerlendirilen tüm kurallar geçti.");
+    if (result?.reason_code === "POLICY_VIOLATION") {
+      const count = Array.isArray(result?.result?.violations) ? result.result.violations.length : 0;
+      return pair("warning", "Policy violations found", "Politika ihlali bulundu", `${count} rule violation${count === 1 ? "" : "s"} detected.`, `${count} kural ihlali tespit edildi.`);
+    }
+    return pair("error", "Policy could not be evaluated", "Politika değerlendirilemedi", `Reason: ${result?.reason_code ?? "UNKNOWN"}.`, `Neden: ${result?.reason_code ?? "UNKNOWN"}.`);
+  }
+  if (number === 7) {
+    if (result?.result?.status === "COMMITTED" && ["RECOVERY_SUCCESS", "IDEMPOTENT_REPLAY"].includes(result?.reason_code)) {
+      const applied = result.result.applied_count ?? 0;
+      return pair("success", "Recovery completed safely", "Kurtarma güvenle tamamlandı", `The operation was committed and applied ${applied} time${applied === 1 ? "" : "s"}.`, `İşlem commit edildi ve ${applied} kez uygulandı.`);
+    }
+    if (["RETRY_LIMIT_EXCEEDED", "PERMANENT_FAILURE"].includes(result?.reason_code)) {
+      return pair("warning", "Scenario ended without commit", "Senaryo commit olmadan sonlandı", `The simulator completed with ${result.reason_code}.`, `Simülasyon ${result.reason_code} sonucuyla tamamlandı.`);
+    }
+    return pair("error", "Recovery scenario is invalid", "Kurtarma senaryosu geçersiz", `Reason: ${result?.reason_code ?? "UNKNOWN"}.`, `Neden: ${result?.reason_code ?? "UNKNOWN"}.`);
+  }
+  return pair("error", "Unknown capability result", "Bilinmeyen yetenek sonucu", "The result could not be interpreted.", "Sonuç yorumlanamadı.");
+}
+
+function ensureFeedbackStyle() {
+  if (document.getElementById("flop-capability-use-feedback-style")) return;
+  const style = document.createElement("style");
+  style.id = "flop-capability-use-feedback-style";
+  style.textContent = `
+    .capability-use-feedback { margin: 12px 0 10px; padding: 12px 14px; border: 1px solid #2d3c33; border-radius: 10px; background: #0f1712; display: grid; gap: 4px; }
+    .capability-use-feedback strong { font-size: 13px; color: #dff5e5; }
+    .capability-use-feedback span { font-size: 12px; line-height: 1.45; color: #a8b8ad; }
+    .capability-use-feedback[data-tone="warning"] { border-color: #66552c; background: #18150d; }
+    .capability-use-feedback[data-tone="warning"] strong { color: #ead18a; }
+    .capability-use-feedback[data-tone="warning"] span { color: #b9aa80; }
+    .capability-use-feedback[data-tone="error"] { border-color: #62403d; background: #181110; }
+    .capability-use-feedback[data-tone="error"] strong { color: #efb4ad; }
+    .capability-use-feedback[data-tone="error"] span { color: #bd9995; }
+  `;
+  document.head.appendChild(style);
+}
+
+function feedbackTarget(number) {
+  let target = document.getElementById(`use-capability-${number}-feedback`);
+  if (target) return target;
+  const resultNode = resultTarget(number);
+  if (!resultNode?.parentElement) return null;
+  target = document.createElement("div");
+  target.id = `use-capability-${number}-feedback`;
+  target.className = "capability-use-feedback";
+  target.hidden = true;
+  target.setAttribute("role", "status");
+  target.setAttribute("aria-live", "polite");
+  resultNode.insertAdjacentElement("beforebegin", target);
+  return target;
+}
+
+export function renderCapabilityUseFeedback(number, result) {
+  ensureFeedbackStyle();
+  const interpreted = interpretCapabilityUseResult(number, result, tr() ? "tr" : "en");
+  const target = feedbackTarget(number);
+  if (target) {
+    target.replaceChildren();
+    target.dataset.tone = interpreted.tone;
+    target.append(
+      Object.assign(document.createElement("strong"), { textContent: `${interpreted.tone === "success" ? "✓ " : interpreted.tone === "warning" ? "! " : "✕ "}${interpreted.title}` }),
+      Object.assign(document.createElement("span"), { textContent: interpreted.detail }),
+    );
+    target.hidden = false;
+    target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  const resultNode = resultTarget(number);
+  if (resultNode) resultNode.textContent = JSON.stringify(result, null, 2);
+  return interpreted;
+}
+
+function renderUseError(number, error) {
+  ensureFeedbackStyle();
+  const target = feedbackTarget(number);
+  if (!target) return;
+  target.replaceChildren();
+  target.dataset.tone = "error";
+  const title = tr() ? "İşlem tamamlanamadı" : "Operation could not be completed";
+  const detail = error instanceof SyntaxError
+    ? (tr() ? "JSON alanlarından biri geçerli değil." : "One of the JSON fields is not valid.")
+    : (error instanceof Error ? error.message : String(error));
+  target.append(
+    Object.assign(document.createElement("strong"), { textContent: `✕ ${title}` }),
+    Object.assign(document.createElement("span"), { textContent: detail }),
+  );
+  target.hidden = false;
+}
+
 export function renderPracticeFixture(number, fixture, result, passed) {
   const values = practiceFieldValues(number, fixture);
   for (const [id, value] of Object.entries(values)) {
@@ -286,8 +414,8 @@ export function renderPracticeFixture(number, fixture, result, passed) {
   if (resultNode) resultNode.textContent = JSON.stringify(result, null, 2);
   const status = practiceStatusTarget(number);
   if (status) status.textContent = passed
-    ? (document.documentElement.lang === "tr" ? "Pratik başarılı. Aşağıdaki taze örnek gerçek yetenekle işlendi." : "Practice passed. The fresh example below was processed by the real capability.")
-    : (document.documentElement.lang === "tr" ? "Pratik başarısız. Yeni bir örnekle tekrar dene." : "Practice failed. Try again with a new example.");
+    ? (tr() ? "Pratik başarılı. Aşağıdaki taze örnek gerçek yetenekle işlendi." : "Practice passed. The fresh example below was processed by the real capability.")
+    : (tr() ? "Pratik başarısız. Yeni bir örnekle tekrar dene." : "Practice failed. Try again with a new example.");
 }
 
 async function runPractice(number, button) {
@@ -302,18 +430,77 @@ async function runPractice(number, button) {
   }
 }
 
+function requiredValue(id) {
+  const field = document.getElementById(id);
+  const value = field && "value" in field ? String(field.value) : "";
+  if (!value.trim()) throw new Error(tr() ? "Gerekli alanları doldur." : "Complete the required fields.");
+  return value;
+}
+
+function parseJsonField(id) {
+  return JSON.parse(requiredValue(id));
+}
+
+async function runCapabilityUse(number, button) {
+  button.disabled = true;
+  try {
+    let result;
+    if (number === 1) {
+      result = await executeEd25519SignatureVerification({
+        public_key: requiredValue("use-public-key").trim(),
+        message: textMessageToBase64Url(requiredValue("use-message")),
+        signature: requiredValue("use-signature").trim(),
+      });
+    } else if (number === 2) {
+      result = await executeCanonicalJsonSha256({ document: parseJsonField("use-json-2") });
+    } else if (number === 3) {
+      result = await executeTechnocoreCanonicalMessage({
+        room: requiredValue("use-room").trim(),
+        nonce: requiredValue("use-nonce").trim(),
+        text: requiredValue("use-text"),
+      });
+    } else if (number === 4) {
+      result = await executeSignedReceiptVerification({ receipt: parseJsonField("use-receipt"), server_keys: parseJsonField("use-server-keys") });
+    } else if (number === 5) {
+      result = await executeStructuredDataTransformation({ source: parseJsonField("use-source-5"), spec: parseJsonField("use-spec-5") });
+    } else if (number === 6) {
+      result = await executeConstraintPolicyCompliance({ document: parseJsonField("use-document-6"), policy: parseJsonField("use-policy-6") });
+    } else if (number === 7) {
+      result = await executeFailureRecoveryIdempotency(parseJsonField("use-scenario-7"));
+    } else {
+      throw new Error(`UNKNOWN_CAPABILITY_${number}`);
+    }
+    renderCapabilityUseFeedback(number, result);
+  } catch (error) {
+    renderUseError(number, error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function bind() {
   document.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target.closest('button[id^="practice-capability-"]') : null;
-    if (!(target instanceof HTMLButtonElement)) return;
-    const number = Number(target.id.match(/practice-capability-(\d+)/)?.[1]);
+    const element = event.target instanceof Element ? event.target : null;
+    const practiceButton = element?.closest('button[id^="practice-capability-"]');
+    if (practiceButton instanceof HTMLButtonElement) {
+      const number = Number(practiceButton.id.match(/practice-capability-(\d+)/)?.[1]);
+      if (!Number.isInteger(number) || number < 1 || number > 7) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void runPractice(number, practiceButton).catch((error) => {
+        const status = practiceStatusTarget(number);
+        if (status) status.textContent = error instanceof Error ? error.message : String(error);
+      });
+      return;
+    }
+
+    const useButton = element?.closest('button[id^="use-capability-"][id$="-run"]');
+    if (!(useButton instanceof HTMLButtonElement)) return;
+    const number = Number(useButton.id.match(/use-capability-(\d+)-run/)?.[1]);
     if (!Number.isInteger(number) || number < 1 || number > 7) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    void runPractice(number, target).catch((error) => {
-      const status = practiceStatusTarget(number);
-      if (status) status.textContent = error instanceof Error ? error.message : String(error);
-    });
+    void runCapabilityUse(number, useButton);
   }, { capture: true });
 }
 

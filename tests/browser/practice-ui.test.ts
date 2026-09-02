@@ -3,6 +3,7 @@ import {
   createFreshPracticeFixture,
   evaluatePracticeFixture,
   executePracticeFixture,
+  interpretCapabilityUseResult,
   practiceFieldValues,
 } from "../../web/practice-ui.js";
 
@@ -40,5 +41,38 @@ describe("C1-C7 practice fixtures", () => {
     const fixture = await createFreshPracticeFixture(1);
     const fields = practiceFieldValues(1, fixture);
     expect(fields["use-message"]).toMatch(/^FLOP practice [a-f0-9]+$/);
+  });
+});
+
+describe("C1-C7 human-readable use feedback", () => {
+  it("reports a valid C1 signature as success in Turkish", () => {
+    expect(interpretCapabilityUseResult(1, { valid: true, reason_code: "SIGNATURE_VALID" }, "tr")).toEqual({
+      tone: "success",
+      title: "İmza doğrulandı",
+      detail: "Mesaj, public key ve imza birbiriyle eşleşiyor.",
+    });
+  });
+
+  it("reports canonical JSON, canonical messages and transformations as success", () => {
+    expect(interpretCapabilityUseResult(2, { canonical_json: "{}", sha256: "sha256:x" }, "tr").tone).toBe("success");
+    expect(interpretCapabilityUseResult(3, { canonical_message: "room|1|hello" }, "tr").tone).toBe("success");
+    expect(interpretCapabilityUseResult(5, { reason_code: "TRANSFORMATION_MATCH", result: {} }, "tr").tone).toBe("success");
+  });
+
+  it("distinguishes C4 VALID, UNKNOWN and INVALID", () => {
+    expect(interpretCapabilityUseResult(4, { status: "VALID" }, "tr").tone).toBe("success");
+    expect(interpretCapabilityUseResult(4, { status: "UNKNOWN" }, "tr").tone).toBe("warning");
+    expect(interpretCapabilityUseResult(4, { status: "INVALID" }, "tr").tone).toBe("error");
+  });
+
+  it("treats a policy violation as a valid warning result rather than a system error", () => {
+    const feedback = interpretCapabilityUseResult(6, { reason_code: "POLICY_VIOLATION", result: { violations: [{ rule_id: "x" }] } }, "tr");
+    expect(feedback.tone).toBe("warning");
+    expect(feedback.title).toBe("Politika ihlali bulundu");
+  });
+
+  it("treats committed C7 recovery as success and an exhausted retry plan as warning", () => {
+    expect(interpretCapabilityUseResult(7, { reason_code: "IDEMPOTENT_REPLAY", result: { status: "COMMITTED", applied_count: 1 } }, "tr").tone).toBe("success");
+    expect(interpretCapabilityUseResult(7, { reason_code: "RETRY_LIMIT_EXCEEDED", result: { status: "FAILED" } }, "tr").tone).toBe("warning");
   });
 });
