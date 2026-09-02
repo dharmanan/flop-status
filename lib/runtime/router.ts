@@ -19,12 +19,14 @@ import {
   CapabilityProductError,
   type CapabilityProductService,
 } from "./capability-product-service.js";
+import { CommunicationError, type CommunicationService } from "./communication-service.js";
 import {
   Trial1ApiRequestError,
   Trial1VerificationUnknownError,
 } from "./trial1-api-service.js";
 
 export const MAX_CHALLENGE_BODY_BYTES = 8_192;
+export const MAX_COMMUNICATION_BODY_BYTES = 16_384;
 
 export interface PublicVerificationReader {
   getReceipt(receiptId: string): Promise<PublicReceiptVerification["receipt"] | null>;
@@ -57,6 +59,7 @@ export interface RuntimeRouterDependencies {
   publicAgent: PublicAgentReader;
   trial1Api: Trial1ApiWriter;
   capabilityProduct?: CapabilityProductService;
+  communication?: CommunicationService;
   health: unknown;
 }
 
@@ -142,6 +145,36 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     }
     if (request.method === "GET" && path === "/api/v1/server-keys") {
       json(response, 200, { keys: await deps.publicVerification.getServerKeys() });
+      return;
+    }
+
+    if (request.method === "POST" && path === "/api/v1/communication/rooms") {
+      if (!deps.communication) throw new Error("communication service unavailable");
+      const body = await readJsonBody(request, MAX_COMMUNICATION_BODY_BYTES);
+      json(response, 201, await deps.communication.createRoom(body.value));
+      return;
+    }
+
+    if (request.method === "POST" && path === "/api/v1/communication/rooms/query") {
+      if (!deps.communication) throw new Error("communication service unavailable");
+      const body = await readJsonBody(request, MAX_COMMUNICATION_BODY_BYTES);
+      json(response, 200, await deps.communication.listRooms(body.value));
+      return;
+    }
+
+    const roomMessagesQuery = path.match(/^\/api\/v1\/communication\/rooms\/([^/]+)\/messages\/query$/);
+    if (request.method === "POST" && roomMessagesQuery) {
+      if (!deps.communication) throw new Error("communication service unavailable");
+      const body = await readJsonBody(request, MAX_COMMUNICATION_BODY_BYTES);
+      json(response, 200, await deps.communication.listMessages(body.value, decodedPathValue(roomMessagesQuery[1] ?? "")));
+      return;
+    }
+
+    const roomMessages = path.match(/^\/api\/v1\/communication\/rooms\/([^/]+)\/messages$/);
+    if (request.method === "POST" && roomMessages) {
+      if (!deps.communication) throw new Error("communication service unavailable");
+      const body = await readJsonBody(request, MAX_COMMUNICATION_BODY_BYTES);
+      json(response, 201, await deps.communication.sendMessage(body.value, decodedPathValue(roomMessages[1] ?? "")));
       return;
     }
 
@@ -280,6 +313,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     }
     if (error instanceof Trial1ApiRequestError) {
       apiError(response, 400, error.code, error.message, requestId);
+      return;
+    }
+    if (error instanceof CommunicationError) {
+      const statusByCode: Record<string, number> = {
+        INVALID_COMMUNICATION_REQUEST: 400,
+        INVALID_COMMUNICATION_SIGNATURE: 401,
+        COMMUNICATION_ACTION_EXPIRED: 410,
+        COMMUNICATION_REPLAY: 409,
+        ROOM_NOT_FOUND: 404,
+        ROOM_ACCESS_DENIED: 403,
+      };
+      apiError(response, statusByCode[error.code] ?? 400, error.code, error.message, requestId);
       return;
     }
     if (error instanceof CapabilityProductError) {
