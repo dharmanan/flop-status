@@ -26,9 +26,10 @@ describe("Agent Network browser surface", () => {
     expect(network).toContain('/messages/query');
     expect(network).toContain('/messages`');
     expect(network).toContain('method: "POST"');
-    expect(network).toContain('action: "LIST_ROOMS"');
-    expect(network).toContain('action: "LIST_MESSAGES"');
-    expect(network).toContain('action: "SEND_MESSAGE"');
+    expect(network).toContain('signedAction("CREATE_ROOM"');
+    expect(network).toContain('signedAction("LIST_ROOMS"');
+    expect(network).toContain('signedAction("LIST_MESSAGES"');
+    expect(network).toContain('signedAction("SEND_MESSAGE"');
   });
 
   it("independently verifies stored sender signatures using the sender DID public key", () => {
