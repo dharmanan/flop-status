@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { TclkMcpClient, TclkMcpError, type TclkToolName } from "./tclk-mcp-client.js";
 import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
+import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history-service.js";
 
 const MAX_TCLK_BODY_BYTES = 1_048_576;
 const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
@@ -58,20 +59,49 @@ async function readJson(request: IncomingMessage): Promise<Record<string, unknow
   }
 }
 
-async function readRawRoom(room: string): Promise<unknown> {
+interface RawRoom {
+  room?: unknown;
+  messages?: unknown;
+  last_seq?: unknown;
+}
+
+async function readRawRoom(room: string): Promise<RawRoom> {
   if (!TCLK_ROOM_RE.test(room)) {
     throw Object.assign(new Error("raw proxy is limited to official TCLK offer/deal rooms"), { status: 400, code: "INVALID_TCLK_ROOM" });
   }
   const response = await fetch(`${TECHNOCORE_URL}/r/${room}?format=json`, { headers: { accept: "application/json" } });
   if (response.status === 404) return { room, messages: [], last_seq: 0 };
   if (!response.ok) throw Object.assign(new Error(`Technocore room read failed: HTTP ${response.status}`), { status: 502, code: "TECHNOCORE_READ_FAILED" });
-  return response.json();
+  return response.json() as Promise<RawRoom>;
+}
+
+function rawMessages(room: RawRoom): RawTclkMessage[] {
+  if (!Array.isArray(room.messages)) return [];
+  return room.messages.flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const item = value as Record<string, unknown>;
+    if (!Number.isSafeInteger(item.seq) || typeof item.from !== "string" || typeof item.sig !== "string" || typeof item.text !== "string") return [];
+    if (typeof item.nonce !== "number" && typeof item.nonce !== "string") return [];
+    return [{
+      seq: Number(item.seq),
+      from: item.from,
+      sig: item.sig,
+      nonce: item.nonce,
+      text: item.text,
+    }];
+  });
+}
+
+async function archiveRoom(history: TclkDealHistoryService | undefined, roomName: string, room: RawRoom): Promise<void> {
+  if (!history) return;
+  try { await history.ingestRoom(roomName, rawMessages(room)); } catch {}
 }
 
 export function createTclkAwareHandler(
   fallback: (request: IncomingMessage, response: ServerResponse) => void,
   mcp = new TclkMcpClient(),
   paper = new TclkPaperRailAdapter(mcp),
+  history?: TclkDealHistoryService,
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     void (async () => {
@@ -93,9 +123,26 @@ export function createTclkAwareHandler(
           return;
         }
 
+        if (request.method === "GET" && path === "/api/v1/tclk/history") {
+          if (!history) {
+            json(response, 503, { error: { code: "TCLK_HISTORY_UNAVAILABLE", message: "Durable TCLK history is not configured." } });
+            return;
+          }
+          const did = url.searchParams.get("did")?.trim() ?? "";
+          if (!did.startsWith("did:key:")) {
+            json(response, 400, { error: { code: "INVALID_DID", message: "A did:key query parameter is required." } });
+            return;
+          }
+          json(response, 200, { deals: await history.listByDid(did) });
+          return;
+        }
+
         const rawRoomMatch = path.match(/^\/api\/v1\/tclk\/rooms\/([a-z0-9_-]+)$/);
         if (request.method === "GET" && rawRoomMatch) {
-          json(response, 200, { room: await readRawRoom(rawRoomMatch[1] ?? "") });
+          const roomName = rawRoomMatch[1] ?? "";
+          const room = await readRawRoom(roomName);
+          await archiveRoom(history, roomName, room);
+          json(response, 200, { room });
           return;
         }
 
@@ -107,7 +154,17 @@ export function createTclkAwareHandler(
             return;
           }
           const body = await readJson(request);
-          json(response, 200, { result: await mcp.call(tool, body) });
+          const result = await mcp.call(tool, body);
+          if (tool === "tclk_post_frame" && (result as { posted?: unknown })?.posted === true && history) {
+            const roomName = typeof body.room === "string" ? body.room : "";
+            if (TCLK_ROOM_RE.test(roomName)) {
+              try {
+                const room = await readRawRoom(roomName);
+                await archiveRoom(history, roomName, room);
+              } catch {}
+            }
+          }
+          json(response, 200, { result });
           return;
         }
 
