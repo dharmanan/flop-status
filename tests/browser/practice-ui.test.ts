@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   createFreshPracticeFixture,
@@ -16,6 +17,9 @@ const EXPECTED_FIELD_IDS: Record<number, string[]> = {
   6: ["use-document-6", "use-policy-6"],
   7: ["use-scenario-7"],
 };
+
+const feedbackCss = readFileSync(new URL("../../web/capability-use-feedback.css", import.meta.url), "utf8");
+const profileHint = readFileSync(new URL("../../web/tclk-profile-hint.js", import.meta.url), "utf8");
 
 describe("C1-C7 practice fixtures", () => {
   for (const number of [1, 2, 3, 4, 5, 6, 7]) {
@@ -74,5 +78,13 @@ describe("C1-C7 human-readable use feedback", () => {
   it("treats committed C7 recovery as success and an exhausted retry plan as warning", () => {
     expect(interpretCapabilityUseResult(7, { reason_code: "IDEMPOTENT_REPLAY", result: { status: "COMMITTED", applied_count: 1 } }, "tr").tone).toBe("success");
     expect(interpretCapabilityUseResult(7, { reason_code: "RETRY_LIMIT_EXCEEDED", result: { status: "FAILED" } }, "tr").tone).toBe("warning");
+  });
+
+  it("loads CSP-safe external feedback CSS with separated title and detail blocks", () => {
+    expect(profileHint).toContain('/capability-use-feedback.css?v=practice-feedback-v1');
+    expect(profileHint).toContain('import("/practice-ui.js?v=practice-ui-v2")');
+    expect(feedbackCss).toContain(".capability-use-feedback strong");
+    expect(feedbackCss).toContain("display: block;");
+    expect(feedbackCss).toContain(".capability-use-feedback span");
   });
 });
