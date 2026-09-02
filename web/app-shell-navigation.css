@@ -43,6 +43,9 @@ main.workspace-mode:has(#seed-gate:not([hidden])) > #identity-summary:not([hidde
 .product-nav-item { cursor: pointer; user-select: none; }
 .product-nav-item:focus-visible { outline: 1px solid #527cff; outline-offset: 2px; }
 .shell-view-hidden { display: none !important; }
+/* app-shell.css intentionally forces #active-actions visible in capability mode.
+   This more specific rule wins when navigation or Agent Network hides that source view. */
+main.workspace-mode #active-actions.shell-view-hidden { display: none !important; }
 .workspace-secondary-view { min-height: 620px; padding: 22px 20px 28px; }
 .shell-screen { display: grid; gap: 18px; }
 .shell-screen-head { padding-bottom: 16px; border-bottom: 1px solid #202b35; }
