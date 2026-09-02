@@ -20,6 +20,7 @@ import { CommunicationService } from "./communication-service.js";
 import { DirectMailboxService } from "./direct-mailbox-service.js";
 import { createDirectMailboxAwareHandler } from "./direct-mailbox-router.js";
 import { createRuntimeRequestHandler } from "./router.js";
+import { createTclkAwareHandler } from "./tclk-router.js";
 import { Trial1ApiService } from "./trial1-api-service.js";
 
 async function main(): Promise<void> {
@@ -56,7 +57,8 @@ async function main(): Promise<void> {
     health: migrations,
   });
   const mailboxHandler = createDirectMailboxAwareHandler(runtimeHandler, mailbox);
-  const server = createServer(createAgentProfileAwareHandler(mailboxHandler, profiles));
+  const profileHandler = createAgentProfileAwareHandler(mailboxHandler, profiles);
+  const server = createServer(createTclkAwareHandler(profileHandler));
 
   server.listen(port, "0.0.0.0", () => {
     process.stdout.write(`FLOP runtime listening on port ${port}\n`);
