@@ -129,7 +129,7 @@ async function renderHistory() {
   const mine = workspace?.querySelector('.tclk-tabs button[data-tab="mine"].active');
   const main = workspace?.querySelector(".tclk-main");
   if (!workspace || !mine || !main) return;
-  if (main.querySelector(".tclk-history-detail")) return;
+  if (main.querySelector(".tclk-history-detail, .tclk-history-section")) return;
 
   const did = activeDid();
   if (!did.startsWith("did:key:")) return;
@@ -137,7 +137,6 @@ async function renderHistory() {
   try {
     const body = await api(`/api/v1/tclk/history?did=${encodeURIComponent(did)}`);
     const history = Array.isArray(body?.deals) ? body.deals.filter((deal) => TERMINAL.has(String(deal?.status))) : [];
-    main.querySelector(".tclk-history-section")?.remove();
     if (!history.length) return;
 
     const empty = main.querySelector(".tclk-empty");
@@ -162,9 +161,7 @@ async function renderHistory() {
       );
       const amount = node("div", "tclk-history-amount", `${deal.amount} ${deal.asset}`);
       const bottom = node("div", "tclk-history-card-bottom");
-      bottom.append(
-        node("span", "tclk-history-meta", new Date(deal.updatedAt).toLocaleString()),
-      );
+      bottom.append(node("span", "tclk-history-meta", new Date(deal.updatedAt).toLocaleString()));
       const open = node("button", "tclk-secondary", copy("Open record", "Kaydı aç"));
       open.type = "button";
       open.addEventListener("click", () => void openHistoryDeal(deal));
