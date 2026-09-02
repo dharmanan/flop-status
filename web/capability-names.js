@@ -89,6 +89,25 @@ function setTextIfChanged(target, value) {
   if (target && value && target.textContent !== value) target.textContent = value;
 }
 
+function ensureCertifiedStatePriority() {
+  if (document.getElementById("flop-certified-state-priority")) return;
+  const style = document.createElement("style");
+  style.id = "flop-certified-state-priority";
+  style.textContent = `
+    .shell-state-badge[data-certified="true"] {
+      border-color: #2d6644 !important;
+      color: #82d49f !important;
+      background: #09150f !important;
+    }
+    .capability-selector-button[data-certified="true"] {
+      border-color: #286541 !important;
+      color: #8ee0a9 !important;
+      background: #0b1b12 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function syncSecondaryRows() {
   document.querySelectorAll(".shell-record-row").forEach((row) => {
     const index = row.querySelector(".shell-record-index")?.textContent?.trim() ?? "";
@@ -170,6 +189,7 @@ function syncCeremonyCopy() {
 
 export function syncCapabilityDisplayNames() {
   if (typeof document === "undefined") return;
+  ensureCertifiedStatePriority();
   syncSecondaryRows();
   syncWorkspaceTitle();
   syncWorkspaceCopy();
