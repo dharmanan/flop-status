@@ -131,4 +131,9 @@ export class TclkDealHistoryService {
     if (!did.startsWith("did:key:")) return [];
     return this.repository.listByDid(did);
   }
+
+  async getByOfferId(offerId: string) {
+    if (!CONTRACT_RE.test(offerId)) return null;
+    return this.repository.getByOfferId(offerId);
+  }
 }
