@@ -2,14 +2,13 @@ import { readFileSync } from "node:fs";
 import {
   buildCertificateSocialDescription,
   capabilityShareMeta,
-  certificateOgImageUrl,
   certificatePublicUrl,
+  rankName,
 } from "../web/certificate-share.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
-const FALLBACK_TITLE = "FLOP Verified Working Capability";
-const FALLBACK_DESCRIPTION = "A portable public proof of a verified FLOP agent capability.";
-const FALLBACK_IMAGE = "https://flop-status.vercel.app/certificate-card/c1.png";
+const FALLBACK_TITLE = "FLOP Certificate";
+const FALLBACK_DESCRIPTION = "Public FLOP certificate. Open the proof page to inspect its current verification state.";
 const CERTIFICATE_TEMPLATE = readFileSync(new URL("../web/certificate.html", import.meta.url), "utf8");
 const CERTIFICATE_BODY = `<body${CERTIFICATE_TEMPLATE.split("<body")[1] ?? ""}`;
 
@@ -48,11 +47,9 @@ async function socialContext(certificateId) {
   const profile = profileResult.status === "fulfilled" ? profileResult.value?.profile ?? null : null;
   const list = listResult.status === "fulfilled" ? listResult.value : null;
   const meta = capabilityShareMeta(certificate.capability_id);
-  const displayName = String(profile?.display_name ?? "").trim() || "FLOP Agent";
-  const handle = String(profile?.handle ?? "").trim().replace(/^@+/, "");
   const certificateCount = Number(list?.certificate_count) || 1;
-  const rank = list?.rank || null;
-  const title = `${displayName}${handle ? ` · @${handle}` : ""} · C${meta.ordinal} ${meta.title.en} · FLOP`;
+  const rank = rankName(list?.rank);
+  const title = `C${meta.ordinal} · ${meta.title.en} · FLOP`;
   const description = buildCertificateSocialDescription({
     capabilityId: certificate.capability_id,
     profile,
@@ -64,7 +61,6 @@ async function socialContext(certificateId) {
   return {
     title,
     description,
-    image: certificateOgImageUrl(certificate.capability_id),
     url: certificatePublicUrl(certificateId),
   };
 }
@@ -84,14 +80,10 @@ function pageHead(meta) {
   <meta property="og:url" content="${esc(meta.url)}">
   <meta property="og:title" content="${esc(meta.title)}">
   <meta property="og:description" content="${esc(meta.description)}">
-  <meta property="og:image" content="${esc(meta.image)}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="FLOP verified working capability certificate">
-  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@flop_labs">
   <meta name="twitter:title" content="${esc(meta.title)}">
   <meta name="twitter:description" content="${esc(meta.description)}">
-  <meta name="twitter:image" content="${esc(meta.image)}">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/certificate.css?v=shareable-certificates-v1">
 </head>`;
@@ -106,7 +98,6 @@ export default async function handler(request, response) {
   let meta = {
     title: FALLBACK_TITLE,
     description: FALLBACK_DESCRIPTION,
-    image: FALLBACK_IMAGE,
     url: fallbackUrl,
   };
 
@@ -114,7 +105,7 @@ export default async function handler(request, response) {
     try {
       meta = await socialContext(certificateId);
     } catch {
-      // Client-side certificate proof still loads from the public Railway API.
+      // Fail closed: do not emit verified metadata when public proof lookup fails.
     }
   }
 
