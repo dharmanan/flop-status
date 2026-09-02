@@ -1,3 +1,4 @@
+void import("/mailbox-nav.js?v=direct-mailbox-v1");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
@@ -433,7 +434,6 @@ document.documentElement.addEventListener("click", (event) => {
     if (entry) entry.querySelector("small").textContent = copy("Rooms · signed messages", "Odalar · imzalı mesajlar");
     if (workspace && !workspace.hidden) {
       const roomId = selectedRoomId;
-      const parent = workspace.parentElement;
       const replacement = makeWorkspace();
       workspace.replaceWith(replacement);
       workspace = replacement;
