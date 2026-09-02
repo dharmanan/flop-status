@@ -6,7 +6,7 @@ function loadProductShellStyle() {
   const link = document.createElement("link");
   link.id = "flop-product-shell-style";
   link.rel = "stylesheet";
-  link.href = "/app-shell.css?v=workspace-shell-v2";
+  link.href = "/app-shell.css?v=workspace-shell-v3";
   document.head.appendChild(link);
 }
 

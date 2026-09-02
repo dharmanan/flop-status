@@ -448,6 +448,11 @@ main.workspace-mode .capability-card > .technical-details {
   background: #0b1014;
 }
 
+.proof-sidebar:not(:has(.proof-certificate[data-ready="true"])) .proof-semantics,
+.proof-sidebar:not(:has(.proof-certificate[data-ready="true"])) .proof-why {
+  display: none;
+}
+
 .proof-semantics {
   color: #a5b0ba;
   font-size: 12px;
