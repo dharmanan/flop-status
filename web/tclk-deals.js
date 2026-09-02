@@ -289,7 +289,9 @@ async function renderDealCards(filter) {
   main.appendChild(header);
   if (!deals.length) {
     main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir TCLK anlaşman yok.")));
-    setStatus(`${deals.length} ${copy("deals", "anlaşma")}`, "success");
+    setStatus(filter === "discover"
+      ? `${deals.length} ${copy("open offers", "açık teklif")}`
+      : `${deals.length} ${copy("deals", "anlaşma")}`, "success");
     return;
   }
   const list = node("div", "tclk-deal-list");
@@ -321,7 +323,9 @@ async function renderDealCards(filter) {
     list.appendChild(card);
   }
   main.appendChild(list);
-  setStatus(`${deals.length} ${copy("signed deals", "imzalı anlaşma")}`, "success");
+  setStatus(filter === "discover"
+    ? `${deals.length} ${copy("open offers", "açık teklif")}`
+    : `${deals.length} ${copy("deals", "anlaşma")}`, "success");
 }
 
 function renderCreate() {
@@ -445,8 +449,6 @@ async function openDeal(deal) {
         <div><span>VALUE</span><strong>NONE · PAPER ONLY</strong></div>
       </div>
       <div class="tclk-proof-note">${copy("The signed transcript proves who said what. PaperRail does not prove payment or hold value.", "İmzalı transcript kimin ne söylediğini kanıtlar. PaperRail ödeme kanıtlamaz ve değer tutmaz.")}</div>`;
-    // offer.amount/asset, state.status/contract/rail come from the TCLK/Technocore transcript and are untrusted —
-    // always assigned via textContent, never re-interpolated into HTML.
     fillTclkProofSlots(proof, offer, state);
     proof.querySelector(".payer-slot").appendChild(payer);
     proof.querySelector(".payee-slot").appendChild(payee);
