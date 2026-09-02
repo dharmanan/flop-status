@@ -47,7 +47,6 @@ function roleLabel(role) {
 }
 async function decorateNetworkIdentity(container, did, options = {}) {
   const profile = await profileForDid(did);
-  if (!container.isConnected) return;
   container.replaceChildren();
   if (options.role) container.appendChild(node("span", "network-identity-role", roleLabel(options.role)));
   if (profile) {
@@ -425,6 +424,13 @@ function hideNetwork() {
 }
 async function openNetwork() {
   if (!shell || !workspace) return;
+  const mailbox = shell.querySelector(".mailbox-workspace");
+  const deals = shell.querySelector(".tclk-workspace");
+  if (mailbox) mailbox.hidden = true;
+  if (deals) deals.hidden = true;
+  shell.classList.remove("mailbox-mode", "tclk-mode");
+  shell.querySelector(".mailbox-entry")?.classList.remove("active");
+  shell.querySelector(".tclk-entry")?.classList.remove("active");
   shell.querySelectorAll(".product-nav-item").forEach((item) => item.classList.remove("active"));
   entry.classList.add("active");
   shell.classList.add("network-mode");
@@ -453,7 +459,7 @@ function bind(shellNode) {
     shell.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
-      if (target.closest(".product-nav-item, .capability-selector-button")) hideNetwork();
+      if (target.closest(".product-nav-item, .capability-selector-button, .mailbox-entry, .tclk-entry")) hideNetwork();
     }, { capture: true });
   }
 }
