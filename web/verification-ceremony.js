@@ -1,3 +1,5 @@
+import { createPausableLoop } from "/pausable-loop.js";
+
 const STEPS = ["challenge", "execute", "result", "sign", "verify", "verdict", "certificate"];
 
 const STEP_LABELS = {
@@ -356,8 +358,6 @@ export function createVerificationCeremony(container, config = {}) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const states = new Map(STEPS.map((step) => [step, "pending"]));
   let visualTail = Promise.resolve();
-  let frameId = 0;
-  let disposed = false;
   let currentResult = null;
   let decision = {};
 
@@ -405,13 +405,20 @@ export function createVerificationCeremony(container, config = {}) {
     return .16;
   }
 
-  function render(time) {
-    if (disposed) return;
-    drawCore(agent.canvas, time, actorEnergy("execute"), "137,108,255", false);
-    drawCore(verifier.canvas, time * .92, actorEnergy("verify"), "64,162,255", true);
-    frameId = requestAnimationFrame(render);
-  }
-  frameId = requestAnimationFrame(render);
+  // The ambient core animation only has value while the ceremony is actually on screen.
+  // coreLoop pauses itself (no more rAF scheduling) as soon as its shell is hidden by
+  // navigation elsewhere (capability switch, Mailbox/Agent Network/Deals, Settings, ...),
+  // instead of drawing forever in the background. resumeIfVisible() restarts it, called
+  // from the real entry points a live/recorded flow actually pulses (reset/begin/complete).
+  const coreLoop = createPausableLoop({
+    isVisible: () => shell.offsetParent !== null,
+    schedule: (tick) => requestAnimationFrame(tick),
+    cancel: (id) => cancelAnimationFrame(id),
+    onFrame: (time) => {
+      drawCore(agent.canvas, time, actorEnergy("execute"), "137,108,255", false);
+      drawCore(verifier.canvas, time * .92, actorEnergy("verify"), "64,162,255", true);
+    },
+  });
 
   function queue(task) {
     visualTail = visualTail.then(() => task()).catch(() => undefined);
@@ -618,6 +625,7 @@ export function createVerificationCeremony(container, config = {}) {
   }
 
   function reset() {
+    coreLoop.resumeIfVisible();
     visualTail = Promise.resolve();
     container.hidden = false;
     shell.classList.remove("ceremony-hidden-until-run");
@@ -681,6 +689,7 @@ export function createVerificationCeremony(container, config = {}) {
   }
 
   function begin(step) {
+    coreLoop.resumeIfVisible();
     setRealState(step, "active");
     const labels = STEP_LABELS[step];
     if (labels) say(`${labels[0]}…`, `${labels[1]}…`);
@@ -689,6 +698,7 @@ export function createVerificationCeremony(container, config = {}) {
   }
 
   function complete(step, summary) {
+    coreLoop.resumeIfVisible();
     setRealState(step, "done");
     const summaryText = summary ? (isTr() ? summary.tr : summary.en) : "";
     const labels = STEP_LABELS[step];
@@ -813,8 +823,7 @@ export function createVerificationCeremony(container, config = {}) {
     localize,
     showCertificate() {},
     destroy() {
-      disposed = true;
-      cancelAnimationFrame(frameId);
+      coreLoop.destroy();
     },
     get capabilityId() { return capabilityId; },
     get result() { return currentResult; },

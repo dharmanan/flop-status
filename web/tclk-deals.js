@@ -1,4 +1,8 @@
-import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
+import { bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
+import { fillTclkProofSlots } from "/safe-render.js";
+import { ensureSidebarEntry } from "/sidebar-entry.js";
+import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
+import { friendlyErrorMessage } from "/error-copy.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const OFFER_ROOM = "tclk-offers";
@@ -95,7 +99,11 @@ async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, options);
   let body = null;
   try { body = await response.json(); } catch {}
-  if (!response.ok) throw new Error(body?.error?.message ?? body?.error?.code ?? `HTTP_${response.status}`);
+  if (!response.ok) {
+    const code = body?.error?.code ?? `HTTP_${response.status}`;
+    const fallback = body?.error?.message ?? code;
+    throw new Error(friendlyErrorMessage(code, fallback, tr() ? "tr" : "en"));
+  }
   return body;
 }
 
@@ -142,20 +150,6 @@ async function postLine(room, line) {
   });
 }
 
-async function verifyTransport(room, message) {
-  try {
-    if (typeof message?.from !== "string" || typeof message?.sig !== "string" || message?.nonce === undefined || typeof message?.text !== "string") return false;
-    const rawKey = parseEd25519DidKey(message.from);
-    const key = await crypto.subtle.importKey("raw", rawKey, { name: "Ed25519" }, false, ["verify"]);
-    return crypto.subtle.verify(
-      { name: "Ed25519" },
-      key,
-      base64UrlToBytes(message.sig),
-      encoder.encode(`${room}|${message.nonce}|${message.text}`),
-    );
-  } catch { return false; }
-}
-
 async function collectRoom(room) {
   const raw = await rawRoom(room);
   const rawMessages = raw?.messages ?? [];
@@ -167,8 +161,8 @@ async function collectRoom(room) {
     const message = rawBySeq.get(item.seq);
     if (!message || typeof message.text !== "string") continue;
     const transportValid = await verifyTransport(room, message);
-    const fromMatches = item?.frame?.from === item?.from && item?.from === message.from;
-    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted: transportValid && fromMatches });
+    const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
+    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted });
   }
   records.sort((a, b) => a.seq - b.seq);
   return { room, records, skipped: parsed?.skipped ?? 0, lastSeq: parsed?.lastSeq ?? raw?.last_seq ?? null };
@@ -216,7 +210,7 @@ function makeWorkspace() {
       <div>
         <span class="tclk-kicker">TCLK / 1 · FLOP LABS PROTOCOL</span>
         <h1>${copy("Agent Deals", "Ajan Anlaşmaları")}</h1>
-        <p>${copy("Signed agent agreements over Technocore. Coordination here, settlement on the named rail.", "Technocore üzerinde imzalı ajan anlaşmaları. Koordinasyon burada, settlement seçilen rail üzerinde.")}</p>
+        <p>${copy("Agents sign the agreement here. Payment happens on the rail named in the offer.", "Ajanlar anlaşmayı burada imzalar. Ödeme süreci, teklifte belirtilen kanal üzerinden yürür.")}</p>
       </div>
       <div class="tclk-protocol-badges"><span>HASH LOCK</span><span>PAPER</span><span class="alpha">ALPHA</span></div>
       <div class="tclk-status"></div>
@@ -294,7 +288,7 @@ async function renderDealCards(filter) {
   header.appendChild(refresh);
   main.appendChild(header);
   if (!deals.length) {
-    main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open signed offers found.", "Açık imzalı teklif bulunamadı.") : copy("No TCLK deals for this DID yet.", "Bu DID için henüz TCLK anlaşması yok.")));
+    main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir TCLK anlaşman yok.")));
     setStatus(`${deals.length} ${copy("deals", "anlaşma")}`, "success");
     return;
   }
@@ -441,16 +435,19 @@ async function openDeal(deal) {
     if (state.parties?.payer) void decorateParty(payer, state.parties.payer);
     if (state.parties?.payee) void decorateParty(payee, state.parties.payee);
     proof.innerHTML = `
-      <div class="tclk-proof-head"><div><span>TCLK DEAL PROOF</span><h2>${offer.amount} ${offer.asset}</h2></div><strong class="tclk-proof-state">${String(state.status).toUpperCase()}</strong></div>
+      <div class="tclk-proof-head"><div><span>TCLK DEAL PROOF</span><h2 class="proof-amount-slot"></h2></div><strong class="tclk-proof-state"></strong></div>
       <div class="tclk-proof-grid">
-        <div><span>CONTRACT</span><code>${state.contract ?? offer.id}</code></div>
+        <div><span>CONTRACT</span><code class="proof-contract-slot"></code></div>
         <div class="payer-slot"><span>PAYER</span></div>
         <div class="payee-slot"><span>PAYEE</span></div>
-        <div><span>RAIL</span><strong>${state.rail ?? "paper"}</strong></div>
+        <div><span>RAIL</span><strong class="proof-rail-slot"></strong></div>
         <div><span>TRANSPORT</span><strong>TECHNOCORE</strong></div>
         <div><span>VALUE</span><strong>NONE · PAPER ONLY</strong></div>
       </div>
       <div class="tclk-proof-note">${copy("The signed transcript proves who said what. PaperRail does not prove payment or hold value.", "İmzalı transcript kimin ne söylediğini kanıtlar. PaperRail ödeme kanıtlamaz ve değer tutmaz.")}</div>`;
+    // offer.amount/asset, state.status/contract/rail come from the TCLK/Technocore transcript and are untrusted —
+    // always assigned via textContent, never re-interpolated into HTML.
+    fillTclkProofSlots(proof, offer, state);
     proof.querySelector(".payer-slot").appendChild(payer);
     proof.querySelector(".payee-slot").appendChild(payee);
 
@@ -529,7 +526,7 @@ async function appendDealActions(container, context) {
     });
     importRow.append(secretInput, save);
     container.appendChild(importRow);
-    addAction(container, copy("Reveal & claim paper deal", "Reveal et ve paper deal'i claim et"), async () => {
+    addAction(container, copy("Reveal secret & complete the deal", "Secret'ı açıkla ve anlaşmayı tamamla"), async () => {
       secret = (await getSecret(accept.contract)) ?? secretInput.value.trim();
       if (!/^0x[0-9a-f]{64}$/.test(secret)) throw new Error(copy("This browser does not have the deal secret.", "Bu tarayıcıda deal secret bulunmuyor."));
       const built = await tool("tclk_make_reveal", { from: id.did, contract: accept.contract, secret });
@@ -546,7 +543,7 @@ async function appendDealActions(container, context) {
         await postLine(room, built.line);
       });
     } else {
-      container.appendChild(node("p", "tclk-action-note", `${copy("Refund opens", "Refund açılır")}: ${new Date(offer.refundAfterMs).toLocaleString()}`));
+      container.appendChild(node("p", "tclk-action-note", `${copy("Right to refund starts", "Geri alma hakkı şu tarihte başlar")}: ${new Date(offer.refundAfterMs).toLocaleString()}`));
     }
   }
 
@@ -565,7 +562,11 @@ async function appendDealActions(container, context) {
 
   if (paperState) {
     const paperCard = node("div", "tclk-paper-state");
-    paperCard.innerHTML = `<span>PAPER RECORD</span><strong>${String(paperState.status).toUpperCase()}</strong><small>${copy("World-writable rehearsal record. Not payment proof.", "World-writable prova kaydıdır. Ödeme kanıtı değildir.")}</small>`;
+    paperCard.append(
+      node("span", "", "PAPER RECORD"),
+      node("strong", "", String(paperState.status).toUpperCase()),
+      node("small", "", copy("World-writable rehearsal record. Not payment proof.", "World-writable prova kaydıdır. Ödeme kanıtı değildir.")),
+    );
     container.appendChild(paperCard);
   }
 
@@ -626,24 +627,25 @@ async function openDeals() {
 }
 
 function bind(nextShell) {
-  if (shell === nextShell && entry?.isConnected && workspace?.isConnected) return;
   shell = nextShell;
   loadStyle();
   const sidebar = shell.querySelector(".product-sidebar");
   const productNav = shell.querySelector(".product-nav");
   const productWorkspace = shell.querySelector(".product-workspace");
   if (!sidebar || !productNav || !productWorkspace) return;
-  entry = makeEntry();
-  const mailbox = shell.querySelector(".mailbox-entry");
-  const network = shell.querySelector(".network-entry");
-  sidebar.insertBefore(entry, mailbox ?? network ?? productNav);
-  workspace = makeWorkspace();
-  productWorkspace.appendChild(workspace);
-  shell.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target || target.closest(".tclk-entry")) return;
-    if (target.closest(".product-nav-item, .capability-selector-button, .network-entry, .mailbox-entry")) hideDeals();
-  }, { capture: true });
+  entry = ensureSidebarEntry(sidebar, entry, makeEntry, [".mailbox-entry", ".network-entry", ".product-nav"]);
+  if (!workspace?.isConnected) {
+    workspace = makeWorkspace();
+    productWorkspace.appendChild(workspace);
+  }
+  if (shell.dataset.tclkNavBound !== "true") {
+    shell.dataset.tclkNavBound = "true";
+    shell.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest(".tclk-entry")) return;
+      if (target.closest(".product-nav-item, .capability-selector-button, .network-entry, .mailbox-entry")) hideDeals();
+    }, { capture: true });
+  }
 }
 
 function boot() {
@@ -672,6 +674,7 @@ document.documentElement.addEventListener("click", (event) => {
       workspace.hidden = false;
       void showTab(currentTab);
     }
+    if (shell) bind(shell);
   });
 });
 

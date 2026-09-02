@@ -66,5 +66,6 @@ export function createVerificationFlow(container, config = {}) {
       else if (key.includes("receipt id")) ceremony.setDecision({ receipt_id: value });
       else if (key.includes("certificate id") || key.includes("sertifika id")) ceremony.setDecision({ certificate_id: value });
     },
+    destroy() { ceremony.destroy(); },
   };
 }

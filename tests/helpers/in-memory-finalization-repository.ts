@@ -42,7 +42,19 @@ export class InMemoryFinalizationRepository implements PassFinalizationRepositor
         repository.receipts.push(input);
       },
       async insertCapabilityCertificate(input) {
+        // Mirrors the real ON CONFLICT (agent_id, capability_id, capability_version,
+        // program_version) DO NOTHING behavior: a repeat PASS of the same tuple must
+        // resolve to the existing certificate's id, never create a second row.
+        const existing = repository.certificates.find(
+          (certificate) =>
+            certificate.agentId === input.agentId &&
+            certificate.capabilityId === input.capabilityId &&
+            certificate.capabilityVersion === input.capabilityVersion &&
+            certificate.programVersion === input.programVersion,
+        );
+        if (existing) return existing.id;
         repository.certificates.push(input);
+        return input.id;
       },
       async markChallengeFinal(challengeId, verdict) {
         repository.finalStates.push({ challengeId, verdict });

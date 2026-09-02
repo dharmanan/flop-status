@@ -26,7 +26,7 @@
 .network-entry strong,
 .network-entry small { display: block; }
 .network-entry strong { font-size: 12px; }
-.network-entry small { margin-top: 3px; color: #7f8d99; font-size: 8px; }
+.network-entry small { margin-top: 3px; color: #7f8d99; font-size: 10px; }
 
 .product-shell.network-mode {
   grid-template-columns: 290px minmax(0, 1fr);
@@ -48,7 +48,7 @@
 }
 .network-kicker {
   color: #6f7e8b;
-  font: 800 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: .12em;
 }
 .network-head h1 {
@@ -59,7 +59,7 @@
 .network-head p {
   margin: 7px 0 0;
   color: #84919c;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .network-status {
@@ -69,7 +69,7 @@
   border: 1px solid #2b3741;
   border-radius: 7px;
   color: #82909c;
-  font-size: 9px;
+  font-size: 11px;
 }
 .network-status:empty { visibility: hidden; }
 .network-status[data-state="working"] { border-color: #3b5591; color: #b7c8f4; }
@@ -102,7 +102,7 @@
   border-color: #315dd0;
   background: #132249;
   color: #dce6ff;
-  font-size: 10px;
+  font-size: 12px;
 }
 .network-create-form {
   margin-bottom: 14px;
@@ -115,7 +115,7 @@
   display: block;
   margin-bottom: 6px;
   color: #87949f;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -127,13 +127,13 @@
   border-radius: 7px;
   background: #070b0f;
   color: #e0e6eb;
-  font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .network-create-form input,
 .network-create-form textarea { margin-bottom: 10px; padding: 9px; }
 .network-form-actions { display: flex; gap: 6px; }
 .network-create-submit,
-.network-create-cancel { min-height: 32px; padding: 6px 9px; font-size: 8px; }
+.network-create-cancel { min-height: 32px; padding: 6px 9px; font-size: 12px; }
 .network-create-submit { border-color: #315dd0; background: #1c48aa; color: #fff; }
 .network-room-list { display: grid; gap: 6px; margin-top: 12px; }
 .network-room-button {
@@ -153,9 +153,9 @@
   background: #111a2d;
 }
 .network-room-button strong { font-size: 11px; }
-.network-room-button span { color: #7f8b95; font-size: 8px; }
-.network-room-button code { color: #61707d; font-size: 7px; }
-.network-no-rooms { color: #6f7c87; font-size: 9px; }
+.network-room-button span { color: #7f8b95; font-size: 10px; }
+.network-room-button code { color: #61707d; font-size: 10px; }
+.network-no-rooms { color: #6f7c87; font-size: 11px; }
 
 .network-conversation {
   display: flex;
@@ -181,8 +181,8 @@
   border-bottom: 1px solid #202b35;
 }
 .network-conversation-head h2 { margin: 0; font-size: 18px; }
-.network-conversation-head p { margin: 4px 0 0; color: #7a8792; font-size: 9px; }
-.network-refresh { min-height: 30px; padding: 6px 9px; font-size: 8px; }
+.network-conversation-head p { margin: 4px 0 0; color: #7a8792; font-size: 11px; }
+.network-refresh { min-height: 30px; padding: 6px 9px; font-size: 12px; }
 .network-members {
   display: flex;
   gap: 6px;
@@ -199,8 +199,8 @@
 }
 .network-member strong,
 .network-member code { display: block; }
-.network-member strong { color: #87939e; font-size: 7px; }
-.network-member code { margin-top: 3px; color: #b5c0c9; font-size: 7px; }
+.network-member strong { color: #87939e; font-size: 10px; }
+.network-member code { margin-top: 3px; color: #b5c0c9; font-size: 10px; }
 
 .network-message-stream {
   flex: 1 1 auto;
@@ -209,7 +209,7 @@
   overflow-y: auto;
   padding: 18px;
 }
-.network-empty-message { color: #697680; font-size: 10px; }
+.network-empty-message { color: #697680; font-size: 13px; }
 .network-message {
   max-width: 760px;
   margin-bottom: 10px;
@@ -222,8 +222,8 @@
   justify-content: space-between;
   gap: 12px;
 }
-.network-message-top code { color: #91a1ad; font-size: 8px; }
-.network-message-top time { color: #64717c; font-size: 7px; }
+.network-message-top code { color: #91a1ad; font-size: 10px; }
+.network-message-top time { color: #64717c; font-size: 9px; }
 .network-message p {
   margin: 10px 0 0;
   color: #d0d8df;
@@ -238,7 +238,7 @@
   flex-wrap: wrap;
   margin-top: 10px;
   color: #65727c;
-  font-size: 7px;
+  font-size: 9px;
 }
 .network-message-proof span {
   padding: 3px 5px;
@@ -247,7 +247,7 @@
 }
 .network-message-proof span.valid { border-color: #2d6644; color: #7fd39c; }
 .network-message-proof span.invalid { border-color: #75433e; color: #e1aaa4; }
-.network-message-proof code { font-size: 7px; }
+.network-message-proof code { font-size: 9px; }
 
 .network-composer {
   padding: 12px 18px 16px;
@@ -262,14 +262,14 @@
   align-items: center;
   margin-top: 8px;
 }
-.network-composer-footer span { color: #6f7d88; font-size: 8px; }
+.network-composer-footer span { color: #6f7d88; font-size: 10px; }
 .network-send {
   min-height: 34px;
   padding: 7px 12px;
   border-color: #315dd0;
   background: #1d4bb4;
   color: #fff;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 @media (max-width: 1020px) {

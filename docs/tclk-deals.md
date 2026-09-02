@@ -261,6 +261,8 @@ The official `tclk_make_offer` tool creates the frame. The browser signs the off
 
 FLOP reads `tclk-offers`, validates signed transport binding and presents valid open offers from other DIDs.
 
+`tclk-offers` is public and world-writable; anyone can post any number of validly-signed offers to it. There is currently no rate-limiting, reputation or economic filtering beyond signature verification and the request payload-size cap — see `docs/threat-model.md` ("Offer-board spam / discovery flooding") for the residual risk this leaves open.
+
 Acceptance uses the official `tclk_accept_offer` tool. The returned secret stays in browser storage. The signed accept is published to `tclk-offers`.
 
 ### Lock

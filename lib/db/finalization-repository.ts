@@ -77,7 +77,15 @@ export interface PassFinalizationTransaction {
   insertVerificationRun(input: InsertVerificationRunInput): Promise<string>;
   ensureServerKey(input: EnsureServerKeyInput): Promise<void>;
   insertReceipt(input: InsertReceiptInput): Promise<void>;
-  insertCapabilityCertificate(input: InsertCapabilityCertificateInput): Promise<void>;
+  /**
+   * Returns the id of the persisted certificate row for this
+   * (agent, capability, capability_version, program_version) tuple — the
+   * newly inserted row, or the pre-existing one if this exact tuple was
+   * already certified (the unique constraint intentionally forbids a second
+   * row). Callers must treat the return value, not the input id, as the
+   * real persisted certificate id.
+   */
+  insertCapabilityCertificate(input: InsertCapabilityCertificateInput): Promise<string>;
   markChallengeFinal(challengeId: string, verdict: "PASS" | "FAIL", completedAt: string): Promise<void>;
   upsertCapabilityRecord(agentId: string, capabilityId: string, receiptId: string, verifiedAt: string): Promise<void>;
 }
@@ -217,14 +225,15 @@ export class PgPassFinalizationRepository implements PassFinalizationRepository 
       },
 
       async insertCapabilityCertificate(input) {
-        await client.query(
+        const inserted = await client.query<{ id: string }>(
           `INSERT INTO capability_certificates (
              id, agent_id, capability_id, certificate_name, capability_version,
              program_version, trial_id, trial_version, verifier_id, verifier_version,
              receipt_id, status, issued_at
            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'ACTIVE',$12)
            ON CONFLICT (agent_id, capability_id, capability_version, program_version)
-           DO NOTHING`,
+           DO NOTHING
+           RETURNING id`,
           [
             input.id,
             input.agentId,
@@ -240,6 +249,19 @@ export class PgPassFinalizationRepository implements PassFinalizationRepository 
             input.issuedAt,
           ],
         );
+        const insertedId = inserted.rows[0]?.id;
+        if (insertedId) return insertedId;
+        // ON CONFLICT DO NOTHING skipped the insert: this agent/capability/version/program
+        // tuple already has a certificate. Return that existing row's id instead of the
+        // caller's freshly-generated (never persisted) candidate id.
+        const existing = await client.query<{ id: string }>(
+          `SELECT id FROM capability_certificates
+           WHERE agent_id = $1 AND capability_id = $2 AND capability_version = $3 AND program_version = $4`,
+          [input.agentId, input.capabilityId, input.capabilityVersion, input.programVersion],
+        );
+        const existingId = existing.rows[0]?.id;
+        if (!existingId) throw new Error("capability certificate conflict did not resolve to an existing row");
+        return existingId;
       },
 
       async markChallengeFinal(id, verdict, completedAt) {

@@ -1,4 +1,6 @@
 import { bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
+import { renderProfileResultButton } from "/safe-render.js";
+import { friendlyErrorMessage } from "/error-copy.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const DB_NAME = "flop-agent-key-v1";
@@ -7,6 +9,7 @@ const ACTIVE_ID = "active";
 const DRAFT_KEY = "flop-agent-profile-draft";
 const encoder = new TextEncoder();
 const cache = new Map();
+const MISSING_PROFILE_TTL_MS = 30_000;
 let claiming = false;
 let tickQueued = false;
 
@@ -76,7 +79,10 @@ async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, options);
   let body = null;
   try { body = await response.json(); } catch {}
-  if (!response.ok) throw new Error(body?.error?.code ?? `HTTP_${response.status}`);
+  if (!response.ok) {
+    const code = body?.error?.code ?? `HTTP_${response.status}`;
+    throw new Error(friendlyErrorMessage(code, body?.error?.message ?? code, tr() ? "tr" : "en"));
+  }
   return body;
 }
 
@@ -88,15 +94,21 @@ function normalized(raw) {
   } : null;
 }
 
+function cacheProfile(did, profile) {
+  cache.set(did, profile ? { profile, expiresAt: Infinity } : { profile: null, expiresAt: Date.now() + MISSING_PROFILE_TTL_MS });
+}
+
 async function profileForDid(did) {
   if (!did) return null;
-  if (cache.has(did)) return cache.get(did);
+  const cached = cache.get(did);
+  if (cached && (cached.profile || Date.now() < cached.expiresAt)) return cached.profile;
   try {
     const body = await api(`/api/v1/agent-profiles/${encodeURIComponent(did)}`);
     const profile = normalized(body.profile);
-    if (profile) cache.set(did, profile);
+    cacheProfile(did, profile);
     return profile;
   } catch {
+    cacheProfile(did, null);
     return null;
   }
 }
@@ -144,7 +156,7 @@ async function saveProfile(displayName, handle) {
   });
   const profile = normalized(body.profile);
   if (!profile?.did) throw new Error("AGENT_PROFILE_RESPONSE_INVALID");
-  cache.set(profile.did, profile);
+  cacheProfile(profile.did, profile);
   sessionStorage.removeItem(DRAFT_KEY);
   document.dispatchEvent(new CustomEvent("flop:profile-updated", { detail: profile }));
   return profile;
@@ -338,10 +350,7 @@ function enhanceMailboxCompose() {
       if (!query) return;
       try {
         for (const profile of await searchProfiles(query)) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "profile-search-result";
-          button.innerHTML = `<strong>${profile.displayName}</strong><span>@${profile.handle}</span><code>${profile.did}</code>`;
+          const button = renderProfileResultButton(profile);
           button.addEventListener("click", () => {
             recipient.value = profile.did;
             selected.textContent = `${profile.displayName} · @${profile.handle}`;
@@ -379,10 +388,7 @@ function enhanceRoomInvite() {
       if (!query) return;
       try {
         for (const profile of await searchProfiles(query)) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "profile-search-result";
-          button.innerHTML = `<strong>${profile.displayName}</strong><span>@${profile.handle}</span><code>${profile.did}</code>`;
+          const button = renderProfileResultButton(profile);
           button.addEventListener("click", () => {
             const existing = new Set(dids.value.split(/[\s,]+/).map((value) => value.trim()).filter(Boolean));
             existing.add(profile.did);

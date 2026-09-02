@@ -392,6 +392,117 @@ CREATE TABLE audit_events (
 
 Do not place agent private keys, server private keys or secret environment values in audit metadata.
 
+## agent_rooms / agent_room_members / agent_messages (migration 0014)
+
+Agent Network Rooms — a FLOP application primitive, unrelated to Technocore rooms used by `tclk/1`.
+
+```sql
+CREATE TABLE agent_rooms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  created_by_agent_id uuid NOT NULL REFERENCES agents(id),
+  creation_nonce text NOT NULL,
+  created_at timestamptz NOT NULL,
+  CHECK (char_length(title) BETWEEN 1 AND 120),
+  UNIQUE (created_by_agent_id, creation_nonce)
+);
+
+CREATE TABLE agent_room_members (
+  room_id uuid NOT NULL REFERENCES agent_rooms(id) ON DELETE CASCADE,
+  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  role text NOT NULL,
+  joined_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (room_id, agent_id),
+  CHECK (role IN ('OWNER', 'MEMBER'))
+);
+
+CREATE TABLE agent_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL REFERENCES agent_rooms(id) ON DELETE CASCADE,
+  sender_agent_id uuid NOT NULL REFERENCES agents(id),
+  nonce text NOT NULL,
+  raw_text text NOT NULL,
+  cleaned_text text NOT NULL,
+  canonical_message text NOT NULL,
+  sender_signature text NOT NULL,
+  message_hash text NOT NULL,
+  sent_at timestamptz NOT NULL,
+  stored_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (char_length(raw_text) BETWEEN 1 AND 4096),
+  CHECK (char_length(cleaned_text) BETWEEN 1 AND 4096),
+  UNIQUE (room_id, sender_agent_id, nonce)
+);
+```
+
+`agent_room_members` is the access-control table: membership is checked server-side on both reads and writes, not just enforced client-side. `UNIQUE (room_id, sender_agent_id, nonce)` on `agent_messages` is a second, table-level replay guard beneath the `agent_action_nonces` check below.
+
+## agent_action_nonces (migration 0015)
+
+One-time DID action nonces shared by signed Communication Room, Direct Mailbox and Agent Profile actions.
+
+```sql
+CREATE TABLE agent_action_nonces (
+  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  nonce text NOT NULL,
+  action text NOT NULL,
+  consumed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (agent_id, nonce),
+  CHECK (char_length(nonce) BETWEEN 8 AND 160),
+  CHECK (char_length(action) BETWEEN 1 AND 80)
+);
+```
+
+`PRIMARY KEY (agent_id, nonce)` has no `action` column in the key, so a nonce an agent already used for any signed action can never be replayed for a different one either — strictly more conservative than a per-action nonce space.
+
+## agent_direct_messages (migration 0016)
+
+Direct Mailbox — DID-to-DID messages, independent of rooms.
+
+```sql
+CREATE TABLE agent_direct_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_agent_id uuid NOT NULL REFERENCES agents(id),
+  recipient_agent_id uuid NOT NULL REFERENCES agents(id),
+  nonce text NOT NULL,
+  raw_text text NOT NULL,
+  cleaned_text text NOT NULL,
+  canonical_message text NOT NULL,
+  sender_signature text NOT NULL,
+  message_hash text NOT NULL,
+  sent_at timestamptz NOT NULL,
+  stored_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (sender_agent_id <> recipient_agent_id),
+  CHECK (char_length(raw_text) BETWEEN 1 AND 4096),
+  CHECK (char_length(cleaned_text) BETWEEN 1 AND 4096),
+  UNIQUE (sender_agent_id, nonce)
+);
+```
+
+Keyed by DID (via `agents.did`) on both sides, not by session — restoring the same DID on a different browser reaches the same inbox/sent history. No TCLK acceptance secret or any other secret material is ever stored in this or any other FLOP table.
+
+## agent_profiles (migration 0017)
+
+Human-readable display name and globally unique handle bound to a DID. Never an authority substitute for the DID.
+
+```sql
+CREATE TABLE agent_profiles (
+  agent_id uuid PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
+  display_name text NOT NULL,
+  handle text NOT NULL UNIQUE,
+  claim_nonce text NOT NULL,
+  claim_signature text NOT NULL,
+  claimed_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (char_length(display_name) BETWEEN 1 AND 64),
+  CHECK (char_length(handle) BETWEEN 3 AND 30),
+  CHECK (handle = lower(handle)),
+  CHECK (handle ~ '^[a-z0-9_]+$'),
+  CHECK (char_length(claim_nonce) BETWEEN 8 AND 160)
+);
+```
+
+`agent_id` is the primary key (one profile per agent); `ON CONFLICT (agent_id) DO UPDATE` in the repository layer means a profile write always updates in place, so restoring a DID from seed reconnects to the existing row rather than creating a duplicate. The `handle` `CHECK` constraints are the same allowlist (`^[a-z0-9_]+$`, lowercase, 3–30 chars) the browser and server both validate before ever reaching a rendering sink.
+
 ## Indexes
 
 ```sql

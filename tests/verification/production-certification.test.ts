@@ -293,6 +293,33 @@ describe("production certification across Capabilities 1-7", () => {
       expect(repository.receipts[0]?.trialId).toBe(capability.historicalTrialId);
       expect(repository.certificates).toHaveLength(0);
     });
+
+    it(`Capability ${ordinal}: a repeat PASS for an already-certified agent/capability/version returns the existing certificate id, never a phantom one`, async () => {
+      const first = await finalize(capability, capability.productionTrialId, "correct");
+      expect(first.outcome.verdict).toBe("PASS");
+      const firstCertificateId = first.outcome.verdict === "PASS" ? first.outcome.certificateId : undefined;
+      expect(firstCertificateId).toBeTruthy();
+      expect(first.repository.certificates).toHaveLength(1);
+
+      // A second, independent finalization (fresh challenge/result) for the same
+      // agent + capability + capability_version + program_version, sharing the durable
+      // certificate store the first finalization already wrote to.
+      const generated = capability.generate(capability.productionTrialId);
+      const result = capability.expectedResult(generated);
+      const repository2 = new InMemoryFinalizationRepository(contextFor(capability, capability.productionTrialId, result, generated));
+      repository2.certificates = first.repository.certificates;
+      const outcome2 = await finalizeCapabilityVerification(CHALLENGE_ID, {
+        repository: repository2,
+        signer: createTestAttestationSigner(),
+      });
+
+      expect(outcome2.verdict).toBe("PASS");
+      const secondCertificateId = outcome2.verdict === "PASS" ? outcome2.certificateId : undefined;
+      expect(secondCertificateId).toBe(firstCertificateId);
+      // The DB unique constraint on (agent_id, capability_id, capability_version, program_version)
+      // must never be bypassed: still exactly one durable certificate row.
+      expect(first.repository.certificates).toHaveLength(1);
+    });
   }
 
   it("keeps every production trial id distinct from its historical trial id", () => {

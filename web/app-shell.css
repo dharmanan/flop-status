@@ -131,8 +131,8 @@ main.workspace-mode > #operation-status {
 }
 
 .agent-identity-copy strong { font-size: 16px; }
-.agent-identity-copy span { margin-top: 5px; color: #81909d; font-size: 10px; }
-.agent-identity-copy code { margin-top: 3px; color: #b1bdc8; font-size: 9px; }
+.agent-identity-copy span { margin-top: 5px; color: #81909d; font-size: 11px; }
+.agent-identity-copy code { margin-top: 3px; color: #b1bdc8; font-size: 10px; }
 
 .agent-stats {
   display: grid;
@@ -150,7 +150,7 @@ main.workspace-mode > #operation-status {
 
 .agent-stat span,
 .agent-stat strong { display: block; }
-.agent-stat span { color: #7d8a95; font-size: 9px; }
+.agent-stat span { color: #7d8a95; font-size: 10px; }
 .agent-stat strong { margin-top: 5px; font-size: 14px; }
 
 .capability-selector {
@@ -218,7 +218,7 @@ main.workspace-mode > #operation-status {
 
 .sidebar-boundary-icon { display: block; color: #9bc2e7; font-size: 20px; }
 .sidebar-boundary strong { display: block; margin-top: 8px; font-size: 12px; line-height: 1.45; }
-.sidebar-boundary p { margin: 9px 0 0; color: #90a0ae; font-size: 10px; line-height: 1.5; }
+.sidebar-boundary p { margin: 9px 0 0; color: #90a0ae; font-size: 12px; line-height: 1.5; }
 
 .product-workspace {
   overflow: hidden;
@@ -247,7 +247,7 @@ main.workspace-mode > #operation-status {
 .workspace-id {
   grid-column: 1;
   color: #6f7e8b;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .workspace-state {
@@ -258,7 +258,7 @@ main.workspace-mode > #operation-status {
   border: 1px solid #35424d;
   border-radius: 999px;
   color: #94a2ae;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -296,7 +296,7 @@ main.workspace-mode > #operation-status {
 .workspace-summary-copy strong,
 .workspace-summary-copy span { display: block; }
 .workspace-summary-copy strong { font-size: 12px; }
-.workspace-summary-copy span { margin-top: 2px; color: #87939e; font-size: 10px; line-height: 1.4; }
+.workspace-summary-copy span { margin-top: 2px; color: #87939e; font-size: 11px; line-height: 1.4; }
 
 .workspace-stage-label {
   display: flex;
@@ -305,10 +305,10 @@ main.workspace-mode > #operation-status {
   padding: 13px 20px;
   border-bottom: 1px solid #202b35;
   color: #75838f;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: .1em;
 }
-.workspace-stage-label strong { color: #9facb7; font-size: 8px; }
+.workspace-stage-label strong { color: #9facb7; font-size: 10px; }
 
 main.workspace-mode #active-actions {
   display: block !important;
@@ -372,7 +372,7 @@ main.workspace-mode .capability-card > .actions.compact button:disabled {
 main.workspace-mode .capability-card > .operation {
   margin: 0 0 10px;
   min-height: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 main.workspace-mode .capability-card > .verification-flow {
@@ -384,7 +384,7 @@ main.workspace-mode .capability-card > .verification-flow {
 main.workspace-mode .capability-card > .receipt {
   margin: 4px 0 12px;
   color: #cbd5df;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 main.workspace-mode .capability-card > .verification-replay-button {
@@ -392,7 +392,7 @@ main.workspace-mode .capability-card > .verification-replay-button {
   min-height: 34px;
   padding: 7px 10px;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 main.workspace-mode .capability-card > .technical-details {
@@ -432,12 +432,12 @@ main.workspace-mode .capability-card > .technical-details {
 .proof-item-id,
 .proof-item-meta { display: block; }
 .proof-item-title { font-size: 12px; }
-.proof-item-id { margin-top: 8px; color: #a3afb9; font-size: 9px; }
-.proof-item-meta { margin-top: 4px; color: #788691; font-size: 9px; line-height: 1.4; }
+.proof-item-id { margin-top: 8px; color: #a3afb9; font-size: 10px; }
+.proof-item-meta { margin-top: 4px; color: #788691; font-size: 10px; line-height: 1.4; }
 .proof-item-state { color: #6f7d88; font-size: 11px; }
 .proof-item[data-ready="true"] .proof-item-state { color: #61d38a; }
 .proof-item[data-ready="true"] .proof-item-icon { border-color: #2b6642; color: #79d898; }
-.proof-open-link { display: inline-block; margin-top: 7px; color: #a8c5ff; font-size: 9px; }
+.proof-open-link { display: inline-block; margin-top: 7px; color: #a8c5ff; font-size: 11px; }
 
 .proof-semantics,
 .proof-why {
@@ -450,12 +450,12 @@ main.workspace-mode .capability-card > .technical-details {
 
 .proof-semantics {
   color: #a5b0ba;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .proof-why h3 { margin: 0 0 10px; font-size: 12px; }
-.proof-check { display: grid; grid-template-columns: 18px 1fr; gap: 7px; padding: 5px 0; color: #9ba7b1; font-size: 9px; line-height: 1.4; }
+.proof-check { display: grid; grid-template-columns: 18px 1fr; gap: 7px; padding: 5px 0; color: #9ba7b1; font-size: 11px; line-height: 1.4; }
 .proof-check-mark { color: #65d48b; }
 
 @media (max-width: 1240px) {
