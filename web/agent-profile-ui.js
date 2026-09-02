@@ -333,7 +333,7 @@ function enhanceMailboxCompose() {
   const wrap = document.createElement("div");
   wrap.className = "profile-directory-search";
   wrap.innerHTML = `
-    <input class="profile-search-input" placeholder="${copy("Search agent name or @handle…", "Ajan adı veya @handle ara…")}" autocomplete="off">
+    <input class="profile-search-input" placeholder="${copy("Search agent name, @handle or paste DID…", "Ajan adı, @handle ara veya DID yapıştır…")}" autocomplete="off" spellcheck="false">
     <div class="profile-search-results"></div>
     <div class="profile-selected-recipient"></div>`;
   recipient.parentElement.insertBefore(wrap, recipient.nextSibling);
@@ -342,12 +342,33 @@ function enhanceMailboxCompose() {
   const results = wrap.querySelector(".profile-search-results");
   const selected = wrap.querySelector(".profile-selected-recipient");
   let timer = null;
+
+  function bindDirectDid(value) {
+    const candidate = value.trim();
+    if (!candidate.startsWith("did:key:")) return false;
+    try {
+      parseEd25519DidKey(candidate);
+      recipient.value = candidate;
+      selected.textContent = copy("DID verified and selected as recipient", "DID doğrulandı ve alıcı olarak seçildi");
+      results.replaceChildren();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   input.addEventListener("input", () => {
     clearTimeout(timer);
+    recipient.value = "";
+    selected.textContent = "";
+    results.replaceChildren();
+
+    const raw = input.value.trim();
+    if (!raw) return;
+    if (bindDirectDid(raw)) return;
+
     timer = setTimeout(async () => {
-      const query = input.value.trim().replace(/^@/, "");
-      results.replaceChildren();
-      if (!query) return;
+      const query = raw.replace(/^@/, "");
       try {
         for (const profile of await searchProfiles(query)) {
           const button = renderProfileResultButton(profile);
