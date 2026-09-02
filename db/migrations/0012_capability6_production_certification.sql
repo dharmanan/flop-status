@@ -6,6 +6,16 @@
 
 BEGIN;
 
+-- capability_modules and trial_definitions both reference capabilities(id).
+INSERT INTO capabilities (id, category, name, description)
+VALUES (
+  'policy.constraint-compliance',
+  'Policy Compliance',
+  'Constraint & Policy Compliance',
+  'Evaluates structured input against an explicit deterministic machine-readable policy and returns stable compliance violations.'
+)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO capability_modules (
   module_id, module_version, capability_id, capability_version, runtime_type, metadata
 )
