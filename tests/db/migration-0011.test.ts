@@ -6,6 +6,18 @@ const MIGRATION_URL = new URL("../../db/migrations/0011_capability5_production_c
 const sql = () => readFileSync(MIGRATION_URL, "utf8");
 
 describe("migration 0011: production Capability 5 certification", () => {
+  it("seeds the canonical capability row before foreign-key dependent metadata", () => {
+    const text = sql();
+    const capabilityInsert = text.indexOf("INSERT INTO capabilities");
+    const moduleInsert = text.indexOf("INSERT INTO capability_modules");
+    const trialInsert = text.indexOf("INSERT INTO trial_definitions");
+    expect(capabilityInsert).toBeGreaterThanOrEqual(0);
+    expect(capabilityInsert).toBeLessThan(moduleInsert);
+    expect(capabilityInsert).toBeLessThan(trialInsert);
+    expect(text).toContain("'data.structured-transformation'");
+    expect(text).toContain("'Structured Data Transformation'");
+  });
+
   it("seeds the browser deterministic Capability 5 module", () => {
     const text = sql();
     expect(text).toContain("INSERT INTO capability_modules");
@@ -22,22 +34,12 @@ describe("migration 0011: production Capability 5 certification", () => {
     expect(text).toContain("structured-data-transformation-certification");
     expect(text).toContain("structured-data-transformation-verifier");
     expect(text).toContain("data.structured-transformation");
-    // Unlike migrations 0008-0010, Capability 5 never seeds a row for its
-    // reserved (never-issuable) historical trial id.
     expect(text).not.toContain("'structured-data-transformation',");
   });
 
   it("declares the deterministic case class vocabulary in trial metadata", () => {
     const text = sql();
-    for (const caseClass of [
-      "VALID",
-      "SOURCE_PATH_MISSING",
-      "INVALID_TYPE_COERCION",
-      "UNSUPPORTED_OPERATION",
-      "TARGET_PATH_CONFLICT",
-    ]) {
-      expect(text).toContain(caseClass);
-    }
+    for (const caseClass of ["VALID", "SOURCE_PATH_MISSING", "INVALID_TYPE_COERCION", "UNSUPPORTED_OPERATION", "TARGET_PATH_CONFLICT"]) expect(text).toContain(caseClass);
   });
 
   it("records its program sequence number as durable metadata, matching the 0008-0010 convention", () => {
@@ -54,6 +56,7 @@ describe("migration 0011: production Capability 5 certification", () => {
 
   it("uses idempotent inserts, safe to re-run", () => {
     const text = sql();
+    expect(text).toContain("ON CONFLICT (id) DO NOTHING");
     expect(text).toContain("ON CONFLICT (module_id, module_version) DO NOTHING");
     expect(text).toContain("ON CONFLICT (trial_id, trial_version) DO NOTHING");
   });
