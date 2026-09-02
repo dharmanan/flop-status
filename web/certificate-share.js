@@ -56,20 +56,21 @@ export function certificateOgImageUrl(capabilityId) {
   return `${PUBLIC_APP_URL}/certificate-card/c${ordinal}.png`;
 }
 
+export function rankName(rank) {
+  if (typeof rank === "string") return rank.trim();
+  if (!rank || typeof rank !== "object") return "";
+  return String(rank.rank_name ?? "").trim();
+}
+
 function cleanHandle(handle) {
-  const value = String(handle ?? "").trim().replace(/^@+/, "");
-  return value ? `@${value}` : "";
+  return String(handle ?? "").trim().replace(/^@+/, "");
 }
 
-function identityLabel(profile, did) {
-  return cleanHandle(profile?.handle) || String(profile?.display_name ?? "").trim() || String(did ?? "").slice(0, 24);
-}
-
-function shareIdentity(profile, did) {
+function identityParts(profile, did) {
   const name = String(profile?.display_name ?? "").trim();
-  const rawHandle = String(profile?.handle ?? "").trim().replace(/^@+/, "");
-  if (name && rawHandle) return `${name} (FLOP handle: ${rawHandle})`;
-  return name || (rawHandle ? `FLOP handle: ${rawHandle}` : String(did ?? "").slice(0, 24));
+  const handle = cleanHandle(profile?.handle);
+  const fallback = String(did ?? "").slice(0, 24);
+  return { name, handle, fallback };
 }
 
 export function buildCertificateShareText({
@@ -82,19 +83,23 @@ export function buildCertificateShareText({
   did = "",
 }) {
   const meta = capabilityShareMeta(capabilityId);
-  const handle = shareIdentity(profile, did);
+  const identity = identityParts(profile, did);
   const count = Math.max(1, Number(certificateCount) || 1);
   const url = certificatePublicUrl(certificateId);
-  const safeRank = String(rank ?? "").trim();
+  const safeRank = rankName(rank);
 
   if (language === "tr") {
-    const line1 = `${handle}, FLOP'ta C${meta.ordinal} · ${meta.title.tr} yeteneğini doğruladı.`;
-    const line2 = `${count} doğrulanmış yetenek${safeRank ? ` · ${safeRank}` : ""}`;
+    const subject = identity.name || "FLOP ajanı";
+    const line1 = `${subject}, FLOP'ta C${meta.ordinal} · ${meta.title.tr} yeteneğini doğruladı.`;
+    const identityPrefix = identity.handle ? `FLOP: ${identity.handle} · ` : "";
+    const line2 = `${identityPrefix}${count} doğrulanmış yetenek${safeRank ? ` · ${safeRank}` : ""}`;
     return `${line1}\n${line2}\nKanıt: ${url}\n${FLOP_X_HANDLE}`;
   }
 
-  const line1 = `${handle} verified C${meta.ordinal} · ${meta.title.en} on FLOP.`;
-  const line2 = `${count} verified ${count === 1 ? "capability" : "capabilities"}${safeRank ? ` · ${safeRank}` : ""}`;
+  const subject = identity.name || "FLOP agent";
+  const line1 = `${subject} verified C${meta.ordinal} · ${meta.title.en} on FLOP.`;
+  const identityPrefix = identity.handle ? `FLOP: ${identity.handle} · ` : "";
+  const line2 = `${identityPrefix}${count} verified ${count === 1 ? "capability" : "capabilities"}${safeRank ? ` · ${safeRank}` : ""}`;
   return `${line1}\n${line2}\nProof: ${url}\n${FLOP_X_HANDLE}`;
 }
 
@@ -106,10 +111,12 @@ export function buildCertificateSocialDescription({
   did = "",
 }) {
   const meta = capabilityShareMeta(capabilityId);
-  const label = identityLabel(profile, did);
+  const identity = identityParts(profile, did);
   const count = Math.max(1, Number(certificateCount) || 1);
-  const rankText = String(rank ?? "").trim();
-  return `${label} · C${meta.ordinal} ${meta.title.en} · ${count} verified ${count === 1 ? "capability" : "capabilities"}${rankText ? ` · ${rankText}` : ""} · ${FLOP_X_HANDLE}`;
+  const rankText = rankName(rank);
+  const label = identity.name || identity.fallback || "FLOP Agent";
+  const handleText = identity.handle ? ` · FLOP: ${identity.handle}` : "";
+  return `${label}${handleText} · C${meta.ordinal} ${meta.title.en} · ${count} verified ${count === 1 ? "capability" : "capabilities"}${rankText ? ` · ${rankText}` : ""}`;
 }
 
 export function buildXIntentUrl(shareText) {

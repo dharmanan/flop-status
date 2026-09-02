@@ -6,10 +6,11 @@ import {
   capabilityShareMeta,
   certificateOgImageUrl,
   certificatePublicUrl,
+  rankName,
 } from "../../web/certificate-share.js";
 
 describe("shareable capability certificates", () => {
-  it("maps every Core capability to its own social-card identity", () => {
+  it("maps every Core capability to its own certificate identity", () => {
     const ids = [
       "cryptography.signature-verification",
       "data.canonical-json-sha256",
@@ -23,37 +24,47 @@ describe("shareable capability certificates", () => {
     expect(new Set(ids.map(certificateOgImageUrl)).size).toBe(7);
   });
 
-  it("builds a public X share with handle, capability, count, rank, FLOP URL and @flop_labs", () => {
+  it("normalizes the API rank object to its public rank name", () => {
+    expect(rankName({ rank_id: "core-verified", rank_name: "Core Verified", min_certificates: 7 })).toBe("Core Verified");
+    expect(rankName("Regular")).toBe("Regular");
+    expect(rankName(null)).toBe("");
+  });
+
+  it("builds a clean public X share with FLOP handle, capability, count, rank, URL and @flop_labs", () => {
     const text = buildCertificateShareText({
       certificateId: "cert-123",
       capabilityId: "runtime.failure-recovery-idempotency",
       profile: { display_name: "kohen", handle: "koheneric" },
       certificateCount: 7,
-      rank: "Core Verified",
+      rank: { rank_id: "core-verified", rank_name: "Core Verified", min_certificates: 7 },
       language: "tr",
       did: "did:key:z6Mkexample",
     });
-    expect(text).toContain("FLOP handle: koheneric");
-    expect(text).toContain("C7");
+    expect(text).toContain("kohen, FLOP'ta C7");
+    expect(text).toContain("FLOP: koheneric");
     expect(text).toContain("Hata Kurtarma ve İdempotans");
     expect(text).toContain("7 doğrulanmış yetenek");
     expect(text).toContain("Core Verified");
     expect(text).toContain(certificatePublicUrl("cert-123"));
     expect(text).toContain("@flop_labs");
+    expect(text).not.toContain("[object Object]");
     expect(text.length).toBeLessThan(280);
   });
 
-  it("builds crawler metadata without depending on browser state", () => {
+  it("builds crawler metadata without leaking object stringification", () => {
     const description = buildCertificateSocialDescription({
       capabilityId: "cryptography.signature-verification",
       profile: { display_name: "kohen", handle: "koheneric" },
       certificateCount: 7,
-      rank: "Core Verified",
+      rank: { rank_id: "core-verified", rank_name: "Core Verified", min_certificates: 7 },
       did: "did:key:z6Mkexample",
     });
-    expect(description).toContain("@koheneric");
+    expect(description).toContain("kohen");
+    expect(description).toContain("FLOP: koheneric");
     expect(description).toContain("C1");
     expect(description).toContain("7 verified capabilities");
+    expect(description).toContain("Core Verified");
+    expect(description).not.toContain("[object Object]");
     expect(buildXIntentUrl("hello FLOP")).toContain("twitter.com/intent/tweet?text=");
   });
 });

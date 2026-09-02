@@ -2,12 +2,17 @@ export interface AgentShareProfile {
   display_name?: string | null;
   handle?: string | null;
 }
+export interface AgentRankShape {
+  rank_id?: string | null;
+  rank_name?: string | null;
+  min_certificates?: number | null;
+}
 export interface CertificateShareInput {
   certificateId: string;
   capabilityId: string;
   profile?: AgentShareProfile | null;
   certificateCount?: number;
-  rank?: string | null;
+  rank?: string | AgentRankShape | null;
   language?: "en" | "tr";
   did?: string;
 }
@@ -25,6 +30,7 @@ export function capabilityShareMeta(capabilityId: string): {
 };
 export function certificatePublicUrl(certificateId: string): string;
 export function certificateOgImageUrl(capabilityId: string): string;
+export function rankName(rank: string | AgentRankShape | null | undefined): string;
 export function buildCertificateShareText(input: CertificateShareInput): string;
 export function buildCertificateSocialDescription(input: Omit<CertificateShareInput, "certificateId" | "language">): string;
 export function buildXIntentUrl(shareText: string): string;

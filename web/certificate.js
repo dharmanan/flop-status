@@ -5,7 +5,8 @@ import {
   buildXIntentUrl,
   capabilityShareMeta,
   certificatePublicUrl,
-} from "/certificate-share.js?v=shareable-certificates-v1";
+  rankName,
+} from "/certificate-share.js?v=shareable-certificates-v2";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const byId = (id) => document.getElementById(id);
@@ -190,10 +191,11 @@ function renderAgentContext(certificate, context) {
   const profile = context.profile;
   const name = String(profile?.display_name ?? "").trim() || copy("FLOP Agent", "FLOP Ajanı");
   const handle = String(profile?.handle ?? "").trim().replace(/^@+/, "");
+  const resolvedRank = rankName(context.rank);
   byId("certificate-agent-name").textContent = name;
   byId("certificate-agent-did-short").textContent = certificate.agent_did;
   byId("certificate-count").textContent = String(context.certificateCount);
-  byId("certificate-rank").textContent = context.rank || "—";
+  byId("certificate-rank").textContent = resolvedRank || "—";
 
   const handleNode = byId("certificate-agent-handle");
   if (handle) {
@@ -225,7 +227,7 @@ function renderAgentContext(certificate, context) {
     capabilityId: certificate.capability_id,
     profile,
     certificateCount: context.certificateCount,
-    rank: context.rank,
+    rank: resolvedRank,
     language: language(),
     did: certificate.agent_did,
   };
