@@ -47,9 +47,16 @@ export function createVerificationFlow(container, config = {}) {
         const did = document.getElementById("did")?.textContent?.trim();
         if (did) ceremony.setIdentity(did);
       }
+      if (stepId === "certificate") container.dataset.verificationRunning = "completed";
     },
-    unknown(stepId, summaryCopy) { ceremony.unknown(stepId, summaryCopy); },
-    fail(stepId, summaryCopy) { ceremony.fail(stepId, summaryCopy); },
+    unknown(stepId, summaryCopy) {
+      ceremony.unknown(stepId, summaryCopy);
+      if (stepId === "verdict") container.dataset.verificationRunning = "completed";
+    },
+    fail(stepId, summaryCopy) {
+      ceremony.fail(stepId, summaryCopy);
+      if (stepId === "verdict") container.dataset.verificationRunning = "completed";
+    },
     showCertificateStep() {},
     setChallenge(caseData, meta) { ceremony.setChallenge(caseData, meta); },
     setResult(result) { ceremony.setResult(result); },
