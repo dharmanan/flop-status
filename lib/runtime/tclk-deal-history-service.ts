@@ -114,10 +114,15 @@ export class TclkDealHistoryService {
       transportNonce: String(message.nonce),
     });
 
+    await this.reconcileOffer(offerId);
+    return true;
+  }
+
+  private async reconcileOffer(offerId: string): Promise<boolean> {
     const lines = await this.repository.transcriptLines(offerId);
-    if (!lines.length) return true;
+    if (!lines.length) return false;
     const replay = await this.mcp.call<ReplayResult>("tclk_apply_transcript", { lines, nowMs: Date.now() });
-    if (replay.offerId !== offerId) return true;
+    if (!replay || replay.offerId !== offerId || typeof replay.status !== "string") return false;
     await this.repository.updateState({
       offerId,
       contractId: typeof replay.contract === "string" ? replay.contract : null,
@@ -127,6 +132,20 @@ export class TclkDealHistoryService {
     return true;
   }
 
+  async reconcileArchivedDeals(limit = 50): Promise<number> {
+    const offerIds = await this.repository.listOfferIdsForReconcile(limit);
+    let reconciled = 0;
+    for (const offerId of offerIds) {
+      try {
+        if (await this.reconcileOffer(offerId)) reconciled += 1;
+      } catch {
+        // Archived frames stay authoritative evidence even if the upstream state
+        // machine is temporarily unavailable. A later read can reconcile again.
+      }
+    }
+    return reconciled;
+  }
+
   async listDealRoomsForSync(limit = 100): Promise<string[]> {
     const contracts = await this.repository.listContractsForSync(limit);
     return contracts.map((contract) => `mb-p-tclk-${contract.slice(2, 18)}`);
@@ -134,11 +153,13 @@ export class TclkDealHistoryService {
 
   async listByDid(did: string) {
     if (!did.startsWith("did:key:")) return [];
+    await this.reconcileArchivedDeals();
     return this.repository.listByDid(did);
   }
 
   async getByOfferId(offerId: string) {
     if (!CONTRACT_RE.test(offerId)) return null;
+    try { await this.reconcileOffer(offerId); } catch {}
     return this.repository.getByOfferId(offerId);
   }
 }
