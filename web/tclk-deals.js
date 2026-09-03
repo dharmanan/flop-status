@@ -801,8 +801,11 @@ async function openDeal(deal) {
     if (rejected.length) {
       rejectedRecords = node("section", "tclk-rejected-records");
       rejectedRecords.appendChild(node("h3", "", copy("Rejected records", "Reddedilen kayıtlar")));
-      const category = rejectedRecordCategory(state.status);
       for (const step of rejected) {
+        // Categorized from this step's own rejection reason, not the deal's
+        // eventual final status: a mid-flow rejection in a deal that later
+        // completed normally must not be mislabeled as "already completed".
+        const category = rejectedRecordCategory(step);
         const record = node("div", "tclk-rejected-record");
         record.append(
           node("strong", "", rejectedAttemptLabel(step.type)),
