@@ -50,4 +50,12 @@ describe("TCLK Deals browser surface", () => {
     expect(deals).toContain('rails: ["paper"]');
     expect(deals).not.toContain("schnorrAdaptor");
   });
+
+  it("resumes a matching PaperRail lock after a lost LOCK-frame post", () => {
+    expect(deals).toContain("async function ensurePaperLock(terms)");
+    expect(deals).toContain('error.code !== "PAPER_RECORD_EXISTS"');
+    expect(deals).toContain("await readPaper(terms.contract)");
+    expect(deals).toContain("existing.statement !== terms.statement");
+    expect(deals).toContain("await ensurePaperLock({ contract: accept.contract");
+  });
 });

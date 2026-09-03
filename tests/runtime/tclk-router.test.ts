@@ -71,6 +71,25 @@ describe("TCLK runtime router", () => {
     expect(body.warning).toMatch(/holds no value/i);
   });
 
+  it("marks an existing PaperRail record as a recoverable lock conflict", async () => {
+    const paper = {
+      lock: async () => {
+        throw Object.assign(new Error("paper rail already has a record for this contract"), {
+          status: 409,
+          code: "PAPER_RECORD_EXISTS",
+        });
+      },
+    };
+    const base = await start({ call: async () => ({}) }, paper);
+    const response = await fetch(`${base}/api/v1/tclk/paper/lock`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "PAPER_RECORD_EXISTS" } });
+  });
+
   it("does not become a general Technocore room proxy", async () => {
     const base = await start({ call: async () => ({}) }, {});
     const response = await fetch(`${base}/api/v1/tclk/rooms/general-chat`);

@@ -36,6 +36,15 @@ const MESSAGES = {
 // codes get a clear sentence with the code kept alongside for diagnostics;
 // unknown codes are returned unchanged.
 export function friendlyErrorMessage(code, fallback, lang) {
+  // TCLK tool errors carry the protocol's specific validation reason. Keeping
+  // only a generic sentence made a failed LOCK impossible to diagnose and can
+  // be misleading when a preceding PaperRail write already succeeded.
+  if (code === "TCLK_TOOL_REJECTED" && fallback && fallback !== code) {
+    const prefix = lang === "tr"
+      ? "TCLK bu işlemi reddetti. Ayrıntı"
+      : "TCLK rejected this action. Detail";
+    return `${prefix}: ${fallback} (${code})`;
+  }
   const table = MESSAGES[lang] ?? MESSAGES.en;
   const friendly = code ? table[code] : undefined;
   if (!friendly) return fallback;
