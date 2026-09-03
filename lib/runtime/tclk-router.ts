@@ -5,6 +5,7 @@ import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history
 
 const MAX_TCLK_BODY_BYTES = 1_048_576;
 const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
+const TECHNOCORE_READ_TIMEOUT_MS = 12_000;
 const TCLK_ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
 const TERMINAL_TCLK_STATES = new Set(["claimed", "refunded", "cancelled"]);
 const OFFER_ID_RE = /^0x[0-9a-f]{64}$/;
@@ -74,9 +75,44 @@ async function readRawRoom(room: string): Promise<RawRoom> {
   if (!TCLK_ROOM_RE.test(room)) {
     throw Object.assign(new Error("raw proxy is limited to official TCLK offer/deal rooms"), { status: 400, code: "INVALID_TCLK_ROOM" });
   }
-  const response = await fetch(`${TECHNOCORE_URL}/r/${room}?format=json`, { headers: { accept: "application/json" } });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TECHNOCORE_READ_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${TECHNOCORE_URL}/r/${room}?format=json`, {
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw Object.assign(
+        new Error(`Technocore did not respond within ${TECHNOCORE_READ_TIMEOUT_MS / 1000} seconds.`),
+        { status: 503, code: "TECHNOCORE_READ_TIMEOUT" },
+      );
+    }
+    const reason = error instanceof Error ? error.message : String(error);
+    throw Object.assign(
+      new Error(`Technocore room read could not connect: ${reason}`),
+      { status: 503, code: "TECHNOCORE_READ_UNAVAILABLE" },
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+
   if (response.status === 404) return { room, messages: [], last_seq: 0 };
-  if (!response.ok) throw Object.assign(new Error(`Technocore room read failed: HTTP ${response.status}`), { status: 502, code: "TECHNOCORE_READ_FAILED" });
+  if (!response.ok) {
+    if (response.status === 503) {
+      throw Object.assign(
+        new Error("Technocore is temporarily unavailable: HTTP 503 Service Unavailable."),
+        { status: 503, code: "TECHNOCORE_HTTP_503" },
+      );
+    }
+    throw Object.assign(
+      new Error(`Technocore room read failed: HTTP ${response.status}`),
+      { status: 502, code: "TECHNOCORE_READ_FAILED" },
+    );
+  }
   return response.json() as Promise<RawRoom>;
 }
 
