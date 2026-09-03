@@ -32,3 +32,30 @@ export function findAcceptForContract(records, contractId) {
   if (!contractId) return null;
   return records.find((record) => record.frame?.type === "accept" && record.frame.contract === contractId) ?? null;
 }
+
+/**
+ * Merges the live offer-board's "mine" deals with durable-history recovery
+ * results, for a single offer id at a time. Once an offer id is known to
+ * exist in durable history, its live Date.now-derived entry is never left in
+ * place: a complete recovery replaces it, and an incomplete one removes it
+ * outright and reports it as a recovery issue instead. This is what keeps a
+ * stale live replay from silently standing in for an offer id whose durable
+ * history could not be confirmed — fail closed, not "fail to whatever was
+ * already there".
+ *
+ * @param {Array<{offer: {frame: {id: string}}}>} liveDeals
+ * @param {Array<{ok: true, deal: {offer: {frame: {id: string}}}} | {ok: false, offerId: string, reason: string}>} recoveryResults
+ */
+export function reconcileMyDeals(liveDeals, recoveryResults) {
+  const byOfferId = new Map(liveDeals.map((deal) => [deal.offer.frame.id, deal]));
+  const recoveryIssues = [];
+  for (const recovered of recoveryResults) {
+    if (recovered.ok) {
+      byOfferId.set(recovered.deal.offer.frame.id, recovered.deal);
+    } else {
+      byOfferId.delete(recovered.offerId);
+      recoveryIssues.push(recovered);
+    }
+  }
+  return { deals: [...byOfferId.values()], recoveryIssues };
+}

@@ -3,7 +3,7 @@ import { fillTclkProofSlots } from "/safe-render.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
-import { buildHistoricalBoardState, findAcceptForContract } from "/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const OFFER_ROOM = "tclk-offers";
@@ -502,22 +502,22 @@ async function renderDealCards(filter) {
     });
     // Durable, venue-timestamp-aware history (recoverArchivedDeal) is
     // authoritative for an archived agreement even when the same offer id is
-    // still visible in this live room window — so every known archived offer
-    // is (re)recovered and, once complete, overwrites any live entry for the
-    // same id instead of being skipped merely because that id is already
-    // present.
-    const byOfferId = new Map(deals.map((deal) => [deal.offer.frame.id, deal]));
+    // still visible in this live room window, so every known archived offer
+    // is (re)recovered here. reconcileMyDeals() then enforces fail-closed:
+    // once an offer id is known to exist in durable history, its live
+    // Date.now-derived entry is never left in place on its own — a complete
+    // recovery replaces it, an incomplete one removes it and is reported as
+    // a recovery issue instead.
+    const recoveryResults = [];
     for (const summary of await fetchArchivedDeals(id.did)) {
       if (!summary?.offerId) continue;
       const recovered = await recoverArchivedDeal(summary.offerId);
-      if (recovered.ok) {
-        byOfferId.set(summary.offerId, recovered.deal);
-        panel.recovering(summary.offerId);
-      } else if (!byOfferId.has(summary.offerId)) {
-        recoveryIssues.push(recovered);
-      }
+      recoveryResults.push(recovered);
+      if (recovered.ok) panel.recovering(summary.offerId);
     }
-    deals = [...byOfferId.values()];
+    const merged = reconcileMyDeals(deals, recoveryResults);
+    deals = merged.deals;
+    recoveryIssues = merged.recoveryIssues;
   }
   const header = node("div", "tclk-list-head");
   header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));

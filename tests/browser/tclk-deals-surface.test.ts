@@ -101,15 +101,20 @@ describe("TCLK Deals browser surface", () => {
 
   // H. "My deals" must let a complete durable historical reconstruction win
   // over a stale live-room replay for the same offer id, not skip recovery
-  // just because that id is already present in the current room window.
-  it("renderDealCards lets recovered archived history override a live entry for the same offer id", () => {
+  // just because that id is already present in the current room window, and
+  // must delegate the actual merge (including the fail-closed removal of a
+  // stale live entry when recovery is incomplete — see
+  // reconcileMyDeals in tclk-deal-recovery.test.ts) to the one shared,
+  // independently-tested implementation rather than a second, ad hoc one.
+  it("renderDealCards recovers every known archived offer id and merges via the shared reconcileMyDeals helper", () => {
     const body = functionSource(deals, "async function renderDealCards(filter)");
     expect(body).not.toContain("known.has(summary.offerId)) continue");
-    expect(body).toContain("byOfferId.set(summary.offerId, recovered.deal)");
-    expect(body).toContain("recovered.ok");
+    expect(body).not.toContain("else if (!byOfferId.has(summary.offerId))");
+    expect(body).toContain("recoveryResults.push(recovered)");
+    expect(body).toContain("reconcileMyDeals(deals, recoveryResults)");
   });
 
-  it("imports the pure historical-recovery helpers used by recoverArchivedDeal", () => {
-    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract } from "/tclk-deal-recovery.js"');
+  it("imports the pure historical-recovery helpers used by recoverArchivedDeal and renderDealCards", () => {
+    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js"');
   });
 });
