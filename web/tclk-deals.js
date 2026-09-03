@@ -20,6 +20,13 @@ let currentTab = "discover";
 let busy = false;
 let boardCache = null;
 
+class TclkApiError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
 const tr = () => document.documentElement.lang === "tr";
 const copy = (en, trText) => tr() ? trText : en;
 const short = (value, max = 34) => {
@@ -145,7 +152,7 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const code = body?.error?.code ?? `HTTP_${response.status}`;
     const fallback = body?.error?.message ?? code;
-    throw new Error(friendlyErrorMessage(code, fallback, tr() ? "tr" : "en"));
+    throw new TclkApiError(code, friendlyErrorMessage(code, fallback, tr() ? "tr" : "en"));
   }
   return body;
 }
@@ -169,6 +176,36 @@ async function paper(path, body) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+async function readPaper(contract) {
+  return (await api(`/api/v1/tclk/paper/${encodeURIComponent(contract)}`)).paper;
+}
+
+async function ensurePaperLock(terms) {
+  try {
+    await paper("lock", terms);
+    return;
+  } catch (error) {
+    if (!(error instanceof TclkApiError) || error.code !== "PAPER_RECORD_EXISTS") throw error;
+  }
+
+  // The first attempt may have persisted the no-value PaperRail record but
+  // lost the subsequent signed LOCK frame. Resume only when the existing
+  // record exactly matches this agreement; never turn another record into a
+  // successful lock.
+  const existing = await readPaper(terms.contract);
+  if (
+    existing?.status !== "locked"
+    || existing.lock !== "hash"
+    || existing.statement !== terms.statement
+    || existing.refundAfterMs !== terms.refundAfterMs
+  ) {
+    throw new Error(copy(
+      "The existing PaperRail record does not match this agreement. Nothing was posted.",
+      "Mevcut PaperRail kaydı bu anlaşmayla eşleşmiyor. Hiçbir kayıt gönderilmedi.",
+    ));
+  }
 }
 
 async function signCanonical(canonical) {
@@ -701,7 +738,7 @@ async function appendDealActions(container, context) {
   if (state.status === "accepted" && isPayer && accept) {
     container.appendChild(node("p", "tclk-action-note", copy("The offer was accepted. Your turn: create the PaperRail lock.", "Teklif kabul edildi. Sıra sende: anlaşmayı PaperRail üzerinde kilitle.")));
     addAction(container, copy("Create PaperRail lock", "PaperRail kilidini oluştur"), async () => {
-      await paper("lock", { contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
+      await ensurePaperLock({ contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
       const built = await tool("tclk_make_lock", { from: id.did, contract: accept.contract, rail: "paper", ref: accept.contract });
       await postLine(room, built.line);
     });

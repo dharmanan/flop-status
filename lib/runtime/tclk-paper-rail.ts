@@ -84,7 +84,12 @@ export class TclkPaperRailAdapter {
       `${this.baseUrl}/kv/${ns}/${key}/set/${encodeURIComponent(encode(record))}?if_absent=1`,
       { headers: { accept: "text/plain" } },
     );
-    if (response.status === 409) throw new Error("paper rail already has a record for this contract");
+    if (response.status === 409) {
+      throw Object.assign(new Error("paper rail already has a record for this contract"), {
+        status: 409,
+        code: "PAPER_RECORD_EXISTS",
+      });
+    }
     if (!response.ok) throw new Error(`Technocore paper lock failed: HTTP ${response.status}`);
     return { ref: terms.contract, record };
   }
