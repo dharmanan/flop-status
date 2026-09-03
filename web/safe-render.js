@@ -28,6 +28,16 @@ export function renderProfileResultButton(profile, doc = document) {
 export function fillTclkProofSlots(proofElement, offer, state) {
   proofElement.querySelector(".proof-amount-slot").textContent = `${offer.amount} ${offer.asset}`;
   proofElement.querySelector(".tclk-proof-state").textContent = String(state.status).toUpperCase();
+  // .proof-contract-slot keeps its original meaning (offerId pre-accept, the
+  // real contractId once one exists) unchanged: tclk-deal-refresh.js reads it
+  // as this deal's exact protocol identity, including for still-proposed
+  // offers, and must keep working exactly as before. The two slots below are
+  // the user-facing fix: offerId and contractId shown separately and labelled,
+  // instead of one field silently meaning either depending on state.
   proofElement.querySelector(".proof-contract-slot").textContent = String(state.contract ?? offer.id);
+  const offerIdSlot = proofElement.querySelector(".proof-offer-id-slot");
+  if (offerIdSlot) offerIdSlot.textContent = String(offer.id);
+  const contractIdSlot = proofElement.querySelector(".proof-contract-id-slot");
+  if (contractIdSlot) contractIdSlot.textContent = state.contract ? String(state.contract) : "—";
   proofElement.querySelector(".proof-rail-slot").textContent = String(state.rail ?? "paper");
 }
