@@ -158,10 +158,18 @@ function renderClosureStatus(contract, receipts) {
   const actions = document.querySelector(".tclk-actions-panel");
   const stateElement = proof?.querySelector(".tclk-proof-state");
   const state = stateElement?.dataset.protocolState?.trim().toLowerCase() || stateElement?.textContent?.trim().toLowerCase() || "";
-  if (!proof || !actions || !["claimed", "refunded", "cancelled"].includes(state)) return;
-
   const payer = detailParty(".payer-slot");
   const payee = detailParty(".payee-slot");
+  // openDeal() only fills in the payee slot's DID once a real accept exists
+  // (see fillTclkProofSlots/decorateParty in tclk-deals.js). An empty payee DID
+  // means the offer was cancelled or expired before anyone accepted it, so
+  // there is no counterparty and nothing to close — showing "PENDING" for a
+  // party that never existed would be misleading, not just incomplete.
+  if (!proof || !actions || !["claimed", "refunded", "cancelled"].includes(state) || !payee.did) {
+    document.querySelector(".tclk-closure-status")?.remove();
+    return;
+  }
+
   const signedBy = new Set(receipts.map((receipt) => receipt.from).filter(Boolean));
   const parties = [
     { role: copy("PAYER", "ÖDEYEN"), ...payer },
