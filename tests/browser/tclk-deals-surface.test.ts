@@ -58,4 +58,58 @@ describe("TCLK Deals browser surface", () => {
     expect(deals).toContain("existing.statement !== terms.statement");
     expect(deals).toContain("await ensurePaperLock({ contract: accept.contract");
   });
+
+  function functionSource(text: string, name: string): string {
+    const start = text.indexOf(name);
+    expect(start, `expected to find ${name}`).toBeGreaterThanOrEqual(0);
+    const nextFunction = text.indexOf("\nasync function ", start + name.length);
+    const nextPlainFunction = text.indexOf("\nfunction ", start + name.length);
+    const candidates = [nextFunction, nextPlainFunction].filter((index) => index >= 0);
+    const end = candidates.length ? Math.min(...candidates) : text.length;
+    return text.slice(start, end);
+  }
+
+  // G. An archived deal recovered from durable history must fail closed on an
+  // incomplete historical replay instead of silently running the old
+  // Date.now transcript replay: recoverArchivedDeal() must not call
+  // tclk_apply_transcript at all.
+  it("recoverArchivedDeal never calls tclk_apply_transcript (fails closed on incomplete history instead)", () => {
+    const body = functionSource(deals, "async function recoverArchivedDeal(offerId)");
+    expect(body).not.toContain("tclk_apply_transcript");
+    expect(body).toContain("detail?.historicalReplay");
+    expect(body).toContain("if (!replay?.complete)");
+    expect(body).toContain("buildHistoricalBoardState(offerRecord.frame.from, replay.result)");
+    expect(body).toContain("findAcceptForContract(related, boardState.contract)");
+  });
+
+  // F. dealTranscript() must not re-run the hosted tclk_apply_transcript
+  // (which folds against Date.now) for a deal already carrying a durable
+  // historical replay result — only for an ordinary live deal.
+  it("dealTranscript distinguishes ARCHIVED HISTORICAL REPLAY from LIVE CURRENT REPLAY", () => {
+    const body = functionSource(deals, "async function dealTranscript(deal)");
+    expect(body).toContain("deal.historical");
+    expect(body).toContain("? deal.boardState");
+    expect(body).toContain('await tool("tclk_apply_transcript", { lines, nowMs: Date.now() })');
+  });
+
+  // J. Live current deals (buildDealIndex) keep replaying through the
+  // official hosted MCP exactly as before — this fix must not touch that path.
+  it("buildDealIndex (live offer board) still replays through the hosted tclk_apply_transcript with the live clock", () => {
+    const body = functionSource(deals, "async function buildDealIndex(records, onProgress)");
+    expect(body).toContain('tool("tclk_apply_transcript", { lines: related.map((record) => record.line), nowMs: Date.now() })');
+  });
+
+  // H. "My deals" must let a complete durable historical reconstruction win
+  // over a stale live-room replay for the same offer id, not skip recovery
+  // just because that id is already present in the current room window.
+  it("renderDealCards lets recovered archived history override a live entry for the same offer id", () => {
+    const body = functionSource(deals, "async function renderDealCards(filter)");
+    expect(body).not.toContain("known.has(summary.offerId)) continue");
+    expect(body).toContain("byOfferId.set(summary.offerId, recovered.deal)");
+    expect(body).toContain("recovered.ok");
+  });
+
+  it("imports the pure historical-recovery helpers used by recoverArchivedDeal", () => {
+    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract } from "/tclk-deal-recovery.js"');
+  });
 });

@@ -215,9 +215,19 @@ export class TclkDealHistoryService {
     return this.repository.listByDid(did);
   }
 
+  /**
+   * Returns the archived deal, its frames, and the SAME replayArchivedFrames()
+   * result reconcileOffer() uses internally — so a caller (the browser's
+   * archived-deal recovery, in particular) can adopt the durable,
+   * venue-timestamp-aware historical state instead of independently folding
+   * the transcript against the current wall clock. `deal` and `frames` are
+   * unchanged for backward compatibility; `historicalReplay` is additive.
+   */
   async getByOfferId(offerId: string) {
     if (!CONTRACT_RE.test(offerId)) return null;
     try { await this.reconcileOffer(offerId); } catch {}
-    return this.repository.getByOfferId(offerId);
+    const entry = await this.repository.getByOfferId(offerId);
+    if (!entry) return null;
+    return { ...entry, historicalReplay: replayArchivedFrames(entry.frames) };
   }
 }
