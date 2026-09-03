@@ -6,6 +6,7 @@ import type { TclkMcpClientLike } from "./tclk-mcp-client.js";
 const encoder = new TextEncoder();
 const ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
 const CONTRACT_RE = /^0x[0-9a-f]{64}$/;
+const MAX_UNARCHIVABLE_RECORDS = 4_096;
 
 export interface RawTclkMessage {
   seq: number;
@@ -38,10 +39,29 @@ type ReplayResult = {
 };
 
 export class TclkDealHistoryService {
+  // Technocore's public rendezvous can contain an accept whose offer rotated
+  // away before FLOP ever observed it. There is no safe transcript to archive
+  // in that case. Remember the signed record for this process so every board
+  // refresh does not decode it again or turn ordinary foreign traffic into an
+  // application error log.
+  private readonly unarchivableRecordKeys = new Set<string>();
+
   constructor(
     private readonly repository: PgTclkDealHistoryRepository,
     private readonly mcp: TclkMcpClientLike,
   ) {}
+
+  private recordKey(room: string, message: RawTclkMessage): string {
+    return `${room}\u0000${message.seq}\u0000${message.sig}`;
+  }
+
+  private rememberUnarchivable(key: string): void {
+    if (this.unarchivableRecordKeys.size >= MAX_UNARCHIVABLE_RECORDS) {
+      const oldest = this.unarchivableRecordKeys.values().next().value;
+      if (oldest) this.unarchivableRecordKeys.delete(oldest);
+    }
+    this.unarchivableRecordKeys.add(key);
+  }
 
   async ingestRoom(room: string, messages: RawTclkMessage[]): Promise<number> {
     if (!ROOM_RE.test(room)) return 0;
@@ -55,7 +75,7 @@ export class TclkDealHistoryService {
     // one MCP decode per message.
     const alreadyArchived = await this.repository.archivedSeqs(room, ordered.map((message) => message.seq));
     for (const message of ordered) {
-      if (alreadyArchived.has(message.seq)) continue;
+      if (alreadyArchived.has(message.seq) || this.unarchivableRecordKeys.has(this.recordKey(room, message))) continue;
       try {
         const stored = await this.ingestMessage(room, message);
         if (stored) archived += 1;
@@ -121,7 +141,7 @@ export class TclkDealHistoryService {
     // disappears from history. Report it instead of letting a foreign key error
     // vanish into a catch block.
     if (frame.type !== "offer" && !(await this.repository.offerExists(offerId))) {
-      this.report(`orphan ${frame.type} frame in ${room}#${message.seq}: offer ${offerId} was never archived`);
+      this.rememberUnarchivable(this.recordKey(room, message));
       return false;
     }
 
