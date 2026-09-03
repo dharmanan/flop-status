@@ -13,7 +13,10 @@ export default defineConfig({
     // real capability modules instead of only reading their source.
     alias: [
       {
-        find: /^\/(identity-crypto\.js|capability-copy\.js|capabilities\/.+\.js)$/,
+        // The optional (?:\?.*)? tolerates a cache-busting "?v=..." suffix, used
+        // by dynamic `import("/foo.js?v=...")` calls elsewhere in web/ — plain
+        // static imports never carry one, so this only widens what already matches.
+        find: /^\/(identity-crypto\.js|capability-copy\.js|capabilities\/.+\.js|tclk-deal-refresh\.js)(?:\?.*)?$/,
         replacement: `${webRoot}$1`,
       },
     ],
