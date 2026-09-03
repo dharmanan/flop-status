@@ -122,6 +122,26 @@ export class PgTclkDealHistoryRepository {
     );
   }
 
+  /**
+   * Seq numbers already archived for a room. Ingest uses this to skip records it
+   * has seen, so a repeated room sync costs one query instead of one MCP decode
+   * per message. Keeping syncs short is what stops Technocore's small retention
+   * window from rotating a record away before it is archived.
+   */
+  async archivedSeqs(room: string, seqs: number[]): Promise<Set<number>> {
+    if (!seqs.length) return new Set();
+    const result = await this.pool.query<{ seq: string | number }>(
+      `SELECT seq FROM tclk_deal_frames WHERE room = $1 AND seq = ANY($2::bigint[])`,
+      [room, seqs],
+    );
+    return new Set(result.rows.map((row) => Number(row.seq)));
+  }
+
+  async offerExists(offerId: string): Promise<boolean> {
+    const result = await this.pool.query(`SELECT 1 FROM tclk_deals WHERE offer_id = $1 LIMIT 1`, [offerId]);
+    return result.rowCount === 1;
+  }
+
   async offerIdForContract(contract: string): Promise<string | null> {
     const result = await this.pool.query<{ offer_id: string }>(
       `SELECT offer_id FROM tclk_deals WHERE contract_id = $1 OR offer_id = $1 LIMIT 1`,

@@ -34,6 +34,7 @@ const TOOL_NAMES = new Set<TclkToolName>([
 ]);
 
 let historySyncInFlight: Promise<void> | null = null;
+let historySyncQueued = false;
 
 function json(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, HEADERS);
@@ -96,9 +97,14 @@ function rawMessages(room: RawRoom): RawTclkMessage[] {
   });
 }
 
+function reportHistory(message: string, error?: unknown): void {
+  const detail = error instanceof Error ? error.message : error === undefined ? "" : String(error);
+  console.warn(`[tclk-history] ${message}${detail ? `: ${detail}` : ""}`);
+}
+
 async function archiveRoom(history: TclkDealHistoryService | undefined, roomName: string, room: RawRoom): Promise<void> {
   if (!history) return;
-  try { await history.ingestRoom(roomName, rawMessages(room)); } catch {}
+  try { await history.ingestRoom(roomName, rawMessages(room)); } catch (error) { reportHistory(`archive failed for ${roomName}`, error); }
 }
 
 async function backfillDealRooms(history: TclkDealHistoryService | undefined): Promise<void> {
@@ -109,9 +115,9 @@ async function backfillDealRooms(history: TclkDealHistoryService | undefined): P
       try {
         const room = await readRawRoom(roomName);
         await archiveRoom(history, roomName, room);
-      } catch {}
+      } catch (error) { reportHistory(`deal-room backfill failed for ${roomName}`, error); }
     }
-  } catch {}
+  } catch (error) { reportHistory("deal-room backfill could not list rooms", error); }
 }
 
 async function syncHistory(history: TclkDealHistoryService, offerRoom?: RawRoom): Promise<void> {
@@ -123,11 +129,22 @@ async function syncHistory(history: TclkDealHistoryService, offerRoom?: RawRoom)
 
 function startHistorySync(history: TclkDealHistoryService | undefined, offerRoom?: RawRoom): Promise<void> | null {
   if (!history) return null;
-  if (!historySyncInFlight) {
-    historySyncInFlight = syncHistory(history, offerRoom)
-      .catch(() => undefined)
-      .finally(() => { historySyncInFlight = null; });
+  if (historySyncInFlight) {
+    // A sync is already running, so this trigger's snapshot cannot be handled
+    // right now. Dropping it is how a freshly posted offer used to be lost: by
+    // the next trigger it had already rotated out of Technocore's window. Queue
+    // one follow-up pass instead, which re-reads the room when it starts.
+    historySyncQueued = true;
+    return historySyncInFlight;
   }
+  historySyncInFlight = syncHistory(history, offerRoom)
+    .catch((error) => reportHistory("history sync failed", error))
+    .finally(() => {
+      historySyncInFlight = null;
+      if (!historySyncQueued) return;
+      historySyncQueued = false;
+      startHistorySync(history);
+    });
   return historySyncInFlight;
 }
 
@@ -246,9 +263,16 @@ export function createTclkAwareHandler(
           if (tool === "tclk_post_frame" && (result as { posted?: unknown })?.posted === true && history) {
             const roomName = typeof body.room === "string" ? body.room : "";
             if (TCLK_ROOM_RE.test(roomName)) {
-              void readRawRoom(roomName)
-                .then((room) => scheduleRoomArchive(history, roomName, room))
-                .catch(() => undefined);
+              // The client already has its response, so this await costs it nothing.
+              // Archiving the record that was just posted is done here rather than
+              // queued behind the shared sync: Technocore keeps only a short window
+              // of each room, and a deferred pass can arrive after the record is gone.
+              try {
+                await archiveRoom(history, roomName, await readRawRoom(roomName));
+              } catch (error) {
+                reportHistory(`post-frame archive failed for ${roomName}`, error);
+              }
+              scheduleHistorySync(history);
             }
           }
           return;
