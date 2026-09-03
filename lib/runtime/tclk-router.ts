@@ -247,8 +247,13 @@ export function createTclkAwareHandler(
           let deals = await history.listByDid(did);
           const needsBackfill = deals.length === 0 || deals.some((deal) => !TERMINAL_TCLK_STATES.has(deal.status));
           if (needsBackfill) {
+            // waitForHistorySync() already ends its own reconcileArchivedDeals()
+            // pass (see syncHistory), whether it ran to completion or this wait
+            // timed out on it — so this re-read only needs the resulting DB
+            // state, not another full, competing reconciliation pass moments
+            // after the first.
             await waitForHistorySync(history);
-            deals = await history.listByDid(did);
+            deals = await history.listByDid(did, { reconcile: false });
           } else {
             scheduleHistorySync(history);
           }

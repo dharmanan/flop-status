@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { makeOffer, makeAccept, generateHashLock, type CancelFrame, type LockFrame, type ReceiptFrame, type RevealFrame } from "@flop-labs/tclk";
 import { TclkDealHistoryService, type RawTclkMessage } from "../../lib/runtime/tclk-deal-history-service.js";
-import type { ArchivedTclkDeal, PgTclkDealHistoryRepository } from "../../lib/db/tclk-deal-history-repository.js";
+import type { ArchivedTclkDeal, ArchivedTclkFrame, PgTclkDealHistoryRepository } from "../../lib/db/tclk-deal-history-repository.js";
 import { encodeBase64Url } from "../../lib/crypto/base64url.js";
 import { generateTestEd25519Identity, type TestEd25519Identity } from "../helpers/ed25519-fixtures.js";
 import { archivedFrame, dealRoomFor } from "../helpers/tclk-fixtures.js";
@@ -252,5 +252,228 @@ describe("TclkDealHistoryService.getByOfferId", () => {
 
     expect(result?.historicalReplay.complete).toBe(false);
     expect(repository.updateState).not.toHaveBeenCalled();
+  });
+});
+
+describe("TclkDealHistoryService reconciliation log noise", () => {
+  // The venueTimestampMs: null short-circuits replayArchivedFrames() before
+  // it even looks at frameType/line, so a single minimal frame is enough to
+  // land on the "incomplete" path deterministically for any offerId.
+  function incompleteFrame(offerId: string): ArchivedTclkFrame {
+    return {
+      room: ROOM,
+      seq: 1,
+      offerId,
+      frameType: "offer",
+      fromDid: "did:key:zFixture",
+      line: "irrelevant-for-the-incomplete-path",
+      frame: {},
+      transportSig: "fixture-sig",
+      transportNonce: "0",
+      venueTimestampMs: null,
+    };
+  }
+
+  function warnMessages(spy: ReturnType<typeof vi.fn>): string[] {
+    return spy.mock.calls.map((call: unknown[]) => String(call[0]));
+  }
+
+  // 1. A direct/specific reconciliation path (getByOfferId) reports the same
+  // offer+reason once, not on every call.
+  it("getByOfferId does not repeat the same incomplete-reconstruction warning for the same offer+reason", async () => {
+    const frames = [incompleteFrame(OFFER_ID)];
+    const repository = {
+      framesForOffer: vi.fn(async () => frames),
+      getByOfferId: vi.fn(async () => ({ deal: {} as ArchivedTclkDeal, frames })),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await service.getByOfferId(OFFER_ID);
+    await service.getByOfferId(OFFER_ID);
+    await service.getByOfferId(OFFER_ID);
+    const messages = warnMessages(warn);
+    warn.mockRestore();
+
+    const incompleteLines = messages.filter((line) => line.includes("historical reconstruction incomplete"));
+    expect(incompleteLines).toHaveLength(1);
+    expect(incompleteLines[0]).toContain(OFFER_ID);
+  });
+
+  // 2. Multiple incomplete deals in one reconcileArchivedDeals() pass produce
+  // ONE batch summary, not one warning per offer.
+  it("reconcileArchivedDeals summarizes multiple newly-incomplete deals in one warning instead of one per offer", async () => {
+    const offerIds = [OFFER_ID, `0x${"b2".repeat(32)}`, `0x${"c3".repeat(32)}`];
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => offerIds),
+      framesForOffer: vi.fn(async (offerId: string) => [incompleteFrame(offerId)]),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await service.reconcileArchivedDeals();
+    const messages = warnMessages(warn);
+    warn.mockRestore();
+
+    const perOfferLines = messages.filter((line) => line.includes("historical reconstruction incomplete for"));
+    const summaryLines = messages.filter((line) => /archived deal\(s\) skipped/.test(line));
+    expect(perOfferLines).toHaveLength(0);
+    expect(summaryLines).toHaveLength(1);
+    expect(summaryLines[0]).toContain("3");
+  });
+
+  // Correctness: replayArchivedFrames() returns complete:false for several
+  // distinct reasons — missing venue timestamps is only one of them (others
+  // include "no offer frame among archived records", "did not decode...",
+  // "openContract rejected..."). The batch summary must stay truthful for a
+  // batch made up entirely of a NON-timestamp incomplete reason: it must
+  // never claim venue timestamps are missing when they are not.
+  it("does not claim missing venue timestamps in the batch summary when the incomplete reason is unrelated", async () => {
+    // Every frame carries a real venueTimestampMs, so replayArchivedFrames()
+    // passes the missing-timestamp check — but none is an "offer" frame, so
+    // it fails closed with "no offer frame among archived records" instead.
+    const nonOfferFrame: ArchivedTclkFrame = {
+      room: ROOM,
+      seq: 1,
+      offerId: OFFER_ID,
+      frameType: "accept",
+      fromDid: "did:key:zFixture",
+      line: "irrelevant-for-this-reason",
+      frame: {},
+      transportSig: "fixture-sig",
+      transportNonce: "0",
+      venueTimestampMs: Date.now(),
+    };
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => [OFFER_ID]),
+      framesForOffer: vi.fn(async () => [nonOfferFrame]),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await service.reconcileArchivedDeals();
+    const messages = warnMessages(warn);
+    warn.mockRestore();
+
+    const summaryLines = messages.filter((line) => /archived deal\(s\) skipped/.test(line));
+    expect(summaryLines).toHaveLength(1);
+    expect(summaryLines[0]).not.toMatch(/timestamp/i);
+  });
+
+  // 3. Running the identical batch again does not re-emit the same summary
+  // (or any per-offer line) for offers already accounted for.
+  it("reconcileArchivedDeals does not repeat the same batch summary on a second pass over the same offers", async () => {
+    const offerIds = [OFFER_ID, `0x${"b2".repeat(32)}`];
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => offerIds),
+      framesForOffer: vi.fn(async (offerId: string) => [incompleteFrame(offerId)]),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await service.reconcileArchivedDeals();
+    await service.reconcileArchivedDeals();
+    const messages = warnMessages(warn);
+    warn.mockRestore();
+
+    const summaryLines = messages.filter((line) => /archived deal\(s\) skipped/.test(line));
+    expect(summaryLines).toHaveLength(1);
+  });
+
+  // 4. A genuine thrown error during reconciliation stays individually
+  // visible and is never folded into the incomplete-history batch summary.
+  it("logs a genuine reconciliation exception individually, separate from the incomplete-history summary", async () => {
+    const failure = new Error("connection terminated unexpectedly");
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => [OFFER_ID]),
+      framesForOffer: vi.fn(async () => { throw failure; }),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await service.reconcileArchivedDeals();
+    const messages = warnMessages(warn);
+    warn.mockRestore();
+
+    expect(messages.some((line) => line.includes(`reconcile failed for ${OFFER_ID}`) && line.includes(failure.message))).toBe(true);
+    expect(messages.some((line) => /archived deal\(s\) skipped/.test(line))).toBe(false);
+  });
+
+  // 5. A complete historical replay must still call repository.updateState
+  // exactly as before — this change only affects what gets logged, never the
+  // underlying persisted state or the fail-closed behavior for incomplete
+  // replays (already covered by "does not update the stored deal..." above).
+  it("still calls repository.updateState for a complete historical replay, from the batch path", async () => {
+    const payer = generateTestEd25519Identity();
+    const payee = generateTestEd25519Identity();
+    const offerTs = Date.parse("2026-09-03T15:00:00.000000Z");
+    const offer = makeOffer({
+      from: payer.did,
+      role: "payer",
+      amount: "5",
+      asset: "PAPER",
+      lock: "hash",
+      rails: ["paper"],
+      claimByMs: offerTs + 30 * 60_000,
+      refundAfterMs: offerTs + 60 * 60_000,
+      expiresMs: offerTs + 10 * 60_000,
+    });
+    const { hash } = generateHashLock();
+    const accept = makeAccept(offer, { from: payee.did, statement: hash });
+    const frames = [
+      archivedFrame({ room: ROOM, seq: 1, offerId: offer.id, tclkFrame: offer, venueTimestampMs: offerTs }),
+      archivedFrame({ room: ROOM, seq: 2, offerId: offer.id, tclkFrame: accept, venueTimestampMs: offerTs + 60_000 }),
+    ];
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => [offer.id]),
+      framesForOffer: vi.fn(async () => frames),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+
+    const reconciled = await service.reconcileArchivedDeals();
+
+    expect(reconciled).toBe(1);
+    expect(repository.updateState).toHaveBeenCalledTimes(1);
+    expect(repository.updateState).toHaveBeenCalledWith({
+      offerId: offer.id,
+      contractId: accept.contract,
+      payeeDid: payee.did,
+      status: "accepted",
+    });
+  });
+
+  // 6. listByDid(did, { reconcile: false }) reads stored state without
+  // triggering another reconcileArchivedDeals() pass.
+  it("listByDid with reconcile:false reads stored state without reconciling", async () => {
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => [OFFER_ID]),
+      listByDid: vi.fn(async () => []),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+
+    await service.listByDid("did:key:zTestExampleDid", { reconcile: false });
+
+    expect(repository.listOfferIdsForReconcile).not.toHaveBeenCalled();
+    expect(repository.listByDid).toHaveBeenCalledTimes(1);
+  });
+
+  // 7. Default listByDid(did) behavior remains backwards compatible: it
+  // still reconciles first, unchanged from before this fix.
+  it("listByDid defaults to reconciling first, unchanged from before", async () => {
+    const repository = {
+      listOfferIdsForReconcile: vi.fn(async () => []),
+      listByDid: vi.fn(async () => []),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+
+    await service.listByDid("did:key:zTestExampleDid");
+
+    expect(repository.listOfferIdsForReconcile).toHaveBeenCalledTimes(1);
+    expect(repository.listByDid).toHaveBeenCalledTimes(1);
   });
 });
