@@ -10,6 +10,7 @@ const API_BASE = "https://flop-status-production.up.railway.app";
 const PENDING_CLOSURE_KEY = "flop-tclk-pending-closure";
 let closureTimer = null;
 let closureSyncBusy = false;
+let activeActionFeedback = null;
 
 const tr = () => document.documentElement.lang === "tr";
 const copy = (en, trText) => tr() ? trText : en;
@@ -56,6 +57,15 @@ function loadClosureStyle() {
       font-size: 12px;
       font-weight: 650;
     }
+    .tclk-action-local-status {
+      margin: 8px 0 2px;
+      max-width: 760px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .tclk-action-local-status[data-state="working"] { color: #9fb1ad; }
+    .tclk-action-local-status[data-state="success"] { color: #55d99c; }
+    .tclk-action-local-status[data-state="error"] { color: #e8a08d; }
   `;
   document.head.appendChild(style);
 }
@@ -157,6 +167,85 @@ function isLockButton(button) {
   return /Create PaperRail lock|PaperRail kilidini oluştur|Retry lock|Kilitlemeyi tekrar dene/i.test(text);
 }
 
+function hasPreparedPaperLock() {
+  if (protocolState() !== "accepted") return false;
+  const card = document.querySelector(".tclk-actions-panel .tclk-paper-state");
+  if (!card) return false;
+  if (card.dataset.paperPrepared === "true") return true;
+  const state = card.querySelector("strong")?.textContent?.trim() ?? "";
+  return /LOCKED|KİLİTLİ/i.test(state);
+}
+
+function syncAcceptedPaperState() {
+  if (!hasPreparedPaperLock()) return;
+  const card = document.querySelector(".tclk-actions-panel .tclk-paper-state");
+  if (!card) return;
+  card.dataset.paperPrepared = "true";
+
+  const badge = document.querySelector(".tclk-proof .tclk-proof-state");
+  if (badge?.dataset.protocolState === "accepted") {
+    badge.textContent = copy("ACCEPTED · LOCK PENDING", "KABUL EDİLDİ · KİLİTLEME BEKLİYOR");
+  }
+
+  const label = card.querySelector("span");
+  const state = card.querySelector("strong");
+  const note = card.querySelector("small");
+  if (label) label.textContent = copy("PAPERRAIL PREPARATION", "PAPERRAIL HAZIRLIĞI");
+  if (state) state.textContent = copy("READY ✓", "HAZIR ✓");
+  if (note) {
+    note.textContent = copy(
+      "PaperRail preparation is complete. The TCLK lock has not yet been written to Technocore.",
+      "PaperRail hazırlığı tamamlandı. TCLK kilidi Technocore'a henüz yazılamadı.",
+    );
+  }
+}
+
+function localActionStatus(button) {
+  const next = button.nextElementSibling;
+  if (next?.classList.contains("tclk-action-local-status")) return next;
+  const status = document.createElement("p");
+  status.className = "tclk-action-local-status";
+  button.insertAdjacentElement("afterend", status);
+  return status;
+}
+
+function setLocalActionStatus(button, text, state) {
+  if (!button?.isConnected) return;
+  const status = localActionStatus(button);
+  if (status.textContent === text && status.dataset.state === state) return;
+  status.textContent = text;
+  status.dataset.state = state;
+}
+
+function startActionFeedback(button) {
+  const global = document.querySelector(".tclk-status");
+  const label = button.textContent?.trim() ?? copy("Working", "İşlem yapılıyor");
+  activeActionFeedback = {
+    button,
+    initialText: global?.textContent?.trim() ?? "",
+    initialState: global?.dataset.state ?? "",
+  };
+  const working = isLockButton(button)
+    ? copy("Trying to create the Technocore deal room…", "Technocore anlaşma odası oluşturulmaya çalışılıyor…")
+    : `${label}…`;
+  setLocalActionStatus(button, working, "working");
+}
+
+function mirrorActiveActionStatus() {
+  if (!activeActionFeedback) return;
+  const { button, initialText, initialState } = activeActionFeedback;
+  if (!button?.isConnected) {
+    activeActionFeedback = null;
+    return;
+  }
+  const global = document.querySelector(".tclk-status");
+  if (!global) return;
+  const text = global.textContent?.trim() ?? "";
+  const state = global.dataset.state ?? "";
+  if (!text || (text === initialText && state === initialState)) return;
+  setLocalActionStatus(button, text, state || "working");
+}
+
 function syncAcceptedCancelGuard() {
   const actions = document.querySelector(".tclk-actions-panel");
   if (!actions) return;
@@ -184,7 +273,8 @@ function syncRoomLimitRetry() {
 
   const raw = status.textContent?.trim() ?? "";
   const roomLimitFailure = /room limit reached|TCLK_TOOL_REJECTED/i.test(raw) && /room|oda/i.test(raw);
-  if (!roomLimitFailure && lockButton.dataset.roomLimitRetry !== "true") return;
+  const paperPrepared = hasPreparedPaperLock();
+  if (!roomLimitFailure && !paperPrepared && lockButton.dataset.roomLimitRetry !== "true") return;
 
   lockButton.dataset.roomLimitRetry = "true";
   lockButton.textContent = copy("Retry lock", "Kilitlemeyi tekrar dene");
@@ -203,11 +293,15 @@ function syncRoomLimitRetry() {
   );
 
   if (roomLimitFailure) {
-    status.textContent = copy(
+    const friendly = copy(
       "Technocore cannot create a new deal room right now. Your agreement is preserved; try the lock again later.",
       "Technocore şu anda yeni anlaşma odası açamıyor. Anlaşman korunuyor; kilitlemeyi bir süre sonra tekrar deneyebilirsin.",
     );
+    status.textContent = friendly;
     status.dataset.state = "error";
+    if (activeActionFeedback?.button === lockButton) {
+      setLocalActionStatus(lockButton, friendly, "error");
+    }
   }
 }
 
@@ -340,7 +434,9 @@ function scheduleClosureSync(delay = 100) {
   closureTimer = setTimeout(() => {
     syncDealProtocolMetadata();
     syncAcceptedCancelGuard();
+    syncAcceptedPaperState();
     syncRoomLimitRetry();
+    mirrorActiveActionStatus();
     void syncClosureUi();
     void confirmPendingClosure();
   }, delay);
@@ -364,6 +460,8 @@ document.addEventListener("click", (event) => {
     target.hidden = true;
     return;
   }
+
+  startActionFeedback(target);
 
   const text = target.textContent?.trim() ?? "";
   if (!/Publish terminal receipt|Terminal receipt yayınla|Sign closure record|Kapanış kaydını imzala/i.test(text)) return;
