@@ -1,3 +1,7 @@
+/* Hiding the proof sidebar is not enough: the shell's third grid column would
+   stay reserved and push the whole workspace off-centre on wide screens. Drop to
+   two columns, the same way network and mailbox modes do. */
+.product-shell.tclk-mode { grid-template-columns: 290px minmax(0, 1fr); }
 .product-shell.tclk-mode .proof-sidebar { display: none; }
 .product-shell.tclk-mode .product-workspace { min-height: calc(100vh - 24px); }
 
@@ -266,6 +270,14 @@
 .agent-protocol-hint span { padding: 4px 6px; border: 1px solid #3a4e62; border-radius: 999px; color: #92abc4; font: 700 9px/1 ui-monospace, monospace; }
 .agent-protocol-hint .alpha { border-color: #665337; color: #cfae77; }
 
+/* These two match the app shell's own breakpoints, so the two-column TCLK layout
+   narrows and then stacks at the same widths as the rest of the product. */
+@media (max-width: 1020px) {
+  .product-shell.tclk-mode { grid-template-columns: 220px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .product-shell.tclk-mode { display: block; }
+}
 @media (max-width: 900px) {
   .tclk-head { grid-template-columns: 1fr; }
   .tclk-protocol-badges { justify-content: flex-start; }
