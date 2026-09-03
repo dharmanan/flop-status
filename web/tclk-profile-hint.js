@@ -8,9 +8,16 @@ void import("/c1-practice-positive.js?v=c1-practice-v1").then(() => import("/pra
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const PENDING_CLOSURE_KEY = "flop-tclk-pending-closure";
+const VERIFY_DELAY_MS = 8_000;
+const VERIFY_PROBE_MS = 14_000;
+const AVAILABILITY_FETCH_TIMEOUT_MS = 16_000;
 let closureTimer = null;
 let closureSyncBusy = false;
 let activeActionFeedback = null;
+let watchedVerifyPanel = null;
+let verifyStartedAt = 0;
+let availabilityProbeBusy = false;
+let availabilityProbeDone = false;
 
 const tr = () => document.documentElement.lang === "tr";
 const copy = (en, trText) => tr() ? trText : en;
@@ -66,6 +73,25 @@ function loadClosureStyle() {
     .tclk-action-local-status[data-state="working"] { color: #9fb1ad; }
     .tclk-action-local-status[data-state="success"] { color: #55d99c; }
     .tclk-action-local-status[data-state="error"] { color: #e8a08d; }
+    .tclk-availability-card {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(232,160,141,.32);
+      border-radius: 12px;
+      background: rgba(57,29,24,.24);
+      display: grid;
+      gap: 8px;
+      max-width: 760px;
+    }
+    .tclk-availability-card[data-state="waiting"] {
+      border-color: rgba(143,166,190,.28);
+      background: rgba(24,36,48,.22);
+    }
+    .tclk-availability-card strong { font-size: 13px; color: #dbe5e2; }
+    .tclk-availability-card p { margin: 0; color: #9fb1ad; font-size: 12px; line-height: 1.5; }
+    .tclk-availability-card[data-state="error"] p { color: #e8a08d; }
+    .tclk-availability-card button { justify-self: start; margin-top: 2px; }
+    .tclk-verify[data-availability="error"] .tclk-verify-channel .packet { animation-play-state: paused !important; opacity: .25; }
   `;
   document.head.appendChild(style);
 }
@@ -252,11 +278,6 @@ function syncAcceptedCancelGuard() {
   const accepted = protocolState() === "accepted";
   for (const button of actions.querySelectorAll(".tclk-action-button")) {
     if (!isCancelButton(button)) continue;
-    // TCLK strict room binding requires every post-accept frame in the derived
-    // deal room. Publishing CANCEL before LOCK would therefore create a brand-new
-    // mb-p-tclk-* room just to record a cancellation and spend scarce room-creation
-    // capacity. Keep the accepted contract idle instead; only the payer's LOCK is
-    // allowed to create the deal room.
     button.hidden = accepted;
     button.dataset.preLockCancelGuard = accepted ? "true" : "false";
   }
@@ -305,6 +326,182 @@ function syncRoomLimitRetry() {
   }
 }
 
+function availabilityCard(panel) {
+  let card = panel.querySelector(".tclk-availability-card");
+  if (card) return card;
+  card = document.createElement("div");
+  card.className = "tclk-availability-card";
+  card.dataset.state = "waiting";
+  const caption = panel.querySelector(".tclk-verify-caption");
+  caption?.insertAdjacentElement("afterend", card);
+  return card;
+}
+
+function retryCurrentTclkTab() {
+  const tab = document.querySelector(".tclk-workspace .tclk-tabs button.active");
+  if (!(tab instanceof HTMLButtonElement)) return;
+  watchedVerifyPanel = null;
+  verifyStartedAt = 0;
+  availabilityProbeBusy = false;
+  availabilityProbeDone = false;
+  tab.click();
+}
+
+function renderAvailability(panel, title, message, state = "error") {
+  panel.dataset.availability = state;
+  const card = availabilityCard(panel);
+  card.dataset.state = state;
+  card.replaceChildren();
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const body = document.createElement("p");
+  body.textContent = message;
+  card.append(heading, body);
+  if (state === "error") {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "tclk-secondary";
+    retry.textContent = copy("Try again", "Tekrar dene");
+    retry.addEventListener("click", retryCurrentTclkTab);
+    card.appendChild(retry);
+  }
+}
+
+async function fetchAvailability(path) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AVAILABILITY_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, { signal: controller.signal, headers: { accept: "application/json" } });
+    let body = null;
+    try { body = await response.json(); } catch {}
+    return { response, body };
+  } catch (error) {
+    return { response: null, body: null, timeout: controller.signal.aborted, error };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function availabilityFailure(result, layer) {
+  if (result.timeout) {
+    return {
+      title: layer === "room" ? copy("Technocore response timed out", "Technocore yanıt vermedi") : copy("TCLK service response timed out", "TCLK servisi yanıt vermedi"),
+      message: copy("The request exceeded the response window. This is not a successful verification.", "İstek yanıt süresini aştı. Bu durum başarılı doğrulama anlamına gelmez."),
+    };
+  }
+  if (!result.response) {
+    return {
+      title: copy("Connection could not be established", "Bağlantı kurulamadı"),
+      message: layer === "room"
+        ? copy("FLOP could not reach the Technocore room proxy.", "FLOP, Technocore oda servisine ulaşamadı.")
+        : copy("FLOP could not reach the TCLK service.", "FLOP, TCLK servisine ulaşamadı."),
+    };
+  }
+  if (result.response.ok) return null;
+  const code = result.body?.error?.code ?? `HTTP_${result.response.status}`;
+  if (result.response.status === 503) {
+    const exact503 = code === "TECHNOCORE_HTTP_503";
+    return {
+      title: exact503
+        ? copy("Technocore unavailable · HTTP 503", "Technocore erişilemiyor · HTTP 503")
+        : layer === "room"
+          ? copy("Technocore temporarily unavailable", "Technocore geçici olarak erişilemiyor")
+          : copy("TCLK service temporarily unavailable", "TCLK servisi geçici olarak erişilemiyor"),
+      message: code === "TECHNOCORE_READ_TIMEOUT"
+        ? copy("Technocore did not answer within 12 seconds.", "Technocore 12 saniye içinde yanıt vermedi.")
+        : code === "TCLK_MCP_UNAVAILABLE"
+          ? copy("The hosted TCLK MCP is not responding right now.", "Barındırılan TCLK MCP şu anda yanıt vermiyor.")
+          : String(result.body?.error?.message ?? copy("Service unavailable.", "Servis erişilemiyor.")),
+    };
+  }
+  return {
+    title: `${layer === "room" ? "Technocore" : "TCLK"} · HTTP ${result.response.status}`,
+    message: String(result.body?.error?.message ?? copy("The service returned an error.", "Servis bir hata döndürdü.")),
+  };
+}
+
+async function probeTclkAvailability(panel) {
+  if (availabilityProbeBusy || availabilityProbeDone || !panel.isConnected) return;
+  availabilityProbeBusy = true;
+  try {
+    renderAvailability(
+      panel,
+      copy("Checking service availability…", "Servis erişimi kontrol ediliyor…"),
+      copy("Technocore room access and the hosted TCLK service are being checked separately.", "Technocore oda erişimi ve barındırılan TCLK servisi ayrı ayrı kontrol ediliyor."),
+      "waiting",
+    );
+
+    const roomResult = await fetchAvailability("/api/v1/tclk/rooms/tclk-offers");
+    const roomFailure = availabilityFailure(roomResult, "room");
+    if (roomFailure) {
+      renderAvailability(panel, roomFailure.title, roomFailure.message, "error");
+      const status = document.querySelector(".tclk-status");
+      if (status) {
+        status.textContent = `${roomFailure.title}. ${roomFailure.message}`;
+        status.dataset.state = "error";
+      }
+      availabilityProbeDone = true;
+      return;
+    }
+
+    const mcpResult = await fetchAvailability("/api/v1/tclk/status");
+    const mcpFailure = availabilityFailure(mcpResult, "mcp");
+    if (mcpFailure) {
+      renderAvailability(panel, mcpFailure.title, mcpFailure.message, "error");
+      const status = document.querySelector(".tclk-status");
+      if (status) {
+        status.textContent = `${mcpFailure.title}. ${mcpFailure.message}`;
+        status.dataset.state = "error";
+      }
+      availabilityProbeDone = true;
+      return;
+    }
+
+    renderAvailability(
+      panel,
+      copy("Services are reachable", "Servisler erişilebilir"),
+      copy("Technocore and TCLK both answered. Verification is taking longer than expected; retrying is safe.", "Technocore ve TCLK yanıt verdi. Doğrulama beklenenden uzun sürüyor; yeniden denemek güvenli."),
+      "error",
+    );
+    availabilityProbeDone = true;
+  } finally {
+    availabilityProbeBusy = false;
+  }
+}
+
+function syncVerificationAvailability() {
+  const panel = document.querySelector(".tclk-workspace:not([hidden]) .tclk-verify");
+  const status = document.querySelector(".tclk-workspace:not([hidden]) .tclk-status");
+  if (!panel || !(panel instanceof HTMLElement) || !status || status.dataset.state !== "working") {
+    if (!panel) {
+      watchedVerifyPanel = null;
+      verifyStartedAt = 0;
+      availabilityProbeBusy = false;
+      availabilityProbeDone = false;
+    }
+    return;
+  }
+
+  if (panel !== watchedVerifyPanel) {
+    watchedVerifyPanel = panel;
+    verifyStartedAt = Date.now();
+    availabilityProbeBusy = false;
+    availabilityProbeDone = false;
+    return;
+  }
+
+  const elapsed = Date.now() - verifyStartedAt;
+  if (elapsed >= VERIFY_DELAY_MS && !panel.querySelector(".tclk-availability-card")) {
+    renderAvailability(
+      panel,
+      copy("Response is taking longer than usual", "Yanıt gecikiyor"),
+      copy("Verification is still waiting for upstream data. FLOP will check whether Technocore or TCLK is unavailable.", "Doğrulama hâlâ üst servisten veri bekliyor. FLOP, Technocore veya TCLK servisinin erişilemez olup olmadığını kontrol edecek."),
+      "waiting",
+    );
+  }
+  if (elapsed >= VERIFY_PROBE_MS) void probeTclkAvailability(panel);
+}
+
 function closureButton() {
   return [...document.querySelectorAll(".tclk-actions-panel .tclk-action-button")].find((button) => {
     const text = button.textContent?.trim() ?? "";
@@ -325,11 +522,6 @@ function renderClosureStatus(contract, receipts) {
   const state = stateElement?.dataset.protocolState?.trim().toLowerCase() || stateElement?.textContent?.trim().toLowerCase() || "";
   const payer = detailParty(".payer-slot");
   const payee = detailParty(".payee-slot");
-  // openDeal() only fills in the payee slot's DID once a real accept exists
-  // (see fillTclkProofSlots/decorateParty in tclk-deals.js). An empty payee DID
-  // means the offer was cancelled or expired before anyone accepted it, so
-  // there is no counterparty and nothing to close — showing "PENDING" for a
-  // party that never existed would be misleading, not just incomplete.
   if (!proof || !actions || !["claimed", "refunded", "cancelled"].includes(state) || !payee.did) {
     document.querySelector(".tclk-closure-status")?.remove();
     return;
@@ -437,6 +629,7 @@ function scheduleClosureSync(delay = 100) {
     syncAcceptedPaperState();
     syncRoomLimitRetry();
     mirrorActiveActionStatus();
+    syncVerificationAvailability();
     void syncClosureUi();
     void confirmPendingClosure();
   }, delay);
@@ -478,4 +671,5 @@ document.addEventListener("click", (event) => {
 
 const observer = new MutationObserver(() => scheduleClosureSync());
 observer.observe(document.body, { childList: true, subtree: true });
+setInterval(() => syncVerificationAvailability(), 1000);
 scheduleClosureSync(0);
