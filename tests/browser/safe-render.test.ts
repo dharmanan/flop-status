@@ -80,12 +80,16 @@ describe("fillTclkProofSlots (TCLK Deal Proof — XSS fix)", () => {
     const amount = new FakeElement("h2");
     const status = new FakeElement("strong");
     const contract = new FakeElement("code");
+    const offerIdSlot = new FakeElement("code");
+    const contractIdSlot = new FakeElement("code");
     const rail = new FakeElement("strong");
     proof.registerSlot(".proof-amount-slot", amount);
     proof.registerSlot(".tclk-proof-state", status);
     proof.registerSlot(".proof-contract-slot", contract);
+    proof.registerSlot(".proof-offer-id-slot", offerIdSlot);
+    proof.registerSlot(".proof-contract-id-slot", contractIdSlot);
     proof.registerSlot(".proof-rail-slot", rail);
-    return { proof, amount, status, contract, rail };
+    return { proof, amount, status, contract, offerIdSlot, contractIdSlot, rail };
   }
 
   it("renders an attacker-controlled asset label as text, never as HTML", () => {
@@ -110,8 +114,23 @@ describe("fillTclkProofSlots (TCLK Deal Proof — XSS fix)", () => {
     expect(rail.textContent).toBe(state.rail);
   });
 
-  it("falls back to the offer id / \"paper\" when state omits contract/rail", () => {
-    const { proof, contract, rail } = proofFixture();
+  // H. An accepted deal must display its actual contractId, not the offerId —
+  // and the two must be shown in visibly distinct fields, not one field that
+  // silently means either depending on state.
+  it("shows offerId and contractId as two distinct fields once a deal is accepted", () => {
+    const { proof, offerIdSlot, contractIdSlot } = proofFixture();
+    const offer = { amount: "1000", asset: "PAPER", id: `0x${"b".repeat(64)}` };
+    const state = { status: "claimed", contract: `0x${"c".repeat(64)}`, rail: "paper" };
+
+    fillTclkProofSlots(proof, offer, state);
+
+    expect(offerIdSlot.textContent).toBe(offer.id);
+    expect(contractIdSlot.textContent).toBe(state.contract);
+    expect(contractIdSlot.textContent).not.toBe(offer.id);
+  });
+
+  it("falls back to the offer id / \"paper\" when state omits contract/rail, and shows no contract id yet", () => {
+    const { proof, contract, offerIdSlot, contractIdSlot, rail } = proofFixture();
     const offer = { amount: "1000", asset: "PAPER", id: `0x${"d".repeat(64)}` };
     const state = { status: "proposed" };
 
@@ -119,5 +138,7 @@ describe("fillTclkProofSlots (TCLK Deal Proof — XSS fix)", () => {
 
     expect(contract.textContent).toBe(offer.id);
     expect(rail.textContent).toBe("paper");
+    expect(offerIdSlot.textContent).toBe(offer.id);
+    expect(contractIdSlot.textContent).toBe("—");
   });
 });

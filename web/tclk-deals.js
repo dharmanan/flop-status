@@ -678,14 +678,16 @@ async function openDeal(deal) {
     proof.innerHTML = `
       <div class="tclk-proof-head"><div><span>${copy("TCLK DEAL PROOF", "TCLK ANLAŞMA KANITI")}</span><h2 class="proof-amount-slot"></h2></div><strong class="tclk-proof-state"></strong></div>
       <div class="tclk-proof-grid">
-        <div><span>${copy("CONTRACT", "ANLAŞMA KİMLİĞİ")}</span><code class="proof-contract-slot"></code></div>
+        <div><span>${copy("OFFER ID", "TEKLİF KİMLİĞİ")}</span><code class="proof-offer-id-slot"></code></div>
+        <div><span>${copy("CONTRACT ID", "ANLAŞMA KİMLİĞİ")}</span><code class="proof-contract-id-slot"></code></div>
         <div class="payer-slot"><span>${copy("PAYER", "ÖDEYEN")}</span></div>
         <div class="payee-slot"><span>${copy("PAYEE", "ÖDEMEYİ ALAN")}</span></div>
         <div><span>${copy("RAIL", "KANAL")}</span><strong class="proof-rail-slot"></strong></div>
         <div><span>${copy("TRANSPORT", "İLETİŞİM KATMANI")}</span><strong>TECHNOCORE</strong></div>
         <div><span>${copy("VALUE", "GERÇEK DEĞER")}</span><strong>${copy("NONE · PAPER ONLY", "YOK · SADECE PROVA")}</strong></div>
       </div>
-      <div class="tclk-proof-note">${copy("The signed transcript proves who performed each step. PaperRail does not prove payment or hold value.", "İmzalı kayıtlar hangi tarafın hangi adımı yaptığını doğrular. PaperRail gerçek ödeme yapmaz ve para ya da başka bir değer tutmaz.")}</div>`;
+      <div class="tclk-proof-note">${copy("The signed transcript proves who performed each step. PaperRail does not prove payment or hold value.", "İmzalı kayıtlar hangi tarafın hangi adımı yaptığını doğrular. PaperRail gerçek ödeme yapmaz ve para ya da başka bir değer tutmaz.")}</div>
+      <code class="proof-contract-slot" hidden></code>`;
     fillTclkProofSlots(proof, offer, state);
     const proofState = proof.querySelector(".tclk-proof-state");
     proofState.dataset.protocolState = String(state.status ?? "");
