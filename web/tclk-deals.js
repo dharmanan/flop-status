@@ -216,11 +216,22 @@ function dealRoom(contract) {
   return `mb-p-tclk-${contract.slice(2, 18)}`;
 }
 
+function statusDots() {
+  const wrap = node("span", "tclk-status-dots");
+  wrap.append(node("span"), node("span"), node("span"));
+  return wrap;
+}
+
 function setStatus(text = "", state = "idle") {
   const target = workspace?.querySelector(".tclk-status");
   if (!target) return;
-  target.textContent = text;
+  target.replaceChildren();
   target.dataset.state = state;
+  if (state === "working" && text.endsWith("…")) {
+    target.append(text.slice(0, -1), statusDots());
+  } else {
+    target.textContent = text;
+  }
 }
 
 function setBusy(next) {
@@ -291,10 +302,11 @@ function relatedOfferRecords(offer, trusted) {
   })].sort((a, b) => a.seq - b.seq);
 }
 
-async function buildDealIndex(records) {
+async function buildDealIndex(records, onProgress) {
   const trusted = records.filter((record) => record.trusted).sort((a, b) => a.seq - b.seq);
   const offers = trusted.filter((record) => record.frame?.type === "offer");
   const deals = [];
+  onProgress?.(0, offers.length);
   for (const offer of offers) {
     const related = relatedOfferRecords(offer, trusted);
     const boardState = await tool("tclk_apply_transcript", { lines: related.map((record) => record.line), nowMs: Date.now() });
@@ -302,6 +314,7 @@ async function buildDealIndex(records) {
       ? related.find((record) => record.frame?.type === "accept" && record.frame.contract === boardState.contract) ?? null
       : null;
     deals.push({ offer, accept, boardRecords: related, boardState });
+    onProgress?.(deals.length, offers.length, { id: offer.frame.id, status: boardState.status });
   }
   return deals;
 }
@@ -358,13 +371,74 @@ async function decorateParty(container, did) {
   container.title = did;
 }
 
+// Reading a board means re-verifying every record's signature and replaying each
+// offer through the official state machine, which regularly takes 10+ seconds.
+// Rather than faking placeholder cards, the wait shows the real work: the ring
+// fills as each offer is actually verified, so the count is honest telemetry,
+// not decoration.
+function verifyingPanel() {
+  const panel = node("section", "tclk-verify");
+  panel.innerHTML = `
+    <div class="tclk-verify-stage">
+      <div class="tclk-verify-node node-source">
+        <span class="node-kicker">${copy("SOURCE", "KAYNAK")}</span>
+        <span class="node-title">TECHNOCORE</span>
+        <span class="node-sub">${copy("public signed rooms", "herkese açık imzalı odalar")}</span>
+      </div>
+      <div class="tclk-verify-channel">
+        <span class="packet out"></span><span class="packet out"></span><span class="packet out"></span><span class="packet out"></span>
+        <span class="packet back"></span><span class="packet back"></span><span class="packet back"></span>
+      </div>
+      <div class="tclk-verify-node node-verifier">
+        <span class="node-kicker">FLOP</span>
+        <span class="node-title">${copy("VERIFIER", "DOĞRULAYICI")}</span>
+        <span class="node-count"></span>
+      </div>
+    </div>
+    <div class="tclk-verify-log"></div>
+    <p class="tclk-verify-caption"></p>`;
+  const countNode = panel.querySelector(".node-count");
+  const log = panel.querySelector(".tclk-verify-log");
+  const caption = panel.querySelector(".tclk-verify-caption");
+  countNode.textContent = "—";
+  caption.textContent = copy(
+    "Each record's signature is checked, then replayed through the official TCLK state machine.",
+    "Her kaydın imzası doğrulanıp resmi TCLK durum makinesinde yeniden oynatılıyor.",
+  );
+
+  function pushLine(mark, left, right, tone) {
+    const line = node("div", `tclk-verify-line ${tone}`);
+    line.append(node("span", "line-mark", mark), node("span", "line-id", left), node("span", "line-state", right));
+    log.appendChild(line);
+    while (log.childElementCount > 6) log.firstElementChild.remove();
+  }
+
+  return {
+    element: panel,
+    update(done, total, entry) {
+      if (!total) return;
+      countNode.textContent = `${done} / ${total}`;
+      if (entry) pushLine("✓", short(entry.id, 26), String(entry.status ?? "").toUpperCase(), "ok");
+    },
+    recovering(offerId) {
+      countNode.textContent = copy("ARCHIVE", "ARŞİV");
+      caption.textContent = copy(
+        "Archived frames are replayed through the same official state machine.",
+        "Arşivlenmiş kayıtlar da aynı resmi durum makinesinde yeniden oynatılıyor.",
+      );
+      pushLine("↺", short(offerId, 26), copy("RESTORED", "GERİ GETİRİLDİ"), "archive");
+    },
+  };
+}
+
 async function renderDealCards(filter) {
   const main = workspace.querySelector(".tclk-main");
-  main.replaceChildren();
+  const panel = verifyingPanel();
+  main.replaceChildren(panel.element);
   const id = await identity();
   setStatus(copy("Reading and verifying the signed TCLK offer board…", "İmzalı teklifler okunuyor ve anlaşma durumları doğrulanıyor…"), "working");
   const data = await board(true);
-  let deals = await buildDealIndex(data.records);
+  let deals = await buildDealIndex(data.records, panel.update);
   const now = Date.now();
   if (filter === "discover") {
     deals = deals.filter((deal) => deal.boardState.status === "proposed" && deal.offer.frame.from !== id.did && deal.offer.frame.expiresMs > now);
@@ -377,7 +451,11 @@ async function renderDealCards(filter) {
     for (const summary of await fetchArchivedDeals(id.did)) {
       if (!summary?.offerId || known.has(summary.offerId)) continue;
       const recovered = await recoverArchivedDeal(summary.offerId);
-      if (recovered) { deals.push(recovered); known.add(summary.offerId); }
+      if (recovered) {
+        deals.push(recovered);
+        known.add(summary.offerId);
+        panel.recovering(summary.offerId);
+      }
     }
   }
   const header = node("div", "tclk-list-head");
@@ -386,7 +464,7 @@ async function renderDealCards(filter) {
   refresh.type = "button";
   refresh.addEventListener("click", () => { boardCache = null; void renderDealCards(filter); });
   header.appendChild(refresh);
-  main.appendChild(header);
+  main.replaceChildren(header);
   if (!deals.length) {
     main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir anlaşman yok.")));
     setStatus(filter === "discover"
