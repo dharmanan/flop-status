@@ -1,7 +1,9 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
 const TERMINAL = new Set(["claimed", "refunded", "cancelled"]);
+const MAX_SYNC_RETRIES = 8;
 let timer = null;
 let busy = false;
+let syncRetries = 0;
 
 const tr = () => document.documentElement.lang === "tr";
 const copy = (en, trText) => tr() ? trText : en;
@@ -137,8 +139,21 @@ async function renderHistory() {
   try {
     const body = await api(`/api/v1/tclk/history?did=${encodeURIComponent(did)}`);
     const history = Array.isArray(body?.deals) ? body.deals.filter((deal) => TERMINAL.has(String(deal?.status))) : [];
-    if (!history.length) return;
 
+    if (!history.length) {
+      if (body?.syncing === true && syncRetries < MAX_SYNC_RETRIES) {
+        syncRetries += 1;
+        const status = workspace.querySelector(".tclk-status");
+        if (status) status.textContent = copy("Syncing completed agreement history…", "Tamamlanan anlaşma geçmişi eşitleniyor…");
+        clearTimeout(timer);
+        timer = setTimeout(() => void renderHistory(), 1000);
+      } else {
+        syncRetries = 0;
+      }
+      return;
+    }
+
+    syncRetries = 0;
     const empty = main.querySelector(".tclk-empty");
     if (empty) empty.textContent = copy("You have no active agreements.", "Aktif anlaşman yok.");
 
@@ -179,23 +194,25 @@ async function renderHistory() {
       `${liveCount} aktif · ${history.length} tamamlanmış`,
     );
   } catch {
-    // History is supplemental to the live TCLK surface. A temporary archive read failure
-    // must not break offer discovery or live deal actions.
+    syncRetries = 0;
   } finally {
     busy = false;
   }
 }
 
-function schedule() {
+function schedule(delay = 120) {
   clearTimeout(timer);
-  timer = setTimeout(() => void renderHistory(), 120);
+  timer = setTimeout(() => void renderHistory(), delay);
 }
 
 loadStyle();
-const observer = new MutationObserver(schedule);
+const observer = new MutationObserver(() => schedule());
 observer.observe(document.body, { childList: true, subtree: true });
 document.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
-  if (event.target.closest('.tclk-tabs button[data-tab="mine"], .tclk-list-head .tclk-secondary')) schedule();
+  if (event.target.closest('.tclk-tabs button[data-tab="mine"], .tclk-list-head .tclk-secondary')) {
+    syncRetries = 0;
+    schedule();
+  }
 }, true);
 schedule();
