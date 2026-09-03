@@ -9,6 +9,7 @@ const encoder = new TextEncoder();
 const ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
 const CONTRACT_RE = /^0x[0-9a-f]{64}$/;
 const MAX_UNARCHIVABLE_RECORDS = 4_096;
+const MAX_REPORTED_INCOMPLETE_RECONCILIATIONS = 4_096;
 
 export interface RawTclkMessage {
   seq: number;
@@ -36,6 +37,10 @@ type TclkFrame = Record<string, unknown> & {
 
 type DecodeResult = { ok: boolean; frame?: TclkFrame; error?: string };
 
+type ReconcileOutcome =
+  | { reconciled: true }
+  | { reconciled: false; reason: string; newlyObserved: boolean };
+
 export class TclkDealHistoryService {
   // Technocore's public rendezvous can contain an accept whose offer rotated
   // away before FLOP ever observed it. There is no safe transcript to archive
@@ -43,6 +48,17 @@ export class TclkDealHistoryService {
   // refresh does not decode it again or turn ordinary foreign traffic into an
   // application error log.
   private readonly unarchivableRecordKeys = new Set<string>();
+
+  // reconcileOffer() runs far more often than its outcome actually changes —
+  // once per ingested frame, once per batch pass, once per direct offer
+  // lookup. Without this, an archived deal that is missing one venue
+  // timestamp logs the exact same "historical reconstruction incomplete"
+  // line every time any of those run, which in production meant a handful of
+  // offer ids drowning out genuinely new problems (e.g. a Technocore 503)
+  // within seconds. Keyed by offerId+reason so a *different* incomplete
+  // reason (more frames missing, or fewer, as backfill progresses) is still
+  // reported once.
+  private readonly reportedIncompleteReconciliations = new Set<string>();
 
   constructor(
     private readonly repository: PgTclkDealHistoryRepository,
@@ -59,6 +75,18 @@ export class TclkDealHistoryService {
       if (oldest) this.unarchivableRecordKeys.delete(oldest);
     }
     this.unarchivableRecordKeys.add(key);
+  }
+
+  /** True the first time this exact offerId+reason pair is seen; false on every repeat. */
+  private noteIncompleteReconciliation(offerId: string, reason: string): boolean {
+    const key = `${offerId} ${reason}`;
+    if (this.reportedIncompleteReconciliations.has(key)) return false;
+    if (this.reportedIncompleteReconciliations.size >= MAX_REPORTED_INCOMPLETE_RECONCILIATIONS) {
+      const oldest = this.reportedIncompleteReconciliations.values().next().value;
+      if (oldest) this.reportedIncompleteReconciliations.delete(oldest);
+    }
+    this.reportedIncompleteReconciliations.add(key);
+    return true;
   }
 
   async ingestRoom(room: string, messages: RawTclkMessage[]): Promise<number> {
@@ -156,7 +184,7 @@ export class TclkDealHistoryService {
       venueTimestampMs: parseVenueTimestampMs(message.ts),
     });
 
-    await this.reconcileOffer(offerId);
+    await this.reconcileOfferReported(offerId);
     return true;
   }
 
@@ -172,13 +200,18 @@ export class TclkDealHistoryService {
    * closed and leaves the currently stored status untouched (see
    * replayArchivedFrames). The live MCP call is unchanged everywhere else —
    * this only affects how the durable archive reconciles itself.
+   *
+   * Deliberately does not log by itself: this runs far too often for that (see
+   * reportedIncompleteReconciliations above). Callers decide how to surface an
+   * incomplete outcome — reconcileOfferReported() for a one-off direct lookup,
+   * reconcileArchivedDeals() for a single batch summary.
    */
-  private async reconcileOffer(offerId: string): Promise<boolean> {
+  private async reconcileOffer(offerId: string): Promise<ReconcileOutcome> {
     const frames = await this.repository.framesForOffer(offerId);
     const outcome = replayArchivedFrames(frames);
     if (!outcome.complete) {
-      this.report(`historical reconstruction incomplete for ${offerId}: ${outcome.reason}`);
-      return false;
+      const newlyObserved = this.noteIncompleteReconciliation(offerId, outcome.reason);
+      return { reconciled: false, reason: outcome.reason, newlyObserved };
     }
     await this.repository.updateState({
       offerId,
@@ -186,20 +219,54 @@ export class TclkDealHistoryService {
       payeeDid: outcome.result.payeeDid,
       status: outcome.result.status,
     });
-    return true;
+    return { reconciled: true };
+  }
+
+  /**
+   * For a direct/specific reconciliation (an ingested frame, a single
+   * getByOfferId lookup) rather than a batch pass: reports an incomplete
+   * outcome once, the first time this offerId+reason is seen, then stays
+   * quiet for every repeat.
+   */
+  private async reconcileOfferReported(offerId: string): Promise<boolean> {
+    const outcome = await this.reconcileOffer(offerId);
+    if (!outcome.reconciled && outcome.newlyObserved) {
+      this.report(`historical reconstruction incomplete for ${offerId}: ${outcome.reason}`);
+    }
+    return outcome.reconciled;
   }
 
   async reconcileArchivedDeals(limit = 50): Promise<number> {
     const offerIds = await this.repository.listOfferIdsForReconcile(limit);
     let reconciled = 0;
+    let newlyIncomplete = 0;
     for (const offerId of offerIds) {
       try {
-        if (await this.reconcileOffer(offerId)) reconciled += 1;
+        const outcome = await this.reconcileOffer(offerId);
+        if (outcome.reconciled) reconciled += 1;
+        else if (outcome.newlyObserved) newlyIncomplete += 1;
       } catch (error) {
         // Archived frames stay authoritative evidence even if the upstream state
         // machine is temporarily unavailable. A later read can reconcile again.
+        // Always reported individually — a real exception is never folded into
+        // the incomplete-history summary below.
         this.report(`reconcile failed for ${offerId}`, error);
       }
+    }
+    // One line for the whole batch instead of one per incomplete deal, and
+    // only for offerId+reason pairs not already reported by an earlier batch
+    // or a direct lookup (reconcileOffer's own dedupe already ensured
+    // newlyIncomplete only counts those). Deliberately reason-neutral:
+    // replayArchivedFrames() returns complete:false for several distinct
+    // reasons (missing venue timestamps, no offer frame, a non-decoding
+    // offer, openContract rejecting it, ...), and this single count mixes
+    // whichever of those occurred across the batch — claiming they were all
+    // "missing venue timestamps" would misreport the other cases. A specific
+    // reason is still available per offer via reconcileOfferReported().
+    if (newlyIncomplete > 0) {
+      this.report(
+        `${newlyIncomplete} archived deal(s) skipped because historical reconstruction was incomplete`,
+      );
     }
     return reconciled;
   }
@@ -209,9 +276,16 @@ export class TclkDealHistoryService {
     return contracts.map((contract) => `mb-p-tclk-${contract.slice(2, 18)}`);
   }
 
-  async listByDid(did: string) {
+  /**
+   * `reconcile: false` skips the batch reconciliation pass and reads whatever
+   * is currently stored — for a caller (the /api/v1/tclk/history route, after
+   * waitForHistorySync() already triggered its own reconcileArchivedDeals())
+   * that would otherwise redundantly reconcile the same offers a second time
+   * moments later. Defaults to true, so existing callers are unaffected.
+   */
+  async listByDid(did: string, { reconcile = true }: { reconcile?: boolean } = {}) {
     if (!did.startsWith("did:key:")) return [];
-    await this.reconcileArchivedDeals();
+    if (reconcile) await this.reconcileArchivedDeals();
     return this.repository.listByDid(did);
   }
 
@@ -225,7 +299,7 @@ export class TclkDealHistoryService {
    */
   async getByOfferId(offerId: string) {
     if (!CONTRACT_RE.test(offerId)) return null;
-    try { await this.reconcileOffer(offerId); } catch {}
+    try { await this.reconcileOfferReported(offerId); } catch {}
     const entry = await this.repository.getByOfferId(offerId);
     if (!entry) return null;
     return { ...entry, historicalReplay: replayArchivedFrames(entry.frames) };
