@@ -127,6 +127,11 @@ export class TclkDealHistoryService {
     return true;
   }
 
+  async listDealRoomsForSync(limit = 100): Promise<string[]> {
+    const contracts = await this.repository.listContractsForSync(limit);
+    return contracts.map((contract) => `mb-p-tclk-${contract.slice(2, 18)}`);
+  }
+
   async listByDid(did: string) {
     if (!did.startsWith("did:key:")) return [];
     return this.repository.listByDid(did);
