@@ -66,21 +66,23 @@ describe("TclkDealHistoryService ingest", () => {
     });
   });
 
-  it("reports an orphan frame rather than losing the deal without a trace", async () => {
+  it("silently skips an orphan frame and does not decode it again on a repeat sync", async () => {
     const identity = generateTestEd25519Identity();
     const repository = fakeRepository();
     const acceptFrame = { type: "accept", ref: OFFER_ID, from: identity.did };
     const mcp = { call: vi.fn(async () => ({ ok: true, frame: acceptFrame })) };
     const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, mcp as never);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const message = signedMessage(2, JSON.stringify(acceptFrame), identity);
 
     // The offer was never archived — exactly what happens when it rotates out of
     // Technocore's window before any sync runs.
-    const archived = await service.ingestRoom(ROOM, [signedMessage(2, JSON.stringify(acceptFrame), identity)]);
+    const archived = await service.ingestRoom(ROOM, [message]);
 
     expect(archived).toBe(0);
     expect(repository.storeFrame).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("orphan accept frame"));
-    warn.mockRestore();
+    const afterFirstPass = decodeCount(mcp);
+
+    expect(await service.ingestRoom(ROOM, [message])).toBe(0);
+    expect(decodeCount(mcp)).toBe(afterFirstPass);
   });
 });
