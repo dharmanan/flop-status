@@ -74,8 +74,13 @@ function loadStyle() {
 
 async function api(path) {
   const response = await fetch(`${API_BASE}${path}`, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new Error(`HTTP_${response.status}`);
-  return response.json();
+  let body = null;
+  try { body = await response.json(); } catch {}
+  if (!response.ok) {
+    const message = body?.error?.message ?? `HTTP_${response.status}`;
+    throw new Error(message);
+  }
+  return body;
 }
 
 function node(tag, className, text) {
@@ -138,17 +143,25 @@ async function renderHistory() {
   busy = true;
   try {
     const body = await api(`/api/v1/tclk/history?did=${encodeURIComponent(did)}`);
-    const history = Array.isArray(body?.deals) ? body.deals.filter((deal) => TERMINAL.has(String(deal?.status))) : [];
+    const allDeals = Array.isArray(body?.deals) ? body.deals : [];
+    const history = allDeals.filter((deal) => TERMINAL.has(String(deal?.status)));
 
     if (!history.length) {
-      if (body?.syncing === true && syncRetries < MAX_SYNC_RETRIES) {
+      if (syncRetries < MAX_SYNC_RETRIES) {
         syncRetries += 1;
         const status = workspace.querySelector(".tclk-status");
-        if (status) status.textContent = copy("Syncing completed agreement history…", "Tamamlanan anlaşma geçmişi eşitleniyor…");
+        if (status) status.textContent = copy(
+          `Checking completed agreement history… (${syncRetries}/${MAX_SYNC_RETRIES})`,
+          `Tamamlanan anlaşma geçmişi kontrol ediliyor… (${syncRetries}/${MAX_SYNC_RETRIES})`,
+        );
         clearTimeout(timer);
         timer = setTimeout(() => void renderHistory(), 1000);
       } else {
         syncRetries = 0;
+        const status = workspace.querySelector(".tclk-status");
+        if (status && allDeals.length === 0) {
+          status.textContent = copy("No archived agreements were found for this agent.", "Bu ajan için arşivlenmiş anlaşma bulunamadı.");
+        }
       }
       return;
     }
@@ -193,8 +206,14 @@ async function renderHistory() {
       `${liveCount} active · ${history.length} completed`,
       `${liveCount} aktif · ${history.length} tamamlanmış`,
     );
-  } catch {
+  } catch (error) {
     syncRetries = 0;
+    const status = workspace.querySelector(".tclk-status");
+    if (status) {
+      const message = error instanceof Error ? error.message : String(error);
+      status.textContent = copy(`Agreement history could not be loaded: ${message}`, `Anlaşma geçmişi yüklenemedi: ${message}`);
+      status.dataset.state = "error";
+    }
   } finally {
     busy = false;
   }
