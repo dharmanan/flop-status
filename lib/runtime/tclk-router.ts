@@ -7,6 +7,7 @@ const MAX_TCLK_BODY_BYTES = 1_048_576;
 const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
 const TCLK_ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
 const TERMINAL_TCLK_STATES = new Set(["claimed", "refunded", "cancelled"]);
+const OFFER_ID_RE = /^0x[0-9a-f]{64}$/;
 const HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -117,6 +118,7 @@ async function syncHistory(history: TclkDealHistoryService, offerRoom?: RawRoom)
   const room = offerRoom ?? await readRawRoom("tclk-offers");
   await archiveRoom(history, "tclk-offers", room);
   await backfillDealRooms(history);
+  await history.reconcileArchivedDeals();
 }
 
 function startHistorySync(history: TclkDealHistoryService | undefined, offerRoom?: RawRoom): Promise<void> | null {
@@ -198,6 +200,26 @@ export function createTclkAwareHandler(
           }
 
           json(response, 200, { deals, syncing: historySyncInFlight !== null });
+          return;
+        }
+
+        const historyDetailMatch = path.match(/^\/api\/v1\/tclk\/history\/(0x[0-9a-f]{64})$/);
+        if (request.method === "GET" && historyDetailMatch) {
+          if (!history) {
+            json(response, 503, { error: { code: "TCLK_HISTORY_UNAVAILABLE", message: "Durable TCLK history is not configured." } });
+            return;
+          }
+          const offerId = historyDetailMatch[1] ?? "";
+          if (!OFFER_ID_RE.test(offerId)) {
+            json(response, 400, { error: { code: "INVALID_OFFER_ID", message: "A valid TCLK offer id is required." } });
+            return;
+          }
+          const entry = await history.getByOfferId(offerId);
+          if (!entry) {
+            json(response, 404, { error: { code: "TCLK_HISTORY_NOT_FOUND", message: "Archived TCLK deal was not found." } });
+            return;
+          }
+          json(response, 200, entry);
           return;
         }
 
