@@ -178,6 +178,31 @@ export class PgTclkDealHistoryRepository {
     );
   }
 
+  async listOfferIdsForReconcile(limit = 50): Promise<string[]> {
+    const bounded = Math.max(1, Math.min(limit, 100));
+    const result = await this.pool.query<{ offer_id: string }>(
+      `SELECT d.offer_id
+       FROM tclk_deals d
+       WHERE
+         (d.status = 'proposed' AND EXISTS (
+           SELECT 1 FROM tclk_deal_frames f
+           WHERE f.offer_id = d.offer_id AND f.frame_type <> 'offer'
+         ))
+         OR (d.status = 'accepted' AND EXISTS (
+           SELECT 1 FROM tclk_deal_frames f
+           WHERE f.offer_id = d.offer_id AND f.frame_type IN ('lock','reveal','refund','cancel')
+         ))
+         OR (d.status = 'locked' AND EXISTS (
+           SELECT 1 FROM tclk_deal_frames f
+           WHERE f.offer_id = d.offer_id AND f.frame_type IN ('reveal','refund')
+         ))
+       ORDER BY d.updated_at DESC
+       LIMIT $1`,
+      [bounded],
+    );
+    return result.rows.map((row) => row.offer_id);
+  }
+
   async listContractsForSync(limit = 100): Promise<string[]> {
     const result = await this.pool.query<{ contract_id: string }>(
       `SELECT contract_id
