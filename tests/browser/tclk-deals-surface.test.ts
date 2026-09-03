@@ -19,7 +19,7 @@ describe("TCLK Deals browser surface", () => {
     expect(profileHint).toContain('protocol.textContent = "TCLK 1"');
     expect(profileHint).toContain('rail.textContent = "PAPERRAIL"');
     expect(profileHint).toContain('alpha.textContent = "ALPHA"');
-    expect(profileHint).toContain('lock.textContent = "HASH LOCK"');
+    expect(profileHint).toContain('lock.textContent = copy("HASH LOCK", "HASH KİLİDİ")');
     expect(profileHint).not.toContain("agent-protocol-hint");
     expect(profileHint).not.toContain("agent-status-card");
   });
