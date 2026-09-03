@@ -267,7 +267,7 @@ Acceptance uses the official `tclk_accept_offer` tool. The returned secret stays
 
 ### Lock
 
-After acceptance, the payer creates the PaperRail record and posts an official `lock` frame to the derived deal room.
+After acceptance, the payer creates the PaperRail record and posts an official `lock` frame to the derived deal room. If the record was persisted but the frame post was interrupted, retrying may resume only when the existing `locked` record exactly matches the contract, hash statement and refund deadline; otherwise no frame is posted.
 
 ### Reveal / claim
 
