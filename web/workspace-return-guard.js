@@ -1,3 +1,5 @@
+void import("/tclk-deal-refresh.js?v=tclk-deal-refresh-v1");
+
 export function restoreProductSecondaryView(shell, target) {
   if (!shell || !target || typeof target.closest !== "function") return false;
   const item = target.closest(".product-nav-item");
