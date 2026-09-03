@@ -19,6 +19,11 @@ describe("friendlyErrorMessage (readable errors without hiding diagnostics)", ()
     expect(message).toBe("raw server message");
   });
 
+  it("keeps the TCLK protocol's specific rejection reason visible", () => {
+    expect(friendlyErrorMessage("TCLK_TOOL_REJECTED", "tclk: invalid lock frame", "tr"))
+      .toBe("TCLK bu işlemi reddetti. Ayrıntı: tclk: invalid lock frame (TCLK_TOOL_REJECTED)");
+  });
+
   it("falls back cleanly when no code is available at all", () => {
     const message = friendlyErrorMessage(undefined, "HTTP_500", "en");
     expect(message).toBe("HTTP_500");
