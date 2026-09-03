@@ -31,6 +31,8 @@ const TOOL_NAMES = new Set<TclkToolName>([
   "tclk_whoami",
 ]);
 
+let historySyncInFlight: Promise<void> | null = null;
+
 function json(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, HEADERS);
   response.end(JSON.stringify(body));
@@ -110,6 +112,28 @@ async function backfillDealRooms(history: TclkDealHistoryService | undefined): P
   } catch {}
 }
 
+async function syncHistory(history: TclkDealHistoryService, offerRoom?: RawRoom): Promise<void> {
+  const room = offerRoom ?? await readRawRoom("tclk-offers");
+  await archiveRoom(history, "tclk-offers", room);
+  await backfillDealRooms(history);
+}
+
+function scheduleHistorySync(history: TclkDealHistoryService | undefined, offerRoom?: RawRoom): void {
+  if (!history || historySyncInFlight) return;
+  historySyncInFlight = syncHistory(history, offerRoom)
+    .catch(() => undefined)
+    .finally(() => { historySyncInFlight = null; });
+}
+
+function scheduleRoomArchive(history: TclkDealHistoryService | undefined, roomName: string, room: RawRoom): void {
+  if (!history) return;
+  if (roomName === "tclk-offers") {
+    scheduleHistorySync(history, room);
+    return;
+  }
+  void archiveRoom(history, roomName, room);
+}
+
 export function createTclkAwareHandler(
   fallback: (request: IncomingMessage, response: ServerResponse) => void,
   mcp = new TclkMcpClient(),
@@ -141,13 +165,13 @@ export function createTclkAwareHandler(
             json(response, 503, { error: { code: "TCLK_HISTORY_UNAVAILABLE", message: "Durable TCLK history is not configured." } });
             return;
           }
-          await backfillDealRooms(history);
           const did = url.searchParams.get("did")?.trim() ?? "";
           if (!did.startsWith("did:key:")) {
             json(response, 400, { error: { code: "INVALID_DID", message: "A did:key query parameter is required." } });
             return;
           }
-          json(response, 200, { deals: await history.listByDid(did) });
+          scheduleHistorySync(history);
+          json(response, 200, { deals: await history.listByDid(did), syncing: historySyncInFlight !== null });
           return;
         }
 
@@ -155,9 +179,8 @@ export function createTclkAwareHandler(
         if (request.method === "GET" && rawRoomMatch) {
           const roomName = rawRoomMatch[1] ?? "";
           const room = await readRawRoom(roomName);
-          await archiveRoom(history, roomName, room);
-          if (roomName === "tclk-offers") await backfillDealRooms(history);
           json(response, 200, { room });
+          scheduleRoomArchive(history, roomName, room);
           return;
         }
 
@@ -170,17 +193,16 @@ export function createTclkAwareHandler(
           }
           const body = await readJson(request);
           const result = await mcp.call(tool, body);
+          json(response, 200, { result });
+
           if (tool === "tclk_post_frame" && (result as { posted?: unknown })?.posted === true && history) {
             const roomName = typeof body.room === "string" ? body.room : "";
             if (TCLK_ROOM_RE.test(roomName)) {
-              try {
-                const room = await readRawRoom(roomName);
-                await archiveRoom(history, roomName, room);
-                if (roomName === "tclk-offers") await backfillDealRooms(history);
-              } catch {}
+              void readRawRoom(roomName)
+                .then((room) => scheduleRoomArchive(history, roomName, room))
+                .catch(() => undefined);
             }
           }
-          json(response, 200, { result });
           return;
         }
 
