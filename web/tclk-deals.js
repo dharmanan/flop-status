@@ -282,17 +282,21 @@ async function board(force = false) {
   return boardCache;
 }
 
+function relatedOfferRecords(offer, trusted) {
+  return [offer, ...trusted.filter((record) => {
+    if (record.seq <= offer.seq) return false;
+    if (record.frame?.type === "accept") return record.frame.ref === offer.frame.id;
+    if (record.frame?.type === "cancel") return record.frame.contract === offer.frame.id;
+    return false;
+  })].sort((a, b) => a.seq - b.seq);
+}
+
 async function buildDealIndex(records) {
   const trusted = records.filter((record) => record.trusted).sort((a, b) => a.seq - b.seq);
   const offers = trusted.filter((record) => record.frame?.type === "offer");
   const deals = [];
   for (const offer of offers) {
-    const related = [offer, ...trusted.filter((record) => {
-      if (record.seq <= offer.seq) return false;
-      if (record.frame?.type === "accept") return record.frame.ref === offer.frame.id;
-      if (record.frame?.type === "cancel") return record.frame.contract === offer.frame.id;
-      return false;
-    })].sort((a, b) => a.seq - b.seq);
+    const related = relatedOfferRecords(offer, trusted);
     const boardState = await tool("tclk_apply_transcript", { lines: related.map((record) => record.line), nowMs: Date.now() });
     const accept = boardState.contract
       ? related.find((record) => record.frame?.type === "accept" && record.frame.contract === boardState.contract) ?? null
@@ -300,6 +304,53 @@ async function buildDealIndex(records) {
     deals.push({ offer, accept, boardRecords: related, boardState });
   }
   return deals;
+}
+
+// Technocore rooms are rotated/pruned over time, so an accepted deal can vanish
+// from the live tclk-offers board. FLOP's durable archive (Postgres) keeps every
+// verified frame it ever saw. Recovery re-verifies each archived frame's raw
+// transport signature exactly like collectRoom() does for live rooms, then
+// replays it through the same official tclk_apply_transcript path used by
+// buildDealIndex — so a recovered deal is protocol-authoritative, not a trusted
+// database status string, and slots into the exact same deal object shape the
+// rest of this file (renderDealCards/openDeal/dealTranscript) already expects.
+async function verifiedRecordFromArchive(archivedFrame) {
+  const item = { seq: archivedFrame.seq, from: archivedFrame.fromDid, frame: archivedFrame.frame };
+  const message = { from: archivedFrame.fromDid, sig: archivedFrame.transportSig, nonce: archivedFrame.transportNonce, text: archivedFrame.line };
+  const transportValid = await verifyTransport(archivedFrame.room, message);
+  const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
+  return { ...item, line: message.text, transportValid, fromMatches, trusted };
+}
+
+async function fetchArchivedDeals(did) {
+  try {
+    const data = await api(`/api/v1/tclk/history?did=${encodeURIComponent(did)}`);
+    return Array.isArray(data?.deals) ? data.deals : [];
+  } catch { return []; }
+}
+
+async function recoverArchivedDeal(offerId) {
+  let detail;
+  try { detail = await api(`/api/v1/tclk/history/${encodeURIComponent(offerId)}`); }
+  catch { return null; }
+  const frames = Array.isArray(detail?.frames) ? detail.frames : [];
+  const byRoom = new Map();
+  for (const frame of frames) {
+    const record = await verifiedRecordFromArchive(frame);
+    if (!byRoom.has(frame.room)) byRoom.set(frame.room, []);
+    byRoom.get(frame.room).push(record);
+  }
+  const offerRoomRecords = (byRoom.get(OFFER_ROOM) ?? []).sort((a, b) => a.seq - b.seq);
+  const trustedOfferRoomRecords = offerRoomRecords.filter((record) => record.trusted);
+  const offerRecord = trustedOfferRoomRecords.find((record) => record.frame?.type === "offer" && record.frame.id === offerId);
+  if (!offerRecord) return null;
+  const related = relatedOfferRecords(offerRecord, trustedOfferRoomRecords);
+  const boardState = await tool("tclk_apply_transcript", { lines: related.map((record) => record.line), nowMs: Date.now() });
+  const accept = boardState.contract
+    ? related.find((record) => record.frame?.type === "accept" && record.frame.contract === boardState.contract) ?? null
+    : null;
+  const archivedRoomRecords = accept ? (byRoom.get(dealRoom(accept.frame.contract)) ?? []).sort((a, b) => a.seq - b.seq) : [];
+  return { offer: offerRecord, accept, boardRecords: related, boardState, archivedRoomRecords };
 }
 
 async function decorateParty(container, did) {
@@ -322,6 +373,12 @@ async function renderDealCards(filter) {
       const parties = deal.boardState.parties ?? {};
       return deal.offer.frame.from === id.did || parties.payer === id.did || parties.payee === id.did;
     });
+    const known = new Set(deals.map((deal) => deal.offer.frame.id));
+    for (const summary of await fetchArchivedDeals(id.did)) {
+      if (!summary?.offerId || known.has(summary.offerId)) continue;
+      const recovered = await recoverArchivedDeal(summary.offerId);
+      if (recovered) { deals.push(recovered); known.add(summary.offerId); }
+    }
   }
   const header = node("div", "tclk-list-head");
   header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));
@@ -457,8 +514,18 @@ async function dealTranscript(deal) {
   const lines = deal.boardRecords.map((record) => record.line);
   let roomData = { records: [] };
   if (deal.accept) {
-    roomData = await collectRoom(dealRoom(deal.accept.frame.contract));
-    for (const record of roomData.records.filter((item) => item.trusted).sort((a, b) => a.seq - b.seq)) lines.push(record.line);
+    try { roomData = await collectRoom(dealRoom(deal.accept.frame.contract)); } catch { roomData = { records: [] }; }
+    // The live deal-room can be rotated away by Technocore just like the offer
+    // board. deal.archivedRoomRecords (present only for deals recovered from the
+    // durable archive) fills that gap so LOCK/REVEAL/etc. records recovered from
+    // Postgres still feed the same official tclk_apply_transcript replay below.
+    const merged = new Map();
+    for (const record of [...(roomData.records ?? []), ...(deal.archivedRoomRecords ?? [])]) {
+      merged.set(`${record.seq}:${record.line}`, record);
+    }
+    const records = [...merged.values()].sort((a, b) => a.seq - b.seq);
+    roomData = { ...roomData, records };
+    for (const record of records.filter((item) => item.trusted)) lines.push(record.line);
   }
   const state = await tool("tclk_apply_transcript", { lines, nowMs: Date.now() });
   return { lines, roomData, state };
