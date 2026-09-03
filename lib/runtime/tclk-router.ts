@@ -6,6 +6,7 @@ import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history
 const MAX_TCLK_BODY_BYTES = 1_048_576;
 const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
 const TCLK_ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
+const TERMINAL_TCLK_STATES = new Set(["claimed", "refunded", "cancelled"]);
 const HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -118,11 +119,27 @@ async function syncHistory(history: TclkDealHistoryService, offerRoom?: RawRoom)
   await backfillDealRooms(history);
 }
 
+function startHistorySync(history: TclkDealHistoryService | undefined, offerRoom?: RawRoom): Promise<void> | null {
+  if (!history) return null;
+  if (!historySyncInFlight) {
+    historySyncInFlight = syncHistory(history, offerRoom)
+      .catch(() => undefined)
+      .finally(() => { historySyncInFlight = null; });
+  }
+  return historySyncInFlight;
+}
+
 function scheduleHistorySync(history: TclkDealHistoryService | undefined, offerRoom?: RawRoom): void {
-  if (!history || historySyncInFlight) return;
-  historySyncInFlight = syncHistory(history, offerRoom)
-    .catch(() => undefined)
-    .finally(() => { historySyncInFlight = null; });
+  void startHistorySync(history, offerRoom);
+}
+
+async function waitForHistorySync(history: TclkDealHistoryService, timeoutMs = 2500): Promise<void> {
+  const sync = startHistorySync(history);
+  if (!sync) return;
+  await Promise.race([
+    sync,
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
 }
 
 function scheduleRoomArchive(history: TclkDealHistoryService | undefined, roomName: string, room: RawRoom): void {
@@ -170,8 +187,17 @@ export function createTclkAwareHandler(
             json(response, 400, { error: { code: "INVALID_DID", message: "A did:key query parameter is required." } });
             return;
           }
-          scheduleHistorySync(history);
-          json(response, 200, { deals: await history.listByDid(did), syncing: historySyncInFlight !== null });
+
+          let deals = await history.listByDid(did);
+          const needsBackfill = deals.length === 0 || deals.some((deal) => !TERMINAL_TCLK_STATES.has(deal.status));
+          if (needsBackfill) {
+            await waitForHistorySync(history);
+            deals = await history.listByDid(did);
+          } else {
+            scheduleHistorySync(history);
+          }
+
+          json(response, 200, { deals, syncing: historySyncInFlight !== null });
           return;
         }
 
