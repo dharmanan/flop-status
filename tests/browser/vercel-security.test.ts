@@ -12,7 +12,7 @@ describe("Vercel browser custody security", () => {
     expect(csp).toContain("script-src 'self'");
     expect(csp).not.toContain("'unsafe-inline'");
     expect(csp).not.toContain("'unsafe-eval'");
-    expect(csp).toContain("connect-src 'self' https://flop-status-production.up.railway.app");
+    expect(csp).toContain("connect-src 'self' https://flop-status-production.up.railway.app https://technocore.chat");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(byKey.get("Referrer-Policy")).toBe("no-referrer");
