@@ -152,6 +152,11 @@ function isCancelButton(button) {
   return /Cancel agreement|Anlaşmayı iptal et/i.test(text);
 }
 
+function isLockButton(button) {
+  const text = button?.textContent?.trim() ?? "";
+  return /Create PaperRail lock|PaperRail kilidini oluştur|Retry lock|Kilitlemeyi tekrar dene/i.test(text);
+}
+
 function syncAcceptedCancelGuard() {
   const actions = document.querySelector(".tclk-actions-panel");
   if (!actions) return;
@@ -165,6 +170,44 @@ function syncAcceptedCancelGuard() {
     // allowed to create the deal room.
     button.hidden = accepted;
     button.dataset.preLockCancelGuard = accepted ? "true" : "false";
+  }
+}
+
+function syncRoomLimitRetry() {
+  if (protocolState() !== "accepted") return;
+  const status = document.querySelector(".tclk-status");
+  const actions = document.querySelector(".tclk-actions-panel");
+  if (!status || !actions) return;
+
+  const lockButton = [...actions.querySelectorAll(".tclk-action-button")].find(isLockButton);
+  if (!lockButton) return;
+
+  const raw = status.textContent?.trim() ?? "";
+  const roomLimitFailure = /room limit reached|TCLK_TOOL_REJECTED/i.test(raw) && /room|oda/i.test(raw);
+  if (!roomLimitFailure && lockButton.dataset.roomLimitRetry !== "true") return;
+
+  lockButton.dataset.roomLimitRetry = "true";
+  lockButton.textContent = copy("Retry lock", "Kilitlemeyi tekrar dene");
+
+  let note = actions.querySelector(".tclk-room-retry-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "tclk-action-note tclk-room-retry-note";
+    const heading = actions.querySelector("h3");
+    if (heading?.nextSibling) actions.insertBefore(note, heading.nextSibling);
+    else actions.appendChild(note);
+  }
+  note.textContent = copy(
+    "Technocore cannot create this deal room right now. The accepted agreement is preserved. Retrying uses the same agreement and the same PaperRail record; it does not create a new offer or acceptance.",
+    "Technocore şu anda bu anlaşma için yeni oda açamıyor. Kabul edilmiş anlaşman korunuyor. Tekrar denemek aynı anlaşmayı ve aynı PaperRail kaydını kullanır; yeni teklif veya yeni kabul oluşturmaz.",
+  );
+
+  if (roomLimitFailure) {
+    status.textContent = copy(
+      "Technocore cannot create a new deal room right now. Your agreement is preserved; try the lock again later.",
+      "Technocore şu anda yeni anlaşma odası açamıyor. Anlaşman korunuyor; kilitlemeyi bir süre sonra tekrar deneyebilirsin.",
+    );
+    status.dataset.state = "error";
   }
 }
 
@@ -297,6 +340,7 @@ function scheduleClosureSync(delay = 100) {
   closureTimer = setTimeout(() => {
     syncDealProtocolMetadata();
     syncAcceptedCancelGuard();
+    syncRoomLimitRetry();
     void syncClosureUi();
     void confirmPendingClosure();
   }, delay);
