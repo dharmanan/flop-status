@@ -4,7 +4,7 @@ void import("/capability-names.js?v=capability-names-v4");
 void import("/agent-identicon.js?v=agent-identicon-v1");
 void import("/workspace-return-guard.js?v=workspace-return-v1");
 void import("/settings-copy.js?v=settings-copy-v1");
-void import("/tclk-history-ui.js?v=tclk-history-v1");
+void import("/tclk-history-ui.js?v=tclk-history-v2");
 void import("/c1-practice-positive.js?v=c1-practice-v1").then(() => import("/practice-ui.js?v=practice-ui-v3"));
 
 const API_BASE = "https://flop-status-production.up.railway.app";
