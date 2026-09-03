@@ -49,16 +49,29 @@ export class TclkDealHistoryService {
     const ordered = [...messages]
       .filter((message) => Number.isSafeInteger(message.seq) && message.seq >= 0)
       .sort((a, b) => a.seq - b.seq);
+    // Technocore only serves a short window of each room, so a sync that takes
+    // seconds can miss records that rotate out mid-pass. Skipping records that
+    // are already archived keeps a repeat sync down to a single query instead of
+    // one MCP decode per message.
+    const alreadyArchived = await this.repository.archivedSeqs(room, ordered.map((message) => message.seq));
     for (const message of ordered) {
+      if (alreadyArchived.has(message.seq)) continue;
       try {
         const stored = await this.ingestMessage(room, message);
         if (stored) archived += 1;
-      } catch {
-        // Raw Technocore rooms are untrusted input. Bad or unrelated lines are ignored
-        // rather than poisoning the durable history or breaking room reads.
+      } catch (error) {
+        // Raw Technocore rooms are untrusted input, so a bad or unrelated line must
+        // not break a room read. It is still reported: a silent drop here is how a
+        // completed deal can disappear from durable history with no trace.
+        this.report(`ingest failed for ${room}#${message.seq}`, error);
       }
     }
     return archived;
+  }
+
+  private report(message: string, error?: unknown): void {
+    const detail = error instanceof Error ? error.message : error === undefined ? "" : String(error);
+    console.warn(`[tclk-history] ${message}${detail ? `: ${detail}` : ""}`);
   }
 
   async ingestMessage(room: string, message: RawTclkMessage): Promise<boolean> {
@@ -102,6 +115,16 @@ export class TclkDealHistoryService {
     }
     if (!offerId) return false;
 
+    // Every frame is stored against its offer row. If the offer itself was never
+    // archived — it rotated out of Technocore's window before a sync ran — then
+    // this frame cannot be attached to anything, and the whole deal silently
+    // disappears from history. Report it instead of letting a foreign key error
+    // vanish into a catch block.
+    if (frame.type !== "offer" && !(await this.repository.offerExists(offerId))) {
+      this.report(`orphan ${frame.type} frame in ${room}#${message.seq}: offer ${offerId} was never archived`);
+      return false;
+    }
+
     await this.repository.storeFrame({
       room,
       seq: message.seq,
@@ -138,9 +161,10 @@ export class TclkDealHistoryService {
     for (const offerId of offerIds) {
       try {
         if (await this.reconcileOffer(offerId)) reconciled += 1;
-      } catch {
+      } catch (error) {
         // Archived frames stay authoritative evidence even if the upstream state
         // machine is temporarily unavailable. A later read can reconcile again.
+        this.report(`reconcile failed for ${offerId}`, error);
       }
     }
     return reconciled;
