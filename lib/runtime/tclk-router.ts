@@ -129,6 +129,7 @@ function rawMessages(room: RawRoom): RawTclkMessage[] {
       sig: item.sig,
       nonce: item.nonce,
       text: item.text,
+      ts: item.ts,
     }];
   });
 }

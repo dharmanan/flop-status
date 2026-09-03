@@ -22,6 +22,7 @@ const MIGRATIONS = [
   { id: "0016_agent_direct_mailbox", path: new URL("../../db/migrations/0016_agent_direct_mailbox.sql", import.meta.url) },
   { id: "0017_agent_profiles", path: new URL("../../db/migrations/0017_agent_profiles.sql", import.meta.url) },
   { id: "0018_tclk_deal_history", path: new URL("../../db/migrations/0018_tclk_deal_history.sql", import.meta.url) },
+  { id: "0019_tclk_deal_frame_venue_timestamp", path: new URL("../../db/migrations/0019_tclk_deal_frame_venue_timestamp.sql", import.meta.url) },
 ] as const;
 
 export interface MigrationResult {

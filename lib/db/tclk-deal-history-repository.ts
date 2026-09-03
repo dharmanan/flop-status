@@ -10,6 +10,22 @@ export interface ArchivedTclkFrame {
   frame: Record<string, unknown>;
   transportSig: string;
   transportNonce: string;
+  /**
+   * The Technocore venue's own timestamp for this record, in epoch
+   * milliseconds. NULL when the frame was archived before this column
+   * existed, or when its `ts` could not be parsed — historical reconstruction
+   * must treat those frames as unusable rather than substitute any other time.
+   */
+  venueTimestampMs: number | null;
+}
+
+export interface ArchivedFrameIdentityRow {
+  room: string;
+  seq: number;
+  fromDid: string;
+  line: string;
+  transportSig: string;
+  transportNonce: string;
 }
 
 export interface ArchivedTclkDeal {
@@ -54,6 +70,32 @@ function numeric(value: string | number | null): number | null {
   if (value === null) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function mapFrame(row: {
+  room: string;
+  seq: string | number;
+  offer_id: string;
+  frame_type: string;
+  from_did: string;
+  line: string;
+  frame: Record<string, unknown>;
+  transport_sig: string;
+  transport_nonce: string;
+  venue_timestamp_ms: string | number | null;
+}): ArchivedTclkFrame {
+  return {
+    room: row.room,
+    seq: Number(row.seq),
+    offerId: row.offer_id,
+    frameType: row.frame_type,
+    fromDid: row.from_did,
+    line: row.line,
+    frame: row.frame,
+    transportSig: row.transport_sig,
+    transportNonce: row.transport_nonce,
+    venueTimestampMs: numeric(row.venue_timestamp_ms),
+  };
 }
 
 function mapDeal(row: DealRow): ArchivedTclkDeal {
@@ -137,6 +179,46 @@ export class PgTclkDealHistoryRepository {
     return new Set(result.rows.map((row) => Number(row.seq)));
   }
 
+  /** Archived frames still missing an authoritative venue timestamp, for the backfill script. */
+  async framesMissingVenueTimestamp(limit = 5000): Promise<ArchivedFrameIdentityRow[]> {
+    const result = await this.pool.query<{
+      room: string;
+      seq: string | number;
+      from_did: string;
+      line: string;
+      transport_sig: string;
+      transport_nonce: string;
+    }>(
+      `SELECT room, seq, from_did, line, transport_sig, transport_nonce
+       FROM tclk_deal_frames
+       WHERE venue_timestamp_ms IS NULL
+       ORDER BY room, seq
+       LIMIT $1`,
+      [Math.max(1, Math.min(limit, 20_000))],
+    );
+    return result.rows.map((row) => ({
+      room: row.room,
+      seq: Number(row.seq),
+      fromDid: row.from_did,
+      line: row.line,
+      transportSig: row.transport_sig,
+      transportNonce: row.transport_nonce,
+    }));
+  }
+
+  /**
+   * Only ever sets a timestamp that is currently NULL, which is what makes a
+   * backfill run safe to repeat: a row already backfilled (by this run or a
+   * previous one) is untouched, never re-verified or overwritten.
+   */
+  async setVenueTimestampIfMissing(room: string, seq: number, venueTimestampMs: number): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE tclk_deal_frames SET venue_timestamp_ms = $1 WHERE room = $2 AND seq = $3 AND venue_timestamp_ms IS NULL`,
+      [venueTimestampMs, room, seq],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async offerExists(offerId: string): Promise<boolean> {
     const result = await this.pool.query(`SELECT 1 FROM tclk_deals WHERE offer_id = $1 LIMIT 1`, [offerId]);
     return result.rowCount === 1;
@@ -153,8 +235,8 @@ export class PgTclkDealHistoryRepository {
   async storeFrame(frame: ArchivedTclkFrame): Promise<void> {
     await this.pool.query(
       `INSERT INTO tclk_deal_frames (
-         room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)
+         room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce, venue_timestamp_ms
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
        ON CONFLICT (room, seq) DO NOTHING`,
       [
         frame.room,
@@ -166,19 +248,38 @@ export class PgTclkDealHistoryRepository {
         JSON.stringify(frame.frame),
         frame.transportSig,
         frame.transportNonce,
+        frame.venueTimestampMs,
       ],
     );
   }
 
-  async transcriptLines(offerId: string): Promise<string[]> {
-    const result = await this.pool.query<{ line: string }>(
-      `SELECT line
+  /**
+   * Every archived frame for one offer, across every room, unordered by time —
+   * the caller is responsible for checking that every frame it needs has a
+   * venueTimestampMs and for sorting by it. This replaced transcriptLines(),
+   * which returned bare line strings pre-ordered "offer room first, deal room
+   * second"; that ordering is exactly what let a later cross-room frame be
+   * folded before an earlier one.
+   */
+  async framesForOffer(offerId: string): Promise<ArchivedTclkFrame[]> {
+    const result = await this.pool.query<{
+      room: string;
+      seq: string | number;
+      offer_id: string;
+      frame_type: string;
+      from_did: string;
+      line: string;
+      frame: Record<string, unknown>;
+      transport_sig: string;
+      transport_nonce: string;
+      venue_timestamp_ms: string | number | null;
+    }>(
+      `SELECT room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce, venue_timestamp_ms
        FROM tclk_deal_frames
-       WHERE offer_id = $1
-       ORDER BY CASE WHEN room = 'tclk-offers' THEN 0 ELSE 1 END, seq ASC`,
+       WHERE offer_id = $1`,
       [offerId],
     );
-    return result.rows.map((row) => row.line);
+    return result.rows.map(mapFrame);
   }
 
   async updateState(input: {
@@ -265,8 +366,9 @@ export class PgTclkDealHistoryRepository {
       frame: Record<string, unknown>;
       transport_sig: string;
       transport_nonce: string;
+      venue_timestamp_ms: string | number | null;
     }>(
-      `SELECT room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce
+      `SELECT room, seq, offer_id, frame_type, from_did, line, frame, transport_sig, transport_nonce, venue_timestamp_ms
        FROM tclk_deal_frames
        WHERE offer_id = $1
        ORDER BY CASE WHEN room = 'tclk-offers' THEN 0 ELSE 1 END, seq ASC`,
@@ -274,17 +376,7 @@ export class PgTclkDealHistoryRepository {
     );
     return {
       deal: mapDeal(dealRow),
-      frames: frameResult.rows.map((row) => ({
-        room: row.room,
-        seq: Number(row.seq),
-        offerId: row.offer_id,
-        frameType: row.frame_type,
-        fromDid: row.from_did,
-        line: row.line,
-        frame: row.frame,
-        transportSig: row.transport_sig,
-        transportNonce: row.transport_nonce,
-      })),
+      frames: frameResult.rows.map(mapFrame),
     };
   }
 }

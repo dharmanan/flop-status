@@ -2,6 +2,8 @@ import { decodeBase64Url } from "../crypto/base64url.js";
 import { verifyEd25519DidKeySignature } from "../identity/verify-signature.js";
 import type { PgTclkDealHistoryRepository } from "../db/tclk-deal-history-repository.js";
 import type { TclkMcpClientLike } from "./tclk-mcp-client.js";
+import { parseVenueTimestampMs } from "./tclk-venue-timestamp.js";
+import { replayArchivedFrames } from "./tclk-historical-replay.js";
 
 const encoder = new TextEncoder();
 const ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
@@ -14,6 +16,8 @@ export interface RawTclkMessage {
   sig: string;
   nonce: number | string;
   text: string;
+  /** Technocore's own venue timestamp for this record, e.g. an ISO-8601 string. */
+  ts?: unknown;
 }
 
 type TclkFrame = Record<string, unknown> & {
@@ -31,12 +35,6 @@ type TclkFrame = Record<string, unknown> & {
 };
 
 type DecodeResult = { ok: boolean; frame?: TclkFrame; error?: string };
-type ReplayResult = {
-  status: string;
-  contract?: string | null;
-  offerId: string;
-  parties?: { payer?: string | null; payee?: string | null };
-};
 
 export class TclkDealHistoryService {
   // Technocore's public rendezvous can contain an accept whose offer rotated
@@ -155,22 +153,38 @@ export class TclkDealHistoryService {
       frame,
       transportSig: message.sig,
       transportNonce: String(message.nonce),
+      venueTimestampMs: parseVenueTimestampMs(message.ts),
     });
 
     await this.reconcileOffer(offerId);
     return true;
   }
 
+  /**
+   * Historical reconciliation for the durable archive. This is deliberately not
+   * the live MCP's tclk_apply_transcript({lines, nowMs: Date.now()}) — that folds
+   * everything against today's clock and "offer room first, deal room second",
+   * so an old accept can be re-rejected as expired and a much later cross-room
+   * frame can be folded before an earlier one. Reconstructing from durable
+   * history instead uses the released @flop-labs/tclk@0.1.0 state machine
+   * locally, evaluating each archived frame at its own venue timestamp in true
+   * chronological order. If any required frame lacks that timestamp, this fails
+   * closed and leaves the currently stored status untouched (see
+   * replayArchivedFrames). The live MCP call is unchanged everywhere else —
+   * this only affects how the durable archive reconciles itself.
+   */
   private async reconcileOffer(offerId: string): Promise<boolean> {
-    const lines = await this.repository.transcriptLines(offerId);
-    if (!lines.length) return false;
-    const replay = await this.mcp.call<ReplayResult>("tclk_apply_transcript", { lines, nowMs: Date.now() });
-    if (!replay || replay.offerId !== offerId || typeof replay.status !== "string") return false;
+    const frames = await this.repository.framesForOffer(offerId);
+    const outcome = replayArchivedFrames(frames);
+    if (!outcome.complete) {
+      this.report(`historical reconstruction incomplete for ${offerId}: ${outcome.reason}`);
+      return false;
+    }
     await this.repository.updateState({
       offerId,
-      contractId: typeof replay.contract === "string" ? replay.contract : null,
-      payeeDid: typeof replay.parties?.payee === "string" ? replay.parties.payee : null,
-      status: replay.status,
+      contractId: outcome.result.contractId,
+      payeeDid: outcome.result.payeeDid,
+      status: outcome.result.status,
     });
     return true;
   }

@@ -97,6 +97,7 @@ describe("migrations 0008-0010: production Capability 2-4 certification", () => 
       "0016_agent_direct_mailbox",
       "0017_agent_profiles",
       "0018_tclk_deal_history",
+      "0019_tclk_deal_frame_venue_timestamp",
     ]);
   });
 
