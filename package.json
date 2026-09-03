@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/runtime/server.js",
     "db:migrate": "npm run build && node dist/db/migrate.js",
+    "tclk:backfill-venue-timestamps": "npm run build && node dist/db/backfill-tclk-venue-timestamps.js",
     "db:verify": "npm run build && node dist/db/verify-railway.js",
     "db:verify-submission": "npm run build && node dist/db/verify-submission-railway.js",
     "db:verify-receipt": "npm run build && node dist/db/verify-receipt-railway.js",
@@ -24,6 +25,7 @@
     "attestation:generate": "npm run build && node dist/receipts/generate-attestation-key.js"
   },
   "dependencies": {
+    "@flop-labs/tclk": "0.1.0",
     "canonicalize": "^4.0.0",
     "pg": "8.23.0",
     "zod": "^3.25.76"
