@@ -178,6 +178,18 @@ export class PgTclkDealHistoryRepository {
     );
   }
 
+  async listContractsForSync(limit = 100): Promise<string[]> {
+    const result = await this.pool.query<{ contract_id: string }>(
+      `SELECT contract_id
+       FROM tclk_deals
+       WHERE contract_id IS NOT NULL
+       ORDER BY updated_at DESC
+       LIMIT $1`,
+      [Math.max(1, Math.min(limit, 200))],
+    );
+    return result.rows.map((row) => row.contract_id);
+  }
+
   async listByDid(did: string, limit = 100): Promise<ArchivedTclkDeal[]> {
     const result = await this.pool.query<DealRow>(
       `SELECT ${DEAL_COLUMNS}
