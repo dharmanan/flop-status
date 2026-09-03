@@ -97,6 +97,19 @@ async function archiveRoom(history: TclkDealHistoryService | undefined, roomName
   try { await history.ingestRoom(roomName, rawMessages(room)); } catch {}
 }
 
+async function backfillDealRooms(history: TclkDealHistoryService | undefined): Promise<void> {
+  if (!history) return;
+  try {
+    const rooms = await history.listDealRoomsForSync(100);
+    for (const roomName of rooms) {
+      try {
+        const room = await readRawRoom(roomName);
+        await archiveRoom(history, roomName, room);
+      } catch {}
+    }
+  } catch {}
+}
+
 export function createTclkAwareHandler(
   fallback: (request: IncomingMessage, response: ServerResponse) => void,
   mcp = new TclkMcpClient(),
@@ -128,6 +141,7 @@ export function createTclkAwareHandler(
             json(response, 503, { error: { code: "TCLK_HISTORY_UNAVAILABLE", message: "Durable TCLK history is not configured." } });
             return;
           }
+          await backfillDealRooms(history);
           const did = url.searchParams.get("did")?.trim() ?? "";
           if (!did.startsWith("did:key:")) {
             json(response, 400, { error: { code: "INVALID_DID", message: "A did:key query parameter is required." } });
@@ -142,6 +156,7 @@ export function createTclkAwareHandler(
           const roomName = rawRoomMatch[1] ?? "";
           const room = await readRawRoom(roomName);
           await archiveRoom(history, roomName, room);
+          if (roomName === "tclk-offers") await backfillDealRooms(history);
           json(response, 200, { room });
           return;
         }
@@ -161,6 +176,7 @@ export function createTclkAwareHandler(
               try {
                 const room = await readRawRoom(roomName);
                 await archiveRoom(history, roomName, room);
+                if (roomName === "tclk-offers") await backfillDealRooms(history);
               } catch {}
             }
           }
