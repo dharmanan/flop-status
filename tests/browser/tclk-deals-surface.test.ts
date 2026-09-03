@@ -117,4 +117,46 @@ describe("TCLK Deals browser surface", () => {
   it("imports the pure historical-recovery helpers used by recoverArchivedDeal and renderDealCards", () => {
     expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js"');
   });
+
+  // UI clarity fix: a rejected signed record (e.g. a cancel attempt after the
+  // agreement already reached a terminal state) must not appear as a numbered
+  // step in the main "Agreement steps" flow, and must not show raw protocol
+  // text ("cancel in status claimed") as its primary explanation.
+  it("imports the pure step-presentation helpers", () => {
+    expect(deals).toContain('import { splitTimelineSteps, rejectedRecordCategory } from "/tclk-step-presentation.js"');
+  });
+
+  it("openDeal renders only the applied flow as numbered agreement steps", () => {
+    const body = functionSource(deals, "async function openDeal(deal)");
+    expect(body).toContain("splitTimelineSteps(state.steps)");
+    expect(body).toContain('applied.forEach((step, position) =>');
+    expect(body).toContain('node("span", "", `${position + 1}`)');
+    // The old inline-reason row is gone: a rejected record's raw reason is no
+    // longer concatenated into the primary REJECTED label in the main timeline.
+    expect(body).not.toContain('copy("REJECTED", "REDDEDİLDİ")} · ${step.reason');
+  });
+
+  it("openDeal shows a separate Rejected records section, only when rejected records exist, with a friendly explanation and the raw reason kept as evidence", () => {
+    const body = functionSource(deals, "async function openDeal(deal)");
+    expect(body).toContain('copy("Rejected records", "Reddedilen kayıtlar")');
+    expect(body).toContain("if (rejected.length)");
+    expect(body).toContain("rejectedRecordCategory(state.status)");
+    expect(body).toContain("rejectedAttemptLabel(step.type)");
+    expect(body).toContain("rejectedRecordExplanation(category)");
+    // The signed record is not hidden: its raw reason is still rendered.
+    expect(body).toContain('if (step.reason) record.appendChild(node("small", "", step.reason))');
+    expect(body).toContain("...(rejectedRecords ? [rejectedRecords] : [])");
+  });
+
+  it("gives the rejected-record explanation as user-facing copy, not raw protocol text, for an already-terminal deal", () => {
+    expect(deals).toContain(
+      '"The agreement was already completed, so this record was not applied."',
+    );
+    expect(deals).toContain('"Anlaşma zaten tamamlandığı için uygulanmadı."');
+  });
+
+  it("labels a rejected record as an ATTEMPT, distinct from an applied step", () => {
+    expect(deals).toContain('function rejectedAttemptLabel(type)');
+    expect(deals).toContain('copy("ATTEMPT", "GİRİŞİMİ")');
+  });
 });

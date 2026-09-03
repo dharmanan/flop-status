@@ -4,6 +4,7 @@ import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
 import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js";
+import { splitTimelineSteps, rejectedRecordCategory } from "/tclk-step-presentation.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const OFFER_ROOM = "tclk-offers";
@@ -61,6 +62,27 @@ function stepLabel(type) {
     receipt: copy("RECEIPT", "KAPANIŞ KAYDI"),
   };
   return labels[value] ?? value.toUpperCase();
+}
+
+function rejectedAttemptLabel(type) {
+  return `${stepLabel(type)} ${copy("ATTEMPT", "GİRİŞİMİ")}`;
+}
+
+// A rejected record's raw protocol reason (e.g. "cancel in status claimed")
+// is real evidence but not a user-facing explanation — this maps the
+// category splitTimelineSteps/rejectedRecordCategory already computed to
+// copy a reader can act on. The raw reason still renders alongside it, as
+// secondary/debug detail.
+function rejectedRecordExplanation(category) {
+  return category === "already-terminal"
+    ? copy(
+      "The agreement was already completed, so this record was not applied.",
+      "Anlaşma zaten tamamlandığı için uygulanmadı.",
+    )
+    : copy(
+      "This record was not accepted by the agreement.",
+      "Bu kayıt anlaşma tarafından kabul edilmedi.",
+    );
 }
 
 function paperStateLabel(status) {
@@ -739,6 +761,18 @@ async function openDeal(deal) {
 
     const timeline = node("section", "tclk-timeline");
     timeline.appendChild(node("h3", "", copy("Agreement steps", "Anlaşma adımları")));
+    // A rejected signed record (most notably a cancel attempt that arrives
+    // after the agreement already reached a terminal state) is evidence that
+    // something was submitted, not a step in the normal agreement flow. It
+    // must never be numbered alongside OFFER/ACCEPT/LOCK/REVEAL/RECEIPT as if
+    // it were one — see splitTimelineSteps and the "Rejected records" section
+    // below. A genuinely applied cancel (step.ok === true) stays right here.
+    const { applied, rejected } = splitTimelineSteps(state.steps);
+    applied.forEach((step, position) => {
+      const row = node("div", "tclk-step ok");
+      row.append(node("span", "", `${position + 1}`), node("strong", "", stepLabel(step.type)), node("em", "", copy("APPLIED", "TAMAMLANDI")));
+      timeline.appendChild(row);
+    });
     // tclk_apply_transcript (server v0.1.0) folds every record against a single
     // caller-supplied nowMs, not each record's own original moment. Replaying an
     // old transcript later can reject a step purely because of when the replay
@@ -751,20 +785,33 @@ async function openDeal(deal) {
     // evaluated every step at its own authoritative venue timestamp, never at
     // "now", so that caveat would misrepresent it and is skipped entirely.
     let hasClockDependentRejection = false;
-    for (const step of state.steps ?? []) {
-      const row = node("div", `tclk-step ${step.ok ? "ok" : "rejected"}`);
-      const result = step.ok
-        ? copy("APPLIED", "TAMAMLANDI")
-        : `${copy("REJECTED", "REDDEDİLDİ")} · ${step.reason ?? copy("invalid", "geçersiz")}`;
-      if (!deal.historical && !step.ok && /expir|refund window/i.test(String(step.reason ?? ""))) hasClockDependentRejection = true;
-      row.append(node("span", "", `${step.index + 1}`), node("strong", "", stepLabel(step.type)), node("em", "", result));
-      timeline.appendChild(row);
+    for (const step of rejected) {
+      if (!deal.historical && /expir|refund window/i.test(String(step.reason ?? ""))) hasClockDependentRejection = true;
     }
     if (hasClockDependentRejection) {
       timeline.appendChild(node("p", "tclk-action-note", copy(
         "This was re-evaluated against the current time, not the moment each step actually happened. A step rejected here for a timing reason may have been valid when it was originally signed — this is not a certified record of the deal's original outcome.",
         "Bu değerlendirme, her adımın gerçekleştiği an yerine şu anki zamana göre yeniden yapıldı. Burada zamanlama nedeniyle reddedilen bir adım, aslında imzalandığı anda geçerli olmuş olabilir — bu, anlaşmanın gerçek geçmişinin kesinleşmiş bir kaydı değildir.",
       )));
+    }
+
+    // Rejected signed records are kept fully visible as evidence — just not
+    // inside the numbered agreement flow above (see splitTimelineSteps).
+    let rejectedRecords = null;
+    if (rejected.length) {
+      rejectedRecords = node("section", "tclk-rejected-records");
+      rejectedRecords.appendChild(node("h3", "", copy("Rejected records", "Reddedilen kayıtlar")));
+      const category = rejectedRecordCategory(state.status);
+      for (const step of rejected) {
+        const record = node("div", "tclk-rejected-record");
+        record.append(
+          node("strong", "", rejectedAttemptLabel(step.type)),
+          node("em", "", copy("REJECTED", "REDDEDİLDİ")),
+          node("p", "", rejectedRecordExplanation(category)),
+        );
+        if (step.reason) record.appendChild(node("small", "", step.reason));
+        rejectedRecords.appendChild(record);
+      }
     }
 
     const checks = node("section", "tclk-proof-checks");
@@ -780,7 +827,7 @@ async function openDeal(deal) {
     const actions = node("section", "tclk-actions-panel");
     actions.appendChild(node("h3", "", copy("What you can do now", "Şimdi ne yapabilirsin?")));
     await appendDealActions(actions, { deal, state, paperState, id });
-    main.append(back, proof, timeline, checks, actions);
+    main.append(back, proof, timeline, ...(rejectedRecords ? [rejectedRecords] : []), checks, actions);
     setStatus(copy("Agreement proof verified from signed records.", "Anlaşma kanıtı imzalı kayıtlardan doğrulandı."), "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : String(error), "error");
