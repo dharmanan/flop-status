@@ -1,5 +1,6 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
 const TERMINAL = new Set(["claimed", "refunded", "cancelled"]);
+const ACTIVE = new Set(["proposed", "accepted", "locked"]);
 const MAX_SYNC_RETRIES = 8;
 let timer = null;
 let busy = false;
@@ -11,6 +12,9 @@ const copy = (en, trText) => tr() ? trText : en;
 function stateLabel(status) {
   const value = String(status ?? "").toLowerCase();
   const labels = {
+    proposed: copy("OPEN OFFER", "TEKLİF AÇIK"),
+    accepted: copy("ACCEPTED", "KABUL EDİLDİ"),
+    locked: copy("LOCKED", "KİLİTLENDİ"),
     claimed: copy("COMPLETED", "TAMAMLANDI"),
     refunded: copy("REFUNDED", "GERİ ALINDI"),
     cancelled: copy("CANCELLED", "İPTAL EDİLDİ"),
@@ -36,6 +40,7 @@ function loadStyle() {
   style.id = "flop-tclk-history-style";
   style.textContent = `
     .tclk-history-section { margin-top: 28px; display: grid; gap: 12px; }
+    .tclk-history-section.tclk-archive-active { margin-top: 12px; }
     .tclk-history-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
     .tclk-history-head h2 { margin: 0; font-size: 16px; }
     .tclk-history-head p { margin: 0; color: #84928f; font-size: 12px; }
@@ -55,6 +60,12 @@ function loadStyle() {
     .tclk-history-state {
       border: 1px solid rgba(61, 158, 103, .65); color: #72dfa2;
       border-radius: 999px; padding: 4px 9px; font: 700 10px/1 ui-monospace, monospace;
+    }
+    .tclk-history-state[data-state="accepted"], .tclk-history-state[data-state="locked"] {
+      border-color: rgba(90, 136, 255, .65); color: #9bb7ff;
+    }
+    .tclk-history-state[data-state="proposed"] {
+      border-color: rgba(181, 143, 69, .7); color: #d8b66c;
     }
     .tclk-history-amount { font-size: 24px; font-weight: 760; letter-spacing: -.03em; }
     .tclk-history-meta { color: #84928f; font-size: 11px; }
@@ -90,6 +101,12 @@ function node(tag, className, text) {
   return el;
 }
 
+function stateNode(status) {
+  const el = node("span", "tclk-history-state", stateLabel(status));
+  el.dataset.state = String(status ?? "").toLowerCase();
+  return el;
+}
+
 async function openHistoryDeal(deal) {
   const main = document.querySelector(".tclk-workspace:not([hidden]) .tclk-main");
   if (!main) return;
@@ -104,8 +121,7 @@ async function openHistoryDeal(deal) {
   const detail = node("section", "tclk-history-detail");
   const head = node("div", "tclk-history-card-top");
   const amount = node("div", "tclk-history-amount", `${deal.amount} ${deal.asset}`);
-  const state = node("span", "tclk-history-state", stateLabel(deal.status));
-  head.append(amount, state);
+  head.append(amount, stateNode(deal.status));
 
   const grid = node("div", "tclk-history-detail-grid");
   const entries = [
@@ -122,12 +138,57 @@ async function openHistoryDeal(deal) {
     grid.appendChild(cell);
   }
 
-  const note = node("p", "tclk-history-note", copy(
+  const me = activeDid();
+  let guidance = "";
+  if (deal.status === "accepted") {
+    guidance = me === deal.payerDid
+      ? copy("The offer was accepted. The payer must create the PaperRail lock next.", "Teklif kabul edildi. Sıradaki adım ödeyen tarafın PaperRail kilidini oluşturması.")
+      : copy("The offer was accepted. Waiting for the payer to create the PaperRail lock.", "Teklif kabul edildi. Ödeyen tarafın PaperRail kilidini oluşturması bekleniyor.");
+  } else if (deal.status === "locked") {
+    guidance = me === deal.payeeDid
+      ? copy("The agreement is locked. The payee can complete it with the browser-local agreement code.", "Anlaşma kilitlendi. Ödemeyi alan taraf tarayıcıdaki anlaşma koduyla tamamlayabilir.")
+      : copy("The agreement is locked. Waiting for the payee to complete it.", "Anlaşma kilitlendi. Ödemeyi alan tarafın tamamlaması bekleniyor.");
+  }
+
+  const note = node("p", "tclk-history-note", guidance || copy(
     "This is a durable FLOP archive entry built from transport-verified, signed TCLK records. PostgreSQL is an index and archive only; the official TCLK state machine remains the protocol authority.",
     "Bu kayıt, taşıma imzası doğrulanmış TCLK kayıtlarından oluşturulan kalıcı FLOP arşividir. PostgreSQL yalnızca indeks ve arşiv görevi görür; protokol durumunun otoritesi resmi TCLK state machine olmaya devam eder.",
   ));
   detail.append(head, grid, note);
   main.append(back, detail);
+}
+
+function renderDealSection({ main, deals, title, subtitle, className = "" }) {
+  if (!deals.length) return null;
+  const section = node("section", `tclk-history-section ${className}`.trim());
+  const head = node("div", "tclk-history-head");
+  const titleWrap = node("div");
+  titleWrap.append(node("h2", "", title), node("p", "", subtitle));
+  head.appendChild(titleWrap);
+  const list = node("div", "tclk-history-list");
+
+  for (const deal of deals) {
+    const card = node("article", "tclk-history-card");
+    card.dataset.offerId = deal.offerId ?? "";
+    const top = node("div", "tclk-history-card-top");
+    top.append(
+      node("strong", "tclk-history-card-title", deal.jobId ? `${copy("Job", "İş")} · ${deal.jobId}` : copy("Archived agreement", "Arşivlenmiş anlaşma")),
+      stateNode(deal.status),
+    );
+    const amount = node("div", "tclk-history-amount", `${deal.amount} ${deal.asset}`);
+    const bottom = node("div", "tclk-history-card-bottom");
+    bottom.append(node("span", "tclk-history-meta", new Date(deal.updatedAt).toLocaleString()));
+    const open = node("button", "tclk-secondary", copy("Open record", "Kaydı aç"));
+    open.type = "button";
+    open.addEventListener("click", () => void openHistoryDeal(deal));
+    bottom.appendChild(open);
+    card.append(top, amount, bottom);
+    list.appendChild(card);
+  }
+
+  section.append(head, list);
+  main.appendChild(section);
+  return section;
 }
 
 async function renderHistory() {
@@ -144,68 +205,62 @@ async function renderHistory() {
   try {
     const body = await api(`/api/v1/tclk/history?did=${encodeURIComponent(did)}`);
     const allDeals = Array.isArray(body?.deals) ? body.deals : [];
-    const history = allDeals.filter((deal) => TERMINAL.has(String(deal?.status)));
+    const archivedActive = allDeals.filter((deal) => ACTIVE.has(String(deal?.status).toLowerCase()));
+    const history = allDeals.filter((deal) => TERMINAL.has(String(deal?.status).toLowerCase()));
 
-    if (!history.length) {
+    if (!allDeals.length) {
       if (syncRetries < MAX_SYNC_RETRIES) {
         syncRetries += 1;
         const status = workspace.querySelector(".tclk-status");
         if (status) status.textContent = copy(
-          `Checking completed agreement history… (${syncRetries}/${MAX_SYNC_RETRIES})`,
-          `Tamamlanan anlaşma geçmişi kontrol ediliyor… (${syncRetries}/${MAX_SYNC_RETRIES})`,
+          `Checking agreement archive… (${syncRetries}/${MAX_SYNC_RETRIES})`,
+          `Anlaşma arşivi kontrol ediliyor… (${syncRetries}/${MAX_SYNC_RETRIES})`,
         );
         clearTimeout(timer);
         timer = setTimeout(() => void renderHistory(), 1000);
       } else {
         syncRetries = 0;
         const status = workspace.querySelector(".tclk-status");
-        if (status && allDeals.length === 0) {
-          status.textContent = copy("No archived agreements were found for this agent.", "Bu ajan için arşivlenmiş anlaşma bulunamadı.");
-        }
+        if (status) status.textContent = copy("No archived agreements were found for this agent.", "Bu ajan için arşivlenmiş anlaşma bulunamadı.");
       }
       return;
     }
 
     syncRetries = 0;
+
+    const liveCards = [...main.querySelectorAll(".tclk-deal-card")];
+    const liveText = liveCards.map((card) => card.textContent ?? "").join("\n");
+    const archiveOnlyActive = archivedActive.filter((deal) => !deal.jobId || !liveText.includes(deal.jobId));
+
     const empty = main.querySelector(".tclk-empty");
-    if (empty) empty.textContent = copy("You have no active agreements.", "Aktif anlaşman yok.");
+    if (empty && archiveOnlyActive.length) empty.remove();
+    else if (empty && history.length) empty.textContent = copy("You have no active agreements.", "Aktif anlaşman yok.");
 
-    const section = node("section", "tclk-history-section");
-    const head = node("div", "tclk-history-head");
-    const titleWrap = node("div");
-    titleWrap.append(
-      node("h2", "", copy("Completed history", "Tamamlanan anlaşmalar")),
-      node("p", "", copy("Durable signed agreement archive", "Kalıcı imzalı anlaşma geçmişi")),
-    );
-    head.appendChild(titleWrap);
-    const list = node("div", "tclk-history-list");
+    renderDealSection({
+      main,
+      deals: archiveOnlyActive,
+      title: copy("Active agreements", "Aktif anlaşmalar"),
+      subtitle: copy("Recovered from the durable signed TCLK archive", "Kalıcı imzalı TCLK arşivinden geri yüklendi"),
+      className: "tclk-archive-active",
+    });
 
-    for (const deal of history) {
-      const card = node("article", "tclk-history-card");
-      const top = node("div", "tclk-history-card-top");
-      top.append(
-        node("strong", "tclk-history-card-title", deal.jobId ? `${copy("Job", "İş")} · ${deal.jobId}` : copy("Archived agreement", "Arşivlenmiş anlaşma")),
-        node("span", "tclk-history-state", stateLabel(deal.status)),
-      );
-      const amount = node("div", "tclk-history-amount", `${deal.amount} ${deal.asset}`);
-      const bottom = node("div", "tclk-history-card-bottom");
-      bottom.append(node("span", "tclk-history-meta", new Date(deal.updatedAt).toLocaleString()));
-      const open = node("button", "tclk-secondary", copy("Open record", "Kaydı aç"));
-      open.type = "button";
-      open.addEventListener("click", () => void openHistoryDeal(deal));
-      bottom.appendChild(open);
-      card.append(top, amount, bottom);
-      list.appendChild(card);
-    }
-    section.append(head, list);
-    main.appendChild(section);
+    renderDealSection({
+      main,
+      deals: history,
+      title: copy("Completed history", "Tamamlanan anlaşmalar"),
+      subtitle: copy("Durable signed agreement archive", "Kalıcı imzalı anlaşma geçmişi"),
+    });
 
     const status = workspace.querySelector(".tclk-status");
-    const liveCount = main.querySelectorAll(".tclk-deal-card").length;
-    if (status) status.textContent = copy(
-      `${liveCount} active · ${history.length} completed`,
-      `${liveCount} aktif · ${history.length} tamamlanmış`,
-    );
+    const liveCount = liveCards.length;
+    const activeCount = liveCount + archiveOnlyActive.length;
+    if (status) {
+      status.textContent = copy(
+        `${activeCount} active · ${history.length} completed`,
+        `${activeCount} aktif · ${history.length} tamamlanmış`,
+      );
+      status.dataset.state = "success";
+    }
   } catch (error) {
     syncRetries = 0;
     const status = workspace.querySelector(".tclk-status");
