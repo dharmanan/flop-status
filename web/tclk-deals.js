@@ -5,7 +5,6 @@ import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
 import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js";
 import { splitTimelineSteps, rejectedRecordCategory } from "/tclk-step-presentation.js";
-import { postSignedRecordDirect } from "/technocore-direct-post.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const OFFER_ROOM = "tclk-offers";
@@ -238,50 +237,20 @@ async function signCanonical(canonical) {
   return { did: id.did, signature: bytesToBase64Url(signature) };
 }
 
-// Derived per-contract TCLK deal room, produced only by dealRoom() above —
-// used here strictly to validate a directTechnocore:true request, never to
-// infer a transport from the room or frame on its own (postSignedRecordDirect
-// does its own, broader Technocore/TCLK grammar check regardless).
-const DEAL_ROOM_RE = /^mb-p-tclk-[0-9a-f]{16}$/;
-
-// Experiment scope: the production failure under investigation is
-// specifically new deal-room creation, i.e. LOCK — the first write that must
-// create the derived mb-p-tclk-* room. REVEAL/REFUND/CANCEL/RECEIPT write
-// into a room that (by the time they run) already exists, and have not shown
-// the same problem, so they are not part of this experiment. Rather than
-// infer that from the room or by parsing `line`/challenge.text, the caller
-// states it explicitly: only the LOCK call site in appendDealActions passes
-// { directTechnocore: true }. Every other call keeps the default, original
-// hosted-MCP transport regardless of which room it targets.
-async function postLine(room, line, { directTechnocore = false } = {}) {
-  // The hosted MCP has no signing key, so this first call only ever issues a
-  // signing challenge or reports that an identical record is already posted
-  // (posted: true) — never posts anything itself. That validation/challenge
-  // authority is unchanged, for every write.
+async function postLine(room, line) {
   const challenge = await tool("tclk_post_frame", { room, line });
   if (challenge?.posted === true) return challenge;
   if (!Number.isSafeInteger(challenge?.nonce) || typeof challenge?.canonical !== "string" || typeof challenge?.text !== "string") {
     throw new Error(copy("TCLK signing challenge is incomplete.", "TCLK imza isteği eksik geldi."));
   }
   const signed = await signCanonical(challenge.canonical);
-
-  // challenge.nonce/text and signed.did/signature are passed through exactly
-  // as produced above — neither branch reconstructs them.
-  if (!directTechnocore) {
-    return tool("tclk_post_frame", {
-      room,
-      line: challenge.text,
-      did: signed.did,
-      sig: signed.signature,
-      nonce: challenge.nonce,
-    });
-  }
-  if (!DEAL_ROOM_RE.test(room)) {
-    // The caller asked for direct transport but this isn't a derived deal
-    // room — fail closed instead of silently falling back to hosted MCP.
-    throw new Error(`Refusing to post: directTechnocore requires a derived TCLK deal room, got "${room}"`);
-  }
-  return postSignedRecordDirect(room, challenge, signed);
+  return tool("tclk_post_frame", {
+    room,
+    line: challenge.text,
+    did: signed.did,
+    sig: signed.signature,
+    nonce: challenge.nonce,
+  });
 }
 
 async function collectRoom(room) {
@@ -890,9 +859,7 @@ async function appendDealActions(container, context) {
     addAction(container, copy("Create PaperRail lock", "PaperRail kilidini oluştur"), async () => {
       await ensurePaperLock({ contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
       const built = await tool("tclk_make_lock", { from: id.did, contract: accept.contract, rail: "paper", ref: accept.contract });
-      // LOCK is the first write that must create the derived per-contract
-      // deal room — the one write this experiment targets. See postLine().
-      await postLine(room, built.line, { directTechnocore: true });
+      await postLine(room, built.line);
     });
   }
 
