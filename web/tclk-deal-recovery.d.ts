@@ -26,3 +26,16 @@ export interface AcceptCandidateRecord {
 }
 
 export function findAcceptForContract<T extends AcceptCandidateRecord>(records: T[], contractId: string | null): T | null;
+
+export interface MyDealLike {
+  offer: { frame: { id: string } };
+}
+
+export type RecoveryResult<T extends MyDealLike> =
+  | { ok: true; deal: T }
+  | { ok: false; offerId: string; reason: string };
+
+export function reconcileMyDeals<T extends MyDealLike>(
+  liveDeals: T[],
+  recoveryResults: RecoveryResult<T>[],
+): { deals: T[]; recoveryIssues: Array<{ ok: false; offerId: string; reason: string }> };

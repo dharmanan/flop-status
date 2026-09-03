@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHistoricalBoardState, findAcceptForContract } from "../../web/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "../../web/tclk-deal-recovery.js";
 
 const OFFER_ID = `0x${"a".repeat(64)}`;
 const CONTRACT_ID = `0x${"b".repeat(64)}`;
@@ -96,5 +96,74 @@ describe("findAcceptForContract", () => {
   it("returns null when no accept record matches the contract id", () => {
     const records = [{ frame: { type: "accept", contract: `0x${"c".repeat(64)}` } }];
     expect(findAcceptForContract(records, CONTRACT_ID)).toBeNull();
+  });
+});
+
+describe("reconcileMyDeals", () => {
+  function liveDeal(offerId: string, status = "accepted") {
+    return { offer: { frame: { id: offerId, from: PAYER_DID } }, boardState: { status }, historical: false };
+  }
+
+  function recoveredDeal(offerId: string, status = "claimed") {
+    return { offer: { frame: { id: offerId, from: PAYER_DID } }, boardState: { status, contract: CONTRACT_ID }, historical: true };
+  }
+
+  // H (fail-closed variant). offerId exists both in the live "mine" list and
+  // in durable history, but historical recovery is incomplete (e.g. a
+  // production frame is still missing its authoritative venue timestamp).
+  // The stale, Date.now-derived live entry must NOT survive just because
+  // recovery failed — it must be dropped and reported as a recovery issue,
+  // never silently left standing in for an offer id known to have history.
+  it("drops the stale live entry (does not retain it) when durable history exists for the same offer id but recovery is incomplete", () => {
+    const stale = liveDeal(OFFER_ID);
+    const { deals, recoveryIssues } = reconcileMyDeals(
+      [stale],
+      [{ ok: false, offerId: OFFER_ID, reason: "1 of 3 archived frame(s) lack an authoritative venue timestamp" }],
+    );
+
+    expect(deals.find((deal) => deal.offer.frame.id === OFFER_ID)).toBeUndefined();
+    expect(recoveryIssues).toHaveLength(1);
+    expect(recoveryIssues[0]).toMatchObject({ ok: false, offerId: OFFER_ID });
+  });
+
+  // H (success variant). A complete historical recovery replaces the live
+  // entry for the same offer id rather than being skipped because that id
+  // was already present.
+  it("replaces a live entry with a complete historical recovery for the same offer id", () => {
+    const stale = liveDeal(OFFER_ID, "accepted");
+    const recovered = recoveredDeal(OFFER_ID, "claimed");
+    const { deals, recoveryIssues } = reconcileMyDeals([stale], [{ ok: true, deal: recovered }]);
+
+    expect(deals).toHaveLength(1);
+    expect(deals[0]).toBe(recovered);
+    expect(deals[0]!.boardState.status).toBe("claimed");
+    expect(recoveryIssues).toHaveLength(0);
+  });
+
+  it("leaves a live entry untouched when durable history has nothing to say about it", () => {
+    const live = liveDeal(OFFER_ID, "proposed");
+    const { deals, recoveryIssues } = reconcileMyDeals([live], []);
+
+    expect(deals).toEqual([live]);
+    expect(recoveryIssues).toHaveLength(0);
+  });
+
+  it("adds a recovered archived deal that was not present live at all", () => {
+    const recovered = recoveredDeal(OFFER_ID, "cancelled");
+    const { deals } = reconcileMyDeals([], [{ ok: true, deal: recovered }]);
+
+    expect(deals).toEqual([recovered]);
+  });
+
+  it("surfaces a recovery issue without touching unrelated live deals", () => {
+    const unrelatedOfferId = `0x${"c".repeat(64)}`;
+    const unrelated = liveDeal(unrelatedOfferId);
+    const { deals, recoveryIssues } = reconcileMyDeals(
+      [unrelated],
+      [{ ok: false, offerId: OFFER_ID, reason: "no verified offer record" }],
+    );
+
+    expect(deals).toEqual([unrelated]);
+    expect(recoveryIssues).toHaveLength(1);
   });
 });
