@@ -12,11 +12,6 @@ let lastCheckedAt = 0;
 const tr = () => document.documentElement.lang === "tr";
 const copy = (en, trText) => tr() ? trText : en;
 
-function short(value, max = 34) {
-  const text = String(value ?? "");
-  return text.length <= max ? text : `${text.slice(0, Math.max(8, max - 9))}…${text.slice(-8)}`;
-}
-
 function loadStyle() {
   if (document.getElementById("flop-tclk-deal-refresh-style")) return;
   const style = document.createElement("style");
@@ -140,22 +135,30 @@ function findSummary(deals, contract) {
   return deals.find((deal) => deal?.contractId === contract || deal?.offerId === contract) ?? null;
 }
 
-function expectedCardTitle(summary) {
-  if (summary.jobId) return `${copy("Job", "İş")} · ${summary.jobId}`;
-  return `${copy("Offer", "Teklif")} · ${short(summary.offerId, 20)}`;
+// The only safe way to relocate a card after a refresh: its exact, immutable
+// protocol identity. offerId never changes across a deal's lifecycle, so it is
+// the one attribute guaranteed present at every state (tclk-deals.js sets it on
+// every card). Once a deal has been accepted, contractId exists too and must
+// also match — an offerId hit alone is not enough once there is a contract to
+// check, otherwise a card whose board data has not yet caught up with acceptance
+// could be treated as the same deal it merely used to be. Title, amount, and
+// payer are display text — two distinct deals can share all three, so none of
+// them may ever decide which card gets clicked. Kept as a pure filter over
+// card-like objects (not a raw CSS selector) so this identity rule is directly
+// unit-testable without a browser.
+export function matchCardByProtocolId(cards, { offerId, contractId }) {
+  const matches = cards.filter((card) => {
+    if (card?.dataset?.offerId !== offerId) return false;
+    if (contractId) return card?.dataset?.contractId === contractId;
+    return true;
+  });
+  return matches.length === 1 ? matches[0] : null;
 }
 
-function candidateCards(summary) {
-  const title = expectedCardTitle(summary);
-  const amount = `${summary.amount} ${summary.asset}`;
-  const cards = [...document.querySelectorAll(".tclk-workspace:not([hidden]) .tclk-deal-card")].filter((card) => {
-    const cardTitle = card.querySelector(".tclk-deal-card-top strong")?.textContent?.trim() ?? "";
-    const cardAmount = card.querySelector(".tclk-amount")?.textContent?.trim() ?? "";
-    return cardTitle === title && cardAmount === amount;
-  });
-  if (cards.length <= 1) return cards;
-  const exactPayer = cards.filter((card) => card.querySelector(".tclk-party")?.getAttribute("title") === summary.payerDid);
-  return exactPayer.length ? exactPayer : cards;
+function findExactCard(summary) {
+  if (!/^0x[0-9a-f]{64}$/.test(summary?.offerId ?? "")) return null;
+  const cards = [...document.querySelectorAll(".tclk-workspace:not([hidden]) .tclk-deal-card")];
+  return matchCardByProtocolId(cards, { offerId: summary.offerId, contractId: summary.contractId || null });
 }
 
 async function waitFor(predicate, timeoutMs = WAIT_LIMIT_MS) {
@@ -174,12 +177,14 @@ async function reopenFromMine(summary, contract) {
   if (!(mine instanceof HTMLButtonElement)) throw new Error(copy("My deals tab was not found.", "Anlaşmalarım sekmesi bulunamadı."));
 
   mine.click();
-  const card = await waitFor(() => {
-    const matches = candidateCards(summary);
-    return matches.length === 1 ? matches[0] : null;
-  });
+  const card = await waitFor(() => findExactCard(summary));
   if (!(card instanceof HTMLElement)) {
-    throw new Error(copy("The agreement could not be located after refresh.", "Yenilemeden sonra anlaşma listede bulunamadı."));
+    // Fail closed: no exact-id card means no click. Never fall back to matching
+    // by title, amount, or payer.
+    throw new Error(copy(
+      "The exact agreement could not be located by its protocol id after refresh.",
+      "Yenilemeden sonra anlaşma kesin protokol kimliğiyle listede bulunamadı.",
+    ));
   }
 
   const open = card.querySelector(".tclk-card-actions button");

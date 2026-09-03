@@ -513,6 +513,12 @@ async function renderDealCards(filter) {
   for (const deal of deals) {
     const offer = deal.offer.frame;
     const card = node("article", "tclk-deal-card");
+    // Exact protocol identity, not the display text next to it: tclk-deal-refresh.js
+    // reopens a card after a refresh strictly by these attributes, never by title,
+    // amount, or payer, so two distinct deals that happen to render identically can
+    // never be confused with each other.
+    card.dataset.offerId = offer.id;
+    if (deal.boardState.contract) card.dataset.contractId = deal.boardState.contract;
     const top = node("div", "tclk-deal-card-top");
     const title = node("strong", "", offer.job?.id
       ? `${copy("Job", "İş")} · ${offer.job.id}`
@@ -689,13 +695,30 @@ async function openDeal(deal) {
 
     const timeline = node("section", "tclk-timeline");
     timeline.appendChild(node("h3", "", copy("Agreement steps", "Anlaşma adımları")));
+    // tclk_apply_transcript (server v0.1.0) folds every record against a single
+    // caller-supplied nowMs, not each record's own original moment. Replaying an
+    // old transcript later can reject a step purely because of when the replay
+    // ran, not because of what actually happened — this covers "offer has
+    // expired" as well as the refund-window guards ("refund window is open",
+    // "refund window not open yet"). That REJECTED result is real and official —
+    // but it is not proof of the deal's original outcome, so a clock-sensitive
+    // rejection gets an explicit caveat instead of being presented as settled
+    // history.
+    let hasClockDependentRejection = false;
     for (const step of state.steps ?? []) {
       const row = node("div", `tclk-step ${step.ok ? "ok" : "rejected"}`);
       const result = step.ok
         ? copy("APPLIED", "TAMAMLANDI")
         : `${copy("REJECTED", "REDDEDİLDİ")} · ${step.reason ?? copy("invalid", "geçersiz")}`;
+      if (!step.ok && /expir|refund window/i.test(String(step.reason ?? ""))) hasClockDependentRejection = true;
       row.append(node("span", "", `${step.index + 1}`), node("strong", "", stepLabel(step.type)), node("em", "", result));
       timeline.appendChild(row);
+    }
+    if (hasClockDependentRejection) {
+      timeline.appendChild(node("p", "tclk-action-note", copy(
+        "This was re-evaluated against the current time, not the moment each step actually happened. A step rejected here for a timing reason may have been valid when it was originally signed — this is not a certified record of the deal's original outcome.",
+        "Bu değerlendirme, her adımın gerçekleştiği an yerine şu anki zamana göre yeniden yapıldı. Burada zamanlama nedeniyle reddedilen bir adım, aslında imzalandığı anda geçerli olmuş olabilir — bu, anlaşmanın gerçek geçmişinin kesinleşmiş bir kaydı değildir.",
+      )));
     }
 
     const checks = node("section", "tclk-proof-checks");
