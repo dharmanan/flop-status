@@ -140,6 +140,34 @@ function detailParty(selector) {
   };
 }
 
+function protocolState() {
+  const stateElement = document.querySelector(".tclk-proof .tclk-proof-state");
+  return stateElement?.dataset.protocolState?.trim().toLowerCase()
+    || stateElement?.textContent?.trim().toLowerCase()
+    || "";
+}
+
+function isCancelButton(button) {
+  const text = button?.textContent?.trim() ?? "";
+  return /Cancel agreement|Anlaşmayı iptal et/i.test(text);
+}
+
+function syncAcceptedCancelGuard() {
+  const actions = document.querySelector(".tclk-actions-panel");
+  if (!actions) return;
+  const accepted = protocolState() === "accepted";
+  for (const button of actions.querySelectorAll(".tclk-action-button")) {
+    if (!isCancelButton(button)) continue;
+    // TCLK strict room binding requires every post-accept frame in the derived
+    // deal room. Publishing CANCEL before LOCK would therefore create a brand-new
+    // mb-p-tclk-* room just to record a cancellation and spend scarce room-creation
+    // capacity. Keep the accepted contract idle instead; only the payer's LOCK is
+    // allowed to create the deal room.
+    button.hidden = accepted;
+    button.dataset.preLockCancelGuard = accepted ? "true" : "false";
+  }
+}
+
 function closureButton() {
   return [...document.querySelectorAll(".tclk-actions-panel .tclk-action-button")].find((button) => {
     const text = button.textContent?.trim() ?? "";
@@ -268,6 +296,7 @@ function scheduleClosureSync(delay = 100) {
   clearTimeout(closureTimer);
   closureTimer = setTimeout(() => {
     syncDealProtocolMetadata();
+    syncAcceptedCancelGuard();
     void syncClosureUi();
     void confirmPendingClosure();
   }, delay);
@@ -276,6 +305,22 @@ function scheduleClosureSync(delay = 100) {
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target.closest(".tclk-action-button") : null;
   if (!target) return;
+
+  if (protocolState() === "accepted" && isCancelButton(target)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const status = document.querySelector(".tclk-status");
+    if (status) {
+      status.textContent = copy(
+        "This accepted deal is being kept idle until the payer locks it; no new deal room was created for cancellation.",
+        "Bu kabul edilmiş anlaşma, ödeyen taraf kilitleyene kadar beklemede tutuluyor; iptal için yeni bir anlaşma odası oluşturulmadı.",
+      );
+      status.dataset.state = "success";
+    }
+    target.hidden = true;
+    return;
+  }
+
   const text = target.textContent?.trim() ?? "";
   if (!/Publish terminal receipt|Terminal receipt yayınla|Sign closure record|Kapanış kaydını imzala/i.test(text)) return;
 
