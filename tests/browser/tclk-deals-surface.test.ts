@@ -140,7 +140,10 @@ describe("TCLK Deals browser surface", () => {
     const body = functionSource(deals, "async function openDeal(deal)");
     expect(body).toContain('copy("Rejected records", "Reddedilen kayıtlar")');
     expect(body).toContain("if (rejected.length)");
-    expect(body).toContain("rejectedRecordCategory(state.status)");
+    // Categorized per rejected step (from its own reason), not once from the
+    // deal's final status — see the rejectedRecordCategory(step) regression.
+    expect(body).toContain("rejectedRecordCategory(step)");
+    expect(body).not.toContain("rejectedRecordCategory(state.status)");
     expect(body).toContain("rejectedAttemptLabel(step.type)");
     expect(body).toContain("rejectedRecordExplanation(category)");
     // The signed record is not hidden: its raw reason is still rendered.

@@ -9,4 +9,4 @@ export function splitTimelineSteps(steps: StepLike[] | undefined | null): { appl
 
 export type RejectedRecordCategory = "already-terminal" | "not-applied";
 
-export function rejectedRecordCategory(dealStatus: string): RejectedRecordCategory;
+export function rejectedRecordCategory(step: { reason?: string }): RejectedRecordCategory;

@@ -22,17 +22,33 @@ export function splitTimelineSteps(steps) {
   return { applied, rejected };
 }
 
-const TERMINAL_STATUSES = new Set(["claimed", "refunded", "cancelled"]);
+// The @flop-labs/tclk state machine (lib/machine.js) rejects a frame arriving
+// after its own transition is no longer valid with the literal reason
+// `${frame.type} in status ${state.status}` — e.g. "cancel in status
+// claimed", "accept in status refunded". That embedded status is the state
+// AT THE MOMENT this specific frame was evaluated, which is the only way to
+// know why THIS step was rejected — the deal's later, final status (which
+// could differ, e.g. a mid-flow rejection in a deal that still went on to
+// complete normally) says nothing about it.
+const ALREADY_TERMINAL_REASON_RE = /\bin status (?:claimed|refunded|cancelled)$/;
 
 /**
  * Categorizes why a rejected record did not apply, without deciding wording.
- * "already-terminal" is the common, expected case: a late signed record
- * (e.g. a cancel naming the wrong identity) arriving after the agreement was
- * already claimed, refunded, or cancelled.
+ * "already-terminal" means the rejection reason itself establishes that the
+ * attempted frame was rejected because the contract had already reached a
+ * terminal status (claimed/refunded/cancelled) at the moment it was
+ * evaluated — e.g. a late cancel naming the wrong identity, arriving after
+ * the deal was already claimed. Everything else — including "in status
+ * accepted"/"in status locked" (rejected, but not because the deal was
+ * already done) and reasons unrelated to status at all ("offer has
+ * expired", "receipt before a terminal status") — is "not-applied". This
+ * deliberately looks at the step's own reason, not the deal's eventual final
+ * status: an early rejected frame in a deal that later completed normally
+ * must not be mislabeled as "the agreement was already completed".
  *
- * @param {string} dealStatus
+ * @param {{reason?: string}} step
  * @returns {"already-terminal" | "not-applied"}
  */
-export function rejectedRecordCategory(dealStatus) {
-  return TERMINAL_STATUSES.has(String(dealStatus)) ? "already-terminal" : "not-applied";
+export function rejectedRecordCategory(step) {
+  return ALREADY_TERMINAL_REASON_RE.test(String(step?.reason ?? "")) ? "already-terminal" : "not-applied";
 }

@@ -53,15 +53,48 @@ describe("splitTimelineSteps", () => {
 });
 
 describe("rejectedRecordCategory", () => {
-  it("categorizes a rejection against a terminal deal status as already-terminal", () => {
-    expect(rejectedRecordCategory("claimed")).toBe("already-terminal");
-    expect(rejectedRecordCategory("refunded")).toBe("already-terminal");
-    expect(rejectedRecordCategory("cancelled")).toBe("already-terminal");
+  // 1. The confirmed 1043 case: a late cancel naming the offer id is rejected
+  // by the real @flop-labs/tclk machine with the literal reason
+  // "cancel in status claimed" (see machine.js: `${frame.type} in status
+  // ${state.status}`). That embedded status is what must drive the category.
+  it("classifies the confirmed 1043 reason 'cancel in status claimed' as already-terminal", () => {
+    expect(rejectedRecordCategory({ reason: "cancel in status claimed" })).toBe("already-terminal");
   });
 
-  it("categorizes a rejection against a non-terminal deal status as not-applied", () => {
-    expect(rejectedRecordCategory("proposed")).toBe("not-applied");
-    expect(rejectedRecordCategory("accepted")).toBe("not-applied");
-    expect(rejectedRecordCategory("locked")).toBe("not-applied");
+  // 2. A mid-flow rejection must be judged by ITS OWN reason, never by the
+  // deal's eventual final status. A deal that later completes normally
+  // (final status claimed) may still contain an earlier rejected record for
+  // an unrelated reason — that record was not rejected because the deal was
+  // "already completed", and must not say so.
+  it("does not classify a rejection for an unrelated reason as already-terminal, even in a deal whose final status is claimed", () => {
+    expect(rejectedRecordCategory({ reason: "offer has expired" })).toBe("not-applied");
+    expect(rejectedRecordCategory({ reason: "accept in status accepted" })).toBe("not-applied");
+    expect(rejectedRecordCategory({ reason: "contract id mismatch" })).toBe("not-applied");
+  });
+
+  // 3. The same "<frame> in status <terminal>" pattern for refunded and
+  // cancelled, across different frame types — not hardcoded to cancel/claimed.
+  it("classifies 'in status refunded' and 'in status cancelled' reasons as already-terminal, for any frame type", () => {
+    expect(rejectedRecordCategory({ reason: "accept in status refunded" })).toBe("already-terminal");
+    expect(rejectedRecordCategory({ reason: "lock in status cancelled" })).toBe("already-terminal");
+    expect(rejectedRecordCategory({ reason: "reveal in status refunded" })).toBe("already-terminal");
+    expect(rejectedRecordCategory({ reason: "refund in status cancelled" })).toBe("already-terminal");
+  });
+
+  // A rejection embedding a non-terminal status ("accepted"/"locked"/
+  // "proposed") is real and REJECTED, but the deal was not already done —
+  // this must not be conflated with the terminal case.
+  it("does not classify 'in status accepted/locked/proposed' as already-terminal", () => {
+    expect(rejectedRecordCategory({ reason: "lock in status accepted" })).toBe("not-applied");
+    expect(rejectedRecordCategory({ reason: "cancel in status locked" })).toBe("not-applied");
+    expect(rejectedRecordCategory({ reason: "reveal in status proposed" })).toBe("not-applied");
+  });
+
+  it("does not classify 'receipt before a terminal status' as already-terminal", () => {
+    expect(rejectedRecordCategory({ reason: "receipt before a terminal status" })).toBe("not-applied");
+  });
+
+  it("treats a missing reason as not-applied rather than throwing", () => {
+    expect(rejectedRecordCategory({})).toBe("not-applied");
   });
 });
