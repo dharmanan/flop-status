@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { makeOffer, makeAccept, generateHashLock, type CancelFrame, type LockFrame, type ReceiptFrame, type RevealFrame } from "@flop-labs/tclk";
 import { TclkDealHistoryService, type RawTclkMessage } from "../../lib/runtime/tclk-deal-history-service.js";
-import type { PgTclkDealHistoryRepository } from "../../lib/db/tclk-deal-history-repository.js";
+import type { ArchivedTclkDeal, PgTclkDealHistoryRepository } from "../../lib/db/tclk-deal-history-repository.js";
 import { encodeBase64Url } from "../../lib/crypto/base64url.js";
 import { generateTestEd25519Identity, type TestEd25519Identity } from "../helpers/ed25519-fixtures.js";
+import { archivedFrame, dealRoomFor } from "../helpers/tclk-fixtures.js";
 
 const OFFER_ID = `0x${"a1".repeat(32)}`;
 const ROOM = "tclk-offers";
@@ -115,6 +117,140 @@ describe("TclkDealHistoryService ingest", () => {
 
     // No `ts` provided, so the archived offer frame has no venue timestamp.
     await service.ingestRoom(ROOM, [signedMessage(1, JSON.stringify(offerFrame), identity)]);
+    expect(repository.updateState).not.toHaveBeenCalled();
+  });
+});
+
+describe("TclkDealHistoryService.getByOfferId", () => {
+  // B. The confirmed 1043 PAPER chronology, exposed through the same
+  // history-detail path the browser's archived-deal recovery now depends on.
+  // historicalReplay must be the SAME replayArchivedFrames() result
+  // reconcileOffer() already computes, not a second, independent calculation
+  // — and the existing `deal`/`frames` fields must stay unchanged (additive).
+  it("attaches a complete historicalReplay (status CLAIMED) computed by the same replayArchivedFrames used for reconciliation", async () => {
+    const payer = generateTestEd25519Identity();
+    const payee = generateTestEd25519Identity();
+    const offerTs = Date.parse("2026-09-03T15:26:42.999601Z");
+    const acceptTs = Date.parse("2026-09-03T15:27:21.234339Z");
+    const lockTs = Date.parse("2026-09-03T15:28:31.260255Z");
+    const revealTs = Date.parse("2026-09-03T15:29:30.323288Z");
+    const receipt1Ts = Date.parse("2026-09-03T15:30:21.308306Z");
+    const receipt2Ts = Date.parse("2026-09-03T15:31:21.249814Z");
+    const lateCancelTs = Date.parse("2026-09-03T18:44:50.276806Z");
+
+    const offer = makeOffer({
+      from: payer.did,
+      role: "payer",
+      amount: "1043",
+      asset: "PAPER",
+      lock: "hash",
+      rails: ["paper"],
+      claimByMs: offerTs + 30 * 60_000,
+      refundAfterMs: offerTs + 60 * 60_000,
+      expiresMs: offerTs + 10 * 60_000,
+    });
+    const { preimage, hash } = generateHashLock();
+    const accept = makeAccept(offer, { from: payee.did, statement: hash });
+    const contract = accept.contract;
+    const room = dealRoomFor(contract);
+
+    const lock: LockFrame = { type: "lock", from: payer.did, contract, rail: "paper", ref: contract };
+    const reveal: RevealFrame = { type: "reveal", from: payee.did, contract, secret: preimage };
+    const receiptPayer: ReceiptFrame = { type: "receipt", from: payer.did, contract, outcome: "claimed" };
+    const receiptPayee: ReceiptFrame = { type: "receipt", from: payee.did, contract, outcome: "claimed" };
+    // The confirmed bug: this cancel names the OFFER id, not the accepted
+    // contract id, and arrives long after the deal already completed.
+    const lateCancel: CancelFrame = { type: "cancel", from: payer.did, contract: offer.id, reason: "late, wrong contract" };
+
+    const frames = [
+      archivedFrame({ room: ROOM, seq: 10457, offerId: offer.id, tclkFrame: offer, venueTimestampMs: offerTs }),
+      archivedFrame({ room: ROOM, seq: 10460, offerId: offer.id, tclkFrame: accept, venueTimestampMs: acceptTs }),
+      archivedFrame({ room, seq: 1, offerId: offer.id, tclkFrame: lock, venueTimestampMs: lockTs }),
+      archivedFrame({ room, seq: 2, offerId: offer.id, tclkFrame: reveal, venueTimestampMs: revealTs }),
+      archivedFrame({ room, seq: 3, offerId: offer.id, tclkFrame: receiptPayer, venueTimestampMs: receipt1Ts }),
+      archivedFrame({ room, seq: 4, offerId: offer.id, tclkFrame: receiptPayee, venueTimestampMs: receipt2Ts }),
+      archivedFrame({ room: ROOM, seq: 13562, offerId: offer.id, tclkFrame: lateCancel, venueTimestampMs: lateCancelTs }),
+    ];
+
+    const dealRow: ArchivedTclkDeal = {
+      offerId: offer.id,
+      contractId: contract,
+      payerDid: payer.did,
+      payeeDid: payee.did,
+      amount: "1043",
+      asset: "PAPER",
+      jobId: null,
+      jobContext: null,
+      status: "claimed",
+      offerExpiresMs: offer.expiresMs,
+      claimByMs: offer.claimByMs,
+      refundAfterMs: offer.refundAfterMs,
+      createdAt: new Date(offerTs).toISOString(),
+      updatedAt: new Date(receipt2Ts).toISOString(),
+    };
+
+    const repository = {
+      framesForOffer: vi.fn(async () => frames),
+      getByOfferId: vi.fn(async () => ({ deal: dealRow, frames })),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+
+    const result = await service.getByOfferId(offer.id);
+
+    expect(result).not.toBeNull();
+    expect(result?.deal).toBe(dealRow);
+    expect(result?.frames).toBe(frames);
+    expect(result?.historicalReplay.complete).toBe(true);
+    if (!result?.historicalReplay.complete) return;
+    expect(result.historicalReplay.result.status).toBe("claimed");
+    expect(result.historicalReplay.result.contractId).toBe(contract);
+    const cancelStep = result.historicalReplay.result.steps.find((step) => step.type === "cancel");
+    expect(cancelStep?.ok).toBe(false);
+  });
+
+  it("returns historicalReplay.complete === false, not a fabricated status, when a venue timestamp is missing", async () => {
+    const payer = generateTestEd25519Identity();
+    const offerTs = Date.parse("2026-09-03T15:00:00.000000Z");
+    const offer = makeOffer({
+      from: payer.did,
+      role: "payer",
+      amount: "5",
+      asset: "PAPER",
+      lock: "hash",
+      rails: ["paper"],
+      claimByMs: offerTs + 30 * 60_000,
+      refundAfterMs: offerTs + 60 * 60_000,
+      expiresMs: offerTs + 10 * 60_000,
+    });
+    // Archived before migration 0019 existed: no authoritative venue timestamp.
+    const frames = [archivedFrame({ room: ROOM, seq: 1, offerId: offer.id, tclkFrame: offer, venueTimestampMs: null })];
+    const dealRow: ArchivedTclkDeal = {
+      offerId: offer.id,
+      contractId: null,
+      payerDid: payer.did,
+      payeeDid: null,
+      amount: "5",
+      asset: "PAPER",
+      jobId: null,
+      jobContext: null,
+      status: "proposed",
+      offerExpiresMs: offer.expiresMs,
+      claimByMs: offer.claimByMs,
+      refundAfterMs: offer.refundAfterMs,
+      createdAt: new Date(offerTs).toISOString(),
+      updatedAt: new Date(offerTs).toISOString(),
+    };
+    const repository = {
+      framesForOffer: vi.fn(async () => frames),
+      getByOfferId: vi.fn(async () => ({ deal: dealRow, frames })),
+      updateState: vi.fn(async () => undefined),
+    };
+    const service = new TclkDealHistoryService(repository as unknown as PgTclkDealHistoryRepository, { call: vi.fn() } as never);
+
+    const result = await service.getByOfferId(offer.id);
+
+    expect(result?.historicalReplay.complete).toBe(false);
     expect(repository.updateState).not.toHaveBeenCalled();
   });
 });

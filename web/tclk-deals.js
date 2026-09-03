@@ -3,6 +3,7 @@ import { fillTclkProofSlots } from "/safe-render.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
+import { buildHistoricalBoardState, findAcceptForContract } from "/tclk-deal-recovery.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const OFFER_ROOM = "tclk-offers";
@@ -360,10 +361,13 @@ async function buildDealIndex(records, onProgress) {
 // from the live tclk-offers board. FLOP's durable archive (Postgres) keeps every
 // verified frame it ever saw. Recovery re-verifies each archived frame's raw
 // transport signature exactly like collectRoom() does for live rooms, then
-// replays it through the same official tclk_apply_transcript path used by
-// buildDealIndex — so a recovered deal is protocol-authoritative, not a trusted
-// database status string, and slots into the exact same deal object shape the
-// rest of this file (renderDealCards/openDeal/dealTranscript) already expects.
+// ARCHIVED HISTORICAL REPLAY: it adopts the server's already-computed,
+// venue-timestamp-aware historicalReplay result (lib/runtime/tclk-historical-replay.ts)
+// instead of independently replaying the transcript here — an archived deal's
+// true outcome must never be refolded against the current wall clock. See
+// LIVE CURRENT REPLAY in buildDealIndex for the still-unchanged live path.
+// Either way the result slots into the exact same deal object shape the rest
+// of this file (renderDealCards/openDeal/dealTranscript) already expects.
 async function verifiedRecordFromArchive(archivedFrame) {
   const item = { seq: archivedFrame.seq, from: archivedFrame.fromDid, frame: archivedFrame.frame };
   const message = { from: archivedFrame.fromDid, sig: archivedFrame.transportSig, nonce: archivedFrame.transportNonce, text: archivedFrame.line };
@@ -379,10 +383,16 @@ async function fetchArchivedDeals(did) {
   } catch { return []; }
 }
 
+// Returns { ok: true, deal } once a complete, venue-timestamp-aware historical
+// state is available, or { ok: false, offerId, reason } otherwise. This fails
+// closed on purpose: it must never fall back to replaying the archived
+// transcript against the current wall clock (see the ARCHIVED HISTORICAL
+// REPLAY note above verifiedRecordFromArchive), so an incomplete server-side
+// reconstruction is reported, not silently guessed at.
 async function recoverArchivedDeal(offerId) {
   let detail;
   try { detail = await api(`/api/v1/tclk/history/${encodeURIComponent(offerId)}`); }
-  catch { return null; }
+  catch { return { ok: false, offerId, reason: copy("archived history could not be loaded", "arşiv kaydı yüklenemedi") }; }
   const frames = Array.isArray(detail?.frames) ? detail.frames : [];
   const byRoom = new Map();
   for (const frame of frames) {
@@ -393,14 +403,19 @@ async function recoverArchivedDeal(offerId) {
   const offerRoomRecords = (byRoom.get(OFFER_ROOM) ?? []).sort((a, b) => a.seq - b.seq);
   const trustedOfferRoomRecords = offerRoomRecords.filter((record) => record.trusted);
   const offerRecord = trustedOfferRoomRecords.find((record) => record.frame?.type === "offer" && record.frame.id === offerId);
-  if (!offerRecord) return null;
+  if (!offerRecord) return { ok: false, offerId, reason: copy("no verified offer record", "doğrulanmış teklif kaydı bulunamadı") };
+
+  const replay = detail?.historicalReplay;
+  if (!replay?.complete) {
+    return { ok: false, offerId, reason: replay?.reason ?? copy("historical reconstruction incomplete", "geçmiş kayıt yeniden oluşturulamadı") };
+  }
+
   const related = relatedOfferRecords(offerRecord, trustedOfferRoomRecords);
-  const boardState = await tool("tclk_apply_transcript", { lines: related.map((record) => record.line), nowMs: Date.now() });
-  const accept = boardState.contract
-    ? related.find((record) => record.frame?.type === "accept" && record.frame.contract === boardState.contract) ?? null
-    : null;
+  const boardState = buildHistoricalBoardState(offerRecord.frame.from, replay.result);
+  // The true accepted contract id, never the offer id — see findAcceptForContract.
+  const accept = findAcceptForContract(related, boardState.contract);
   const archivedRoomRecords = accept ? (byRoom.get(dealRoom(accept.frame.contract)) ?? []).sort((a, b) => a.seq - b.seq) : [];
-  return { offer: offerRecord, accept, boardRecords: related, boardState, archivedRoomRecords };
+  return { ok: true, deal: { offer: offerRecord, accept, boardRecords: related, boardState, archivedRoomRecords, historical: true } };
 }
 
 async function decorateParty(container, did) {
@@ -477,6 +492,7 @@ async function renderDealCards(filter) {
   const data = await board(true);
   let deals = await buildDealIndex(data.records, panel.update);
   const now = Date.now();
+  let recoveryIssues = [];
   if (filter === "discover") {
     deals = deals.filter((deal) => deal.boardState.status === "proposed" && deal.offer.frame.from !== id.did && deal.offer.frame.expiresMs > now);
   } else {
@@ -484,16 +500,24 @@ async function renderDealCards(filter) {
       const parties = deal.boardState.parties ?? {};
       return deal.offer.frame.from === id.did || parties.payer === id.did || parties.payee === id.did;
     });
-    const known = new Set(deals.map((deal) => deal.offer.frame.id));
+    // Durable, venue-timestamp-aware history (recoverArchivedDeal) is
+    // authoritative for an archived agreement even when the same offer id is
+    // still visible in this live room window — so every known archived offer
+    // is (re)recovered and, once complete, overwrites any live entry for the
+    // same id instead of being skipped merely because that id is already
+    // present.
+    const byOfferId = new Map(deals.map((deal) => [deal.offer.frame.id, deal]));
     for (const summary of await fetchArchivedDeals(id.did)) {
-      if (!summary?.offerId || known.has(summary.offerId)) continue;
+      if (!summary?.offerId) continue;
       const recovered = await recoverArchivedDeal(summary.offerId);
-      if (recovered) {
-        deals.push(recovered);
-        known.add(summary.offerId);
+      if (recovered.ok) {
+        byOfferId.set(summary.offerId, recovered.deal);
         panel.recovering(summary.offerId);
+      } else if (!byOfferId.has(summary.offerId)) {
+        recoveryIssues.push(recovered);
       }
     }
+    deals = [...byOfferId.values()];
   }
   const header = node("div", "tclk-list-head");
   header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));
@@ -502,6 +526,15 @@ async function renderDealCards(filter) {
   refresh.addEventListener("click", () => { boardCache = null; void renderDealCards(filter); });
   header.appendChild(refresh);
   main.replaceChildren(header);
+  if (recoveryIssues.length) {
+    // Fail closed, visibly: these archived offers exist but could not be
+    // reconstructed to a complete, venue-timestamp-aware state, so they are
+    // left out of the list below rather than shown with a guessed status.
+    main.appendChild(node("div", "tclk-empty", copy(
+      `${recoveryIssues.length} archived deal(s) could not be reconstructed from history yet.`,
+      `${recoveryIssues.length} arşivlenmiş anlaşma henüz geçmiş kayıttan yeniden oluşturulamadı.`,
+    )));
+  }
   if (!deals.length) {
     main.appendChild(node("div", "tclk-empty", filter === "discover" ? copy("No open offers right now.", "Şu anda açık teklif yok.") : copy("You don't have any TCLK agreements yet.", "Henüz bir anlaşman yok.")));
     setStatus(filter === "discover"
@@ -648,7 +681,16 @@ async function dealTranscript(deal) {
     roomData = { ...roomData, records };
     for (const record of records.filter((item) => item.trusted)) lines.push(record.line);
   }
-  const state = await tool("tclk_apply_transcript", { lines, nowMs: Date.now() });
+  // ARCHIVED HISTORICAL REPLAY vs LIVE CURRENT REPLAY: deal.historical is set
+  // only by recoverArchivedDeal(), which already carries the durable,
+  // venue-timestamp-aware state computed server-side. Re-running
+  // tclk_apply_transcript against Date.now here would refold that transcript
+  // against the current wall clock and reintroduce the exact bug that
+  // recovery path exists to avoid. An ordinary live deal carries no such
+  // state and keeps replaying through the official state machine as before.
+  const state = deal.historical
+    ? deal.boardState
+    : await tool("tclk_apply_transcript", { lines, nowMs: Date.now() });
   return { lines, roomData, state };
 }
 
@@ -705,14 +747,16 @@ async function openDeal(deal) {
     // "refund window not open yet"). That REJECTED result is real and official —
     // but it is not proof of the deal's original outcome, so a clock-sensitive
     // rejection gets an explicit caveat instead of being presented as settled
-    // history.
+    // history. A complete ARCHIVED HISTORICAL REPLAY (deal.historical) already
+    // evaluated every step at its own authoritative venue timestamp, never at
+    // "now", so that caveat would misrepresent it and is skipped entirely.
     let hasClockDependentRejection = false;
     for (const step of state.steps ?? []) {
       const row = node("div", `tclk-step ${step.ok ? "ok" : "rejected"}`);
       const result = step.ok
         ? copy("APPLIED", "TAMAMLANDI")
         : `${copy("REJECTED", "REDDEDİLDİ")} · ${step.reason ?? copy("invalid", "geçersiz")}`;
-      if (!step.ok && /expir|refund window/i.test(String(step.reason ?? ""))) hasClockDependentRejection = true;
+      if (!deal.historical && !step.ok && /expir|refund window/i.test(String(step.reason ?? ""))) hasClockDependentRejection = true;
       row.append(node("span", "", `${step.index + 1}`), node("strong", "", stepLabel(step.type)), node("em", "", result));
       timeline.appendChild(row);
     }
