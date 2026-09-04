@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildHistoricalBoardState, findAcceptForContract, newestOffersFirst, reconcileMyDeals } from "../../web/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, newestOffersFirst, reconcileMyDeals, sameExplicitVenue, venueSafeRecordOrder } from "../../web/tclk-deal-recovery.js";
 
 const OFFER_ID = `0x${"a".repeat(64)}`;
 const CONTRACT_ID = `0x${"b".repeat(64)}`;
 const PAYER_DID = "did:key:zPayerExample";
 const PAYEE_DID = "did:key:zPayeeExample";
+const VENUE = "https://technocore.chat";
+const OTHER_VENUE = "https://selfhost.example.invalid";
 
 describe("buildHistoricalBoardState", () => {
   // A / D. The replay result is adopted as-is — no re-evaluation against the
@@ -220,12 +222,13 @@ describe("newestOffersFirst", () => {
     expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["live", "archived"]);
   });
 
-  // D. Missing venue timestamp falls back to offer.seq DESC.
-  it("falls back to offer.seq descending when a venue timestamp is missing on either side", () => {
-    const noTimestamp = dealWithOffer("no-timestamp", { venueTimestampMs: null, seq: 5 });
-    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 3 });
+  // D. Missing venue timestamp falls back to offer.seq DESC — but only for
+  // offers that share one explicit venue, since seq is a per-venue namespace.
+  it("falls back to offer.seq descending when a venue timestamp is missing on either side, within one venue", () => {
+    const noTimestamp = dealWithOffer("no-timestamp", { venueTimestampMs: null, seq: 5, venue: VENUE });
+    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 3, venue: VENUE });
     // Missing vs. missing: still resolved by seq.
-    const alsoNoTimestamp = dealWithOffer("also-no-timestamp", { venueTimestampMs: null, seq: 4 });
+    const alsoNoTimestamp = dealWithOffer("also-no-timestamp", { venueTimestampMs: null, seq: 4, venue: VENUE });
 
     const sorted = newestOffersFirst([noTimestamp, hasTimestamp, alsoNoTimestamp]);
 
@@ -235,9 +238,9 @@ describe("newestOffersFirst", () => {
     expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["no-timestamp", "also-no-timestamp", "has-timestamp"]);
   });
 
-  it("also falls back to seq when venueTimestampMs is undefined rather than null", () => {
-    const noField = dealWithOffer("no-field", { seq: 2 });
-    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 1 });
+  it("also falls back to seq when venueTimestampMs is undefined rather than null, within one venue", () => {
+    const noField = dealWithOffer("no-field", { seq: 2, venue: VENUE });
+    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 1, venue: VENUE });
 
     const sorted = newestOffersFirst([hasTimestamp, noField]);
 
@@ -268,5 +271,124 @@ describe("newestOffersFirst", () => {
 
     expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["first", "second"]);
     expect(sortedAgain.map((deal) => deal.offer.frame.id)).toEqual(["first", "second"]);
+  });
+
+  // seq is a per-venue namespace that can also restart when a room is
+  // recreated, so it may only order two offers carrying the SAME explicit
+  // venue. Every other case fails closed: no ordering signal, stable input
+  // order preserved.
+  it("compares seq when both sides carry the same explicit venue", () => {
+    const low = dealWithOffer("seq-5", { venueTimestampMs: null, seq: 5, venue: VENUE });
+    const high = dealWithOffer("seq-9", { venueTimestampMs: null, seq: 9, venue: VENUE });
+
+    expect(newestOffersFirst([low, high]).map((deal) => deal.offer.frame.id)).toEqual(["seq-9", "seq-5"]);
+  });
+
+  it("does not use seq when the two venues differ", () => {
+    const official = dealWithOffer("official-seq-5", { venueTimestampMs: null, seq: 5, venue: VENUE });
+    const selfhost = dealWithOffer("selfhost-seq-9", { venueTimestampMs: null, seq: 9, venue: OTHER_VENUE });
+
+    // seq 9 would have won on a raw comparison; input order must survive.
+    expect(newestOffersFirst([official, selfhost]).map((deal) => deal.offer.frame.id)).toEqual(["official-seq-5", "selfhost-seq-9"]);
+  });
+
+  it("does not use seq when A's venue is missing", () => {
+    const missing = dealWithOffer("a-missing-seq-5", { venueTimestampMs: null, seq: 5 });
+    const known = dealWithOffer("b-known-seq-9", { venueTimestampMs: null, seq: 9, venue: VENUE });
+
+    expect(newestOffersFirst([missing, known]).map((deal) => deal.offer.frame.id)).toEqual(["a-missing-seq-5", "b-known-seq-9"]);
+  });
+
+  it("does not use seq when B's venue is missing", () => {
+    const known = dealWithOffer("a-known-seq-5", { venueTimestampMs: null, seq: 5, venue: VENUE });
+    const missing = dealWithOffer("b-missing-seq-9", { venueTimestampMs: null, seq: 9 });
+
+    expect(newestOffersFirst([known, missing]).map((deal) => deal.offer.frame.id)).toEqual(["a-known-seq-5", "b-missing-seq-9"]);
+  });
+
+  it("does not use seq when both venues are missing", () => {
+    const first = dealWithOffer("a-seq-5", { venueTimestampMs: null, seq: 5 });
+    const second = dealWithOffer("b-seq-9", { venueTimestampMs: null, seq: 9 });
+
+    expect(newestOffersFirst([first, second]).map((deal) => deal.offer.frame.id)).toEqual(["a-seq-5", "b-seq-9"]);
+  });
+
+  it("does not use seq when a venue is present but empty", () => {
+    const empty = dealWithOffer("a-empty-seq-5", { venueTimestampMs: null, seq: 5, venue: "" });
+    const known = dealWithOffer("b-known-seq-9", { venueTimestampMs: null, seq: 9, venue: VENUE });
+
+    expect(newestOffersFirst([empty, known]).map((deal) => deal.offer.frame.id)).toEqual(["a-empty-seq-5", "b-known-seq-9"]);
+  });
+});
+
+describe("sameExplicitVenue", () => {
+  it("is true only for two identical, non-empty venue strings", () => {
+    expect(sameExplicitVenue(VENUE, VENUE)).toBe(true);
+  });
+
+  it("is false for differing, missing, empty, or non-string venues", () => {
+    expect(sameExplicitVenue(VENUE, OTHER_VENUE)).toBe(false);
+    expect(sameExplicitVenue(VENUE, undefined)).toBe(false);
+    expect(sameExplicitVenue(undefined, VENUE)).toBe(false);
+    expect(sameExplicitVenue(undefined, undefined)).toBe(false);
+    expect(sameExplicitVenue("", "")).toBe(false);
+    expect(sameExplicitVenue(VENUE, null)).toBe(false);
+    expect(sameExplicitVenue(1, 1)).toBe(false);
+  });
+});
+
+describe("venueSafeRecordOrder", () => {
+  interface TestRecord {
+    seq: number;
+    venue?: string;
+    venueTimestampMs?: number | null;
+  }
+
+  function record(extra: Partial<TestRecord> = {}): TestRecord {
+    return { seq: 0, ...extra };
+  }
+
+  it("orders same-venue records by seq ascending when no timestamps decide it", () => {
+    const a = record({ seq: 5, venue: VENUE, venueTimestampMs: null });
+    const b = record({ seq: 9, venue: VENUE, venueTimestampMs: null });
+
+    expect([b, a].sort(venueSafeRecordOrder).map((item) => item.seq)).toEqual([5, 9]);
+  });
+
+  // The concrete mixed-venue case: an official archived record must never be
+  // seq-sorted against a self-host live record.
+  it("does not seq-order an archived record from one venue against a live record from another", () => {
+    const officialArchived = record({ seq: 10457, venue: VENUE, venueTimestampMs: null });
+    const selfhostLive = record({ seq: 1, venue: OTHER_VENUE, venueTimestampMs: null });
+
+    // A raw seq sort would have put the self-host seq 1 first; input order stands.
+    expect([officialArchived, selfhostLive].sort(venueSafeRecordOrder).map((item) => item.seq)).toEqual([10457, 1]);
+  });
+
+  it("does not seq-order when either record's venue is missing", () => {
+    const known = record({ seq: 9, venue: VENUE, venueTimestampMs: null });
+    const missing = record({ seq: 1, venueTimestampMs: null });
+
+    expect([known, missing].sort(venueSafeRecordOrder).map((item) => item.seq)).toEqual([9, 1]);
+    expect([missing, known].sort(venueSafeRecordOrder).map((item) => item.seq)).toEqual([1, 9]);
+  });
+
+  it("orders chronologically by authoritative venue timestamp before considering seq, even across venues", () => {
+    const laterOnOfficial = record({ seq: 1, venue: VENUE, venueTimestampMs: 2000 });
+    const earlierOnSelfhost = record({ seq: 99, venue: OTHER_VENUE, venueTimestampMs: 1000 });
+
+    expect([laterOnOfficial, earlierOnSelfhost].sort(venueSafeRecordOrder).map((item) => item.venueTimestampMs)).toEqual([1000, 2000]);
+  });
+
+  it("never consults the current time", () => {
+    const original = Date.now;
+    let called = false;
+    Date.now = () => { called = true; return original(); };
+    try {
+      venueSafeRecordOrder({ seq: 1, venue: VENUE }, { seq: 2, venue: VENUE });
+    } finally {
+      Date.now = original;
+    }
+    expect(called).toBe(false);
   });
 });

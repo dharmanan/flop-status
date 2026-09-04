@@ -27,6 +27,7 @@ import { TclkMcpClient } from "./tclk-mcp-client.js";
 import { createTclkMcpHttpHandler, INTERNAL_MCP_TOKEN_HEADER } from "./tclk-mcp-http.js";
 import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
 import { createTclkAwareHandler } from "./tclk-router.js";
+import { resolveTechnocoreUrl } from "./tclk-env.js";
 import { Trial1ApiService } from "./trial1-api-service.js";
 
 // Attaches the per-process internal MCP token to a loopback request without
@@ -50,6 +51,10 @@ async function main(): Promise<void> {
   // against direct external calls. Generated fresh per process, kept only in
   // memory, never logged, never persisted, and never sourced from env.
   const internalMcpToken = randomBytes(32).toString("base64url");
+  // Resolved once here and passed explicitly into TclkDealHistoryService so
+  // durable-history writes and sync are pinned to the single canonical
+  // venue this process is actually running against.
+  const technocoreUrl = resolveTechnocoreUrl();
 
   const pool = createPgPool(connectionString);
   const migrations = await runMigrations(pool);
@@ -69,7 +74,7 @@ async function main(): Promise<void> {
   // authenticates the same way any other caller of /mcp would have to.
   const tclkMcp = new TclkMcpClient(`http://127.0.0.1:${port}/mcp`, withInternalMcpToken(fetch, internalMcpToken));
   const tclkPaper = new TclkPaperRailAdapter(tclkMcp);
-  const tclkHistory = new TclkDealHistoryService(new PgTclkDealHistoryRepository(pool), tclkMcp);
+  const tclkHistory = new TclkDealHistoryService(new PgTclkDealHistoryRepository(pool), tclkMcp, technocoreUrl);
   const trial1Api = new Trial1ApiService({
     challengeRepository: new PgChallengeRepository(pool),
     challengeStateRepository: new PgChallengeStateRepository(pool),

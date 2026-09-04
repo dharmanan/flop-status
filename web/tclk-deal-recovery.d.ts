@@ -41,7 +41,19 @@ export function reconcileMyDeals<T extends MyDealLike>(
 ): { deals: T[]; recoveryIssues: Array<{ ok: false; offerId: string; reason: string }> };
 
 export interface OfferVenueOrderedDeal {
-  offer: { venueTimestampMs?: number | null; seq?: number };
+  offer: { venueTimestampMs?: number | null; seq?: number; venue?: string };
 }
 
 export function newestOffersFirst<T extends OfferVenueOrderedDeal>(deals: T[]): T[];
+
+/** True only when both values are the same explicit, non-empty canonical venue string. */
+export function sameExplicitVenue(a: unknown, b: unknown): boolean;
+
+export interface VenueOrderedRecord {
+  venue?: unknown;
+  venueTimestampMs?: number | null;
+  seq?: number;
+}
+
+/** Ascending comparator for raw Technocore records that may span venues. */
+export function venueSafeRecordOrder(a: VenueOrderedRecord, b: VenueOrderedRecord): number;

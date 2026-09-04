@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { TclkMcpClient, TclkMcpError, type TclkToolName } from "./tclk-mcp-client.js";
 import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
-import { resolveTechnocoreUrl } from "./tclk-env.js";
+import { canonicalizeVenueUrl, resolveTechnocoreUrl } from "./tclk-env.js";
 import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history-service.js";
 
 const MAX_TCLK_BODY_BYTES = 1_048_576;
@@ -69,6 +69,17 @@ interface RawRoom {
   room?: unknown;
   messages?: unknown;
   last_seq?: unknown;
+  generation?: unknown;
+}
+
+/**
+ * A room's generation is only trustworthy as a positive integer alongside
+ * actual messages. 0 is Technocore's own meaning for "room never existed",
+ * so it — like anything absent, non-numeric, or negative — collapses to
+ * "unknown" here rather than ever being stored as a frame's generation.
+ */
+export function parseRoomGeneration(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
 async function readRawRoom(room: string): Promise<RawRoom> {
@@ -105,7 +116,11 @@ async function readRawRoom(room: string): Promise<RawRoom> {
     clearTimeout(timer);
   }
 
-  if (response.status === 404) return { room, messages: [], last_seq: 0 };
+  // 0 is Technocore's own documented meaning for "room never existed" — a
+  // real, observed fact here (the 404 itself), not a guess. It is moot for
+  // storage either way: an empty room produces no messages, so archiveRoom
+  // never has a frame to attach any generation to from this read.
+  if (response.status === 404) return { room, messages: [], last_seq: 0, generation: 0 };
   if (!response.ok) {
     if (response.status === 503) {
       throw Object.assign(
@@ -146,7 +161,8 @@ function reportHistory(message: string, error?: unknown): void {
 
 async function archiveRoom(history: TclkDealHistoryService | undefined, roomName: string, room: RawRoom): Promise<void> {
   if (!history) return;
-  try { await history.ingestRoom(roomName, rawMessages(room)); } catch (error) { reportHistory(`archive failed for ${roomName}`, error); }
+  const roomGeneration = parseRoomGeneration(room.generation);
+  try { await history.ingestRoom(roomName, roomGeneration, rawMessages(room)); } catch (error) { reportHistory(`archive failed for ${roomName}`, error); }
 }
 
 async function backfillDealRooms(history: TclkDealHistoryService | undefined): Promise<void> {
@@ -278,9 +294,27 @@ export function createTclkAwareHandler(
             json(response, 400, { error: { code: "INVALID_OFFER_ID", message: "A valid TCLK offer id is required." } });
             return;
           }
-          const entry = await history.getByOfferId(offerId);
-          if (!entry) {
+          const rawVenue = url.searchParams.get("venue");
+          let venue: string | undefined;
+          if (rawVenue !== null) {
+            try {
+              venue = canonicalizeVenueUrl(rawVenue);
+            } catch {
+              json(response, 400, { error: { code: "INVALID_VENUE", message: "The venue query parameter is not a valid Technocore venue URL." } });
+              return;
+            }
+          }
+          const entry = await history.getByOfferId(offerId, venue);
+          if (entry.status === "not_found") {
             json(response, 404, { error: { code: "TCLK_HISTORY_NOT_FOUND", message: "Archived TCLK deal was not found." } });
+            return;
+          }
+          if (entry.status === "ambiguous") {
+            // Never select current/newest/first/arbitrary — this offer id
+            // exists on more than one venue and the caller must disambiguate.
+            json(response, 409, {
+              error: { code: "AMBIGUOUS_VENUE", message: "This offer id exists on more than one venue; specify ?venue=.", venues: entry.venues },
+            });
             return;
           }
           json(response, 200, entry);
@@ -291,7 +325,11 @@ export function createTclkAwareHandler(
         if (request.method === "GET" && rawRoomMatch) {
           const roomName = rawRoomMatch[1] ?? "";
           const room = await readRawRoom(roomName);
-          json(response, 200, { room });
+          // The canonical current operational venue, resolved by the server's
+          // own resolver — never a browser-supplied value. Live records are
+          // stamped with this so the browser can tell whether two records'
+          // seq numbers even share a namespace before ordering by them.
+          json(response, 200, { venue: resolveTechnocoreUrl(), room });
           scheduleRoomArchive(history, roomName, room);
           return;
         }

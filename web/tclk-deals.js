@@ -3,7 +3,7 @@ import { fillTclkProofSlots } from "/safe-render.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
-import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst } from "/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst, venueSafeRecordOrder } from "/tclk-deal-recovery.js";
 import { splitTimelineSteps, rejectedRecordCategory } from "/tclk-step-presentation.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
@@ -189,8 +189,12 @@ async function tool(name, args) {
   return body.result;
 }
 
+// Returns the room payload together with the canonical operational venue the
+// server read it from. The venue is never inferred, defaulted, or derived in
+// the browser — it is only ever what the server reported for this read.
 async function rawRoom(room) {
-  return (await api(`/api/v1/tclk/rooms/${encodeURIComponent(room)}`)).room;
+  const payload = await api(`/api/v1/tclk/rooms/${encodeURIComponent(room)}`);
+  return { venue: payload?.venue, room: payload?.room };
 }
 
 async function paper(path, body) {
@@ -264,7 +268,7 @@ function parseVenueTimestampMs(value) {
 }
 
 async function collectRoom(room) {
-  const raw = await rawRoom(room);
+  const { venue, room: raw } = await rawRoom(room);
   const rawMessages = raw?.messages ?? [];
   if (!rawMessages.length) return { room, records: [], skipped: 0, lastSeq: raw?.last_seq ?? 0 };
   const parsed = await tool("tclk_read_room", { room });
@@ -275,7 +279,10 @@ async function collectRoom(room) {
     if (!message || typeof message.text !== "string") continue;
     const transportValid = await verifyTransport(room, message);
     const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
-    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: parseVenueTimestampMs(message.ts) });
+    // venue is the server-reported canonical venue for this very read, so a
+    // live record can be ordered against an archived one only when they
+    // genuinely share a seq namespace (see venueSafeRecordOrder).
+    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: parseVenueTimestampMs(message.ts), venue });
   }
   records.sort((a, b) => a.seq - b.seq);
   return { room, records, skipped: parsed?.skipped ?? 0, lastSeq: parsed?.lastSeq ?? raw?.last_seq ?? null };
@@ -405,10 +412,12 @@ async function verifiedRecordFromArchive(archivedFrame) {
   const message = { from: archivedFrame.fromDid, sig: archivedFrame.transportSig, nonce: archivedFrame.transportNonce, text: archivedFrame.line };
   const transportValid = await verifyTransport(archivedFrame.room, message);
   const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
-  // Same presentation-only field collectRoom() attaches for live records —
-  // carried straight through from the server's already-computed value, never
-  // recomputed here.
-  return { ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: archivedFrame.venueTimestampMs };
+  // venueTimestampMs mirrors the presentation-only field collectRoom()
+  // attaches for live records — carried straight through from the server's
+  // already-computed value, never recomputed here. venue has no live
+  // counterpart: a live record is implicitly always the current operational
+  // venue, which the browser has no separate signal for today.
+  return { ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: archivedFrame.venueTimestampMs, venue: archivedFrame.venue };
 }
 
 async function fetchArchivedDeals(did) {
@@ -424,9 +433,10 @@ async function fetchArchivedDeals(did) {
 // transcript against the current wall clock (see the ARCHIVED HISTORICAL
 // REPLAY note above verifiedRecordFromArchive), so an incomplete server-side
 // reconstruction is reported, not silently guessed at.
-async function recoverArchivedDeal(offerId) {
+async function recoverArchivedDeal(offerId, venue) {
   let detail;
-  try { detail = await api(`/api/v1/tclk/history/${encodeURIComponent(offerId)}`); }
+  const query = venue ? `?venue=${encodeURIComponent(venue)}` : "";
+  try { detail = await api(`/api/v1/tclk/history/${encodeURIComponent(offerId)}${query}`); }
   catch { return { ok: false, offerId, reason: copy("archived history could not be loaded", "arşiv kaydı yüklenemedi") }; }
   const frames = Array.isArray(detail?.frames) ? detail.frames : [];
   const byRoom = new Map();
@@ -546,7 +556,7 @@ async function renderDealCards(filter) {
     const recoveryResults = [];
     for (const summary of await fetchArchivedDeals(id.did)) {
       if (!summary?.offerId) continue;
-      const recovered = await recoverArchivedDeal(summary.offerId);
+      const recovered = await recoverArchivedDeal(summary.offerId, summary.venue);
       recoveryResults.push(recovered);
       if (recovered.ok) panel.recovering(summary.offerId);
     }
@@ -716,7 +726,12 @@ async function dealTranscript(deal) {
     for (const record of [...(roomData.records ?? []), ...(deal.archivedRoomRecords ?? [])]) {
       merged.set(`${record.seq}:${record.line}`, record);
     }
-    const records = [...merged.values()].sort((a, b) => a.seq - b.seq);
+    // This set can mix venues: roomData.records are live from the current
+    // operational venue, while archivedRoomRecords carry whichever venue the
+    // deal was actually made on. Raw seq is only meaningful within one
+    // venue's room, so ordering goes through the shared venue-aware
+    // comparator instead of a bare seq subtraction.
+    const records = [...merged.values()].sort(venueSafeRecordOrder);
     roomData = { ...roomData, records };
     for (const record of records.filter((item) => item.trusted)) lines.push(record.line);
   }

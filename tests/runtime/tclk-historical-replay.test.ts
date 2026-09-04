@@ -196,4 +196,29 @@ describe("replayArchivedFrames", () => {
     const cancelStep = outcome.result.steps.find((step) => step.type === "cancel");
     expect(cancelStep?.ok).toBe(true);
   });
+
+  // F. Defense in depth: the repository already scopes framesForOffer() to
+  // one venue, so this should never happen in practice — but if frames from
+  // two different venues were ever passed in together, silently interleaving
+  // them by timestamp would fold two unrelated deals into one replay.
+  it("fails closed when the archived frames span more than one venue, instead of silently interleaving two different deals", () => {
+    const payer = generateTestEd25519Identity();
+    const payee = generateTestEd25519Identity();
+    const offerTs = Date.parse("2026-09-03T15:00:00.000000Z");
+    const acceptTs = offerTs + 60_000;
+
+    const offer = makeOffer(baseOfferTerms(payer.did, offerTs));
+    const { hash } = generateHashLock();
+    const accept = makeAccept(offer, { from: payee.did, statement: hash });
+
+    const frames = [
+      archivedFrame({ room: OFFER_ROOM, seq: 1, offerId: offer.id, tclkFrame: offer, venueTimestampMs: offerTs, venue: "https://technocore.chat" }),
+      archivedFrame({ room: OFFER_ROOM, seq: 2, offerId: offer.id, tclkFrame: accept, venueTimestampMs: acceptTs, venue: "https://selfhost.example.invalid" }),
+    ];
+
+    const outcome = replayArchivedFrames(frames);
+    expect(outcome.complete).toBe(false);
+    if (outcome.complete) return;
+    expect(outcome.reason).toMatch(/venue/i);
+  });
 });
