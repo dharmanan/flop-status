@@ -3,7 +3,7 @@ import { fillTclkProofSlots } from "/safe-render.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { evaluateFrameTrust, verifyTransport } from "/tclk-transport.js";
 import { friendlyErrorMessage } from "/error-copy.js";
-import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst } from "/tclk-deal-recovery.js";
 import { splitTimelineSteps, rejectedRecordCategory } from "/tclk-step-presentation.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
@@ -253,6 +253,16 @@ async function postLine(room, line) {
   });
 }
 
+// Presentation-only metadata, never a protocol or trust input: the room's own
+// venue timestamp for a record, safely parsed. Invalid or missing becomes
+// null rather than a guessed time — see newestOffersFirst in
+// tclk-deal-recovery.js, the only place this is used.
+function parseVenueTimestampMs(value) {
+  if (typeof value !== "string") return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 async function collectRoom(room) {
   const raw = await rawRoom(room);
   const rawMessages = raw?.messages ?? [];
@@ -265,7 +275,7 @@ async function collectRoom(room) {
     if (!message || typeof message.text !== "string") continue;
     const transportValid = await verifyTransport(room, message);
     const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
-    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted });
+    records.push({ ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: parseVenueTimestampMs(message.ts) });
   }
   records.sort((a, b) => a.seq - b.seq);
   return { room, records, skipped: parsed?.skipped ?? 0, lastSeq: parsed?.lastSeq ?? raw?.last_seq ?? null };
@@ -395,7 +405,10 @@ async function verifiedRecordFromArchive(archivedFrame) {
   const message = { from: archivedFrame.fromDid, sig: archivedFrame.transportSig, nonce: archivedFrame.transportNonce, text: archivedFrame.line };
   const transportValid = await verifyTransport(archivedFrame.room, message);
   const { fromMatches, trusted } = evaluateFrameTrust(item, message, transportValid);
-  return { ...item, line: message.text, transportValid, fromMatches, trusted };
+  // Same presentation-only field collectRoom() attaches for live records —
+  // carried straight through from the server's already-computed value, never
+  // recomputed here.
+  return { ...item, line: message.text, transportValid, fromMatches, trusted, venueTimestampMs: archivedFrame.venueTimestampMs };
 }
 
 async function fetchArchivedDeals(did) {
@@ -540,6 +553,10 @@ async function renderDealCards(filter) {
     const merged = reconcileMyDeals(deals, recoveryResults);
     deals = merged.deals;
     recoveryIssues = merged.recoveryIssues;
+    // Presentation only, after live+archived reconciliation is complete:
+    // newest OFFER first. Never re-orders by a later state change (see
+    // newestOffersFirst in tclk-deal-recovery.js).
+    deals = newestOffersFirst(deals);
   }
   const header = node("div", "tclk-list-head");
   header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));

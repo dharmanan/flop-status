@@ -39,3 +39,9 @@ export function reconcileMyDeals<T extends MyDealLike>(
   liveDeals: T[],
   recoveryResults: RecoveryResult<T>[],
 ): { deals: T[]; recoveryIssues: Array<{ ok: false; offerId: string; reason: string }> };
+
+export interface OfferVenueOrderedDeal {
+  offer: { venueTimestampMs?: number | null; seq?: number };
+}
+
+export function newestOffersFirst<T extends OfferVenueOrderedDeal>(deals: T[]): T[];

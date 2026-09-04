@@ -59,3 +59,34 @@ export function reconcileMyDeals(liveDeals, recoveryResults) {
   }
   return { deals: [...byOfferId.values()], recoveryIssues };
 }
+
+function hasUsableVenueTimestamp(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+/**
+ * Orders "My deals" cards newest-OFFER-first — presentation only. Sorts
+ * strictly by the OFFER record's own Technocore venue timestamp
+ * (deal.offer.venueTimestampMs), never by a later state update, receipt, or
+ * any other event, so a deal that changed status recently does not jump
+ * above an older offer. Falls back to the offer's room sequence number
+ * (deal.offer.seq) whenever either side lacks a usable venue timestamp, or
+ * the timestamps are equal: every deal.offer record comes from the same
+ * tclk-offers room, so a higher seq there is always later. Never touches
+ * updatedAt/expiresMs/claimByMs/refundAfterMs. Returns a new array; the
+ * input array (and its deal objects) are never mutated.
+ *
+ * @param {Array<{offer: {venueTimestampMs?: number|null, seq?: number}}>} deals
+ */
+export function newestOffersFirst(deals) {
+  return [...deals].sort((a, b) => {
+    const aTs = a.offer?.venueTimestampMs;
+    const bTs = b.offer?.venueTimestampMs;
+    if (hasUsableVenueTimestamp(aTs) && hasUsableVenueTimestamp(bTs) && aTs !== bTs) {
+      return bTs - aTs;
+    }
+    const aSeq = typeof a.offer?.seq === "number" ? a.offer.seq : 0;
+    const bSeq = typeof b.offer?.seq === "number" ? b.offer.seq : 0;
+    return bSeq - aSeq;
+  });
+}

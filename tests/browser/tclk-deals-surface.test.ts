@@ -115,7 +115,42 @@ describe("TCLK Deals browser surface", () => {
   });
 
   it("imports the pure historical-recovery helpers used by recoverArchivedDeal and renderDealCards", () => {
-    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "/tclk-deal-recovery.js"');
+    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst } from "/tclk-deal-recovery.js"');
+  });
+
+  // "My deals" ordering: newest OFFER first, applied only after
+  // live+archived reconciliation, only for "mine" (not discover). The actual
+  // sort rule (offer.venueTimestampMs desc, offer.seq desc fallback) is
+  // proved behaviorally in tclk-deal-recovery.test.ts — this only checks
+  // that renderDealCards wires the shared helper in after reconcileMyDeals.
+  it("renderDealCards sorts 'My deals' newest-offer-first, after reconciliation, via the shared newestOffersFirst helper", () => {
+    const body = functionSource(deals, "async function renderDealCards(filter)");
+    const mergeIndex = body.indexOf("reconcileMyDeals(deals, recoveryResults)");
+    const sortIndex = body.indexOf("deals = newestOffersFirst(deals)");
+    expect(mergeIndex).toBeGreaterThanOrEqual(0);
+    expect(sortIndex).toBeGreaterThan(mergeIndex);
+  });
+
+  // H. Never uses expiresMs, claimByMs, refundAfterMs, or any updatedAt-style
+  // field as the ordering key.
+  it("newestOffersFirst never sorts by expiresMs/updatedAt (only offer.venueTimestampMs / offer.seq)", () => {
+    const source = readFileSync(new URL("../../web/tclk-deal-recovery.js", import.meta.url), "utf8");
+    const body = functionSource(source, "export function newestOffersFirst(deals)");
+    expect(body).toContain("venueTimestampMs");
+    expect(body).toContain(".seq");
+    expect(body).not.toContain("expiresMs");
+    expect(body).not.toContain("updatedAt");
+    expect(body).not.toContain("updated_at");
+    expect(body).not.toContain("claimByMs");
+    expect(body).not.toContain("refundAfterMs");
+  });
+
+  it("preserves the offer's own venue timestamp on live records (collectRoom) and archived records (verifiedRecordFromArchive), never mutating protocol fields", () => {
+    expect(deals).toContain("function parseVenueTimestampMs(value)");
+    const collectRoomBody = functionSource(deals, "async function collectRoom(room)");
+    expect(collectRoomBody).toContain("venueTimestampMs: parseVenueTimestampMs(message.ts)");
+    const archiveBody = functionSource(deals, "async function verifiedRecordFromArchive(archivedFrame)");
+    expect(archiveBody).toContain("venueTimestampMs: archivedFrame.venueTimestampMs");
   });
 
   // UI clarity fix: a rejected signed record (e.g. a cancel attempt after the

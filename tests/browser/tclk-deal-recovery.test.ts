@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals } from "../../web/tclk-deal-recovery.js";
+import { buildHistoricalBoardState, findAcceptForContract, newestOffersFirst, reconcileMyDeals } from "../../web/tclk-deal-recovery.js";
 
 const OFFER_ID = `0x${"a".repeat(64)}`;
 const CONTRACT_ID = `0x${"b".repeat(64)}`;
@@ -165,5 +165,108 @@ describe("reconcileMyDeals", () => {
 
     expect(deals).toEqual([unrelated]);
     expect(recoveryIssues).toHaveLength(1);
+  });
+});
+
+describe("newestOffersFirst", () => {
+  interface TestDeal {
+    offer: { frame: { id: string }; venueTimestampMs?: number | null; seq?: number; [key: string]: unknown };
+    [key: string]: unknown;
+  }
+
+  function dealWithOffer(id: string, extra: Record<string, unknown> = {}): TestDeal {
+    return { offer: { frame: { id }, ...extra } };
+  }
+
+  // A. Three deals with offer venue timestamps 1000, 3000, 2000 sort as
+  // 3000, 2000, 1000.
+  it("sorts by the offer's own venue timestamp, newest first", () => {
+    const oldest = dealWithOffer("oldest", { venueTimestampMs: 1000, seq: 1 });
+    const newest = dealWithOffer("newest", { venueTimestampMs: 3000, seq: 3 });
+    const middle = dealWithOffer("middle", { venueTimestampMs: 2000, seq: 2 });
+
+    const sorted = newestOffersFirst([oldest, newest, middle]);
+
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["newest", "middle", "oldest"]);
+  });
+
+  // B. An older offer whose state was updated later must not move above a
+  // newer offer — the sort depends only on offer.venueTimestampMs/seq, never
+  // on anything describing a later event.
+  it("keeps an older offer below a newer one even when the older deal's state changed more recently", () => {
+    const newerOfferStaleState = dealWithOffer("newer-offer", { venueTimestampMs: 2000, seq: 2 });
+    const olderOfferRecentlyUpdated = dealWithOffer("older-offer-recently-touched", {
+      venueTimestampMs: 1000,
+      seq: 1,
+      // Decoys: if the sort looked at anything on the deal besides offer
+      // venue timestamp/seq, these would wrongly put this deal on top.
+      updatedAt: "2030-01-01T00:00:00.000Z",
+      boardState: { status: "claimed" },
+    });
+
+    const sorted = newestOffersFirst([olderOfferRecentlyUpdated, newerOfferStaleState]);
+
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["newer-offer", "older-offer-recently-touched"]);
+  });
+
+  // C. A live deal and an archived/recovered deal sort correctly together
+  // using the same deal.offer.venueTimestampMs field, regardless of origin.
+  it("sorts live and archived/recovered deals together by the same offer venue timestamp field", () => {
+    const archivedOlder = { ...dealWithOffer("archived", { venueTimestampMs: 500, seq: 1 }), historical: true };
+    const liveNewer = dealWithOffer("live", { venueTimestampMs: 1500, seq: 2 });
+
+    const sorted = newestOffersFirst([archivedOlder, liveNewer]);
+
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["live", "archived"]);
+  });
+
+  // D. Missing venue timestamp falls back to offer.seq DESC.
+  it("falls back to offer.seq descending when a venue timestamp is missing on either side", () => {
+    const noTimestamp = dealWithOffer("no-timestamp", { venueTimestampMs: null, seq: 5 });
+    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 3 });
+    // Missing vs. missing: still resolved by seq.
+    const alsoNoTimestamp = dealWithOffer("also-no-timestamp", { venueTimestampMs: null, seq: 4 });
+
+    const sorted = newestOffersFirst([noTimestamp, hasTimestamp, alsoNoTimestamp]);
+
+    // Per the documented fallback: any side lacking a usable timestamp falls
+    // back to seq DESC for that comparison, so ordering here is driven by seq
+    // (5, 4, 3) rather than by the one real timestamp "winning" partially.
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["no-timestamp", "also-no-timestamp", "has-timestamp"]);
+  });
+
+  it("also falls back to seq when venueTimestampMs is undefined rather than null", () => {
+    const noField = dealWithOffer("no-field", { seq: 2 });
+    const hasTimestamp = dealWithOffer("has-timestamp", { venueTimestampMs: 1000, seq: 1 });
+
+    const sorted = newestOffersFirst([hasTimestamp, noField]);
+
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["no-field", "has-timestamp"]);
+  });
+
+  // E. Returns a new array and does not mutate the source array or its order.
+  it("returns a new array and does not mutate the input array", () => {
+    const a = dealWithOffer("a", { venueTimestampMs: 1000, seq: 1 });
+    const b = dealWithOffer("b", { venueTimestampMs: 2000, seq: 2 });
+    const source = [a, b];
+
+    const sorted = newestOffersFirst(source);
+
+    expect(sorted).not.toBe(source);
+    expect(source).toEqual([a, b]); // original order untouched
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["b", "a"]);
+  });
+
+  // H. Equal or unusable timestamps produce deterministic, stable results,
+  // and the function never consults expiresMs/updatedAt at all.
+  it("is stable and deterministic when timestamps are equal, ignoring expiresMs/updatedAt entirely", () => {
+    const first = dealWithOffer("first", { venueTimestampMs: 1000, seq: 1, expiresMs: 999999999, updatedAt: "2000-01-01" });
+    const second = dealWithOffer("second", { venueTimestampMs: 1000, seq: 1, expiresMs: 1, updatedAt: "2099-01-01" });
+
+    const sorted = newestOffersFirst([first, second]);
+    const sortedAgain = newestOffersFirst([first, second]);
+
+    expect(sorted.map((deal) => deal.offer.frame.id)).toEqual(["first", "second"]);
+    expect(sortedAgain.map((deal) => deal.offer.frame.id)).toEqual(["first", "second"]);
   });
 });
