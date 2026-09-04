@@ -74,7 +74,7 @@ describe("TCLK Deals browser surface", () => {
   // Date.now transcript replay: recoverArchivedDeal() must not call
   // tclk_apply_transcript at all.
   it("recoverArchivedDeal never calls tclk_apply_transcript (fails closed on incomplete history instead)", () => {
-    const body = functionSource(deals, "async function recoverArchivedDeal(offerId)");
+    const body = functionSource(deals, "async function recoverArchivedDeal(offerId, venue)");
     expect(body).not.toContain("tclk_apply_transcript");
     expect(body).toContain("detail?.historicalReplay");
     expect(body).toContain("if (!replay?.complete)");
@@ -115,7 +115,27 @@ describe("TCLK Deals browser surface", () => {
   });
 
   it("imports the pure historical-recovery helpers used by recoverArchivedDeal and renderDealCards", () => {
-    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst } from "/tclk-deal-recovery.js"');
+    expect(deals).toContain('import { buildHistoricalBoardState, findAcceptForContract, reconcileMyDeals, newestOffersFirst, venueSafeRecordOrder } from "/tclk-deal-recovery.js"');
+  });
+
+  // The browser must never infer, default, or hardcode a venue: the only
+  // source is what the server reported for that very read.
+  it("collectRoom stamps every live record with the server-reported canonical venue", () => {
+    const rawRoomBody = functionSource(deals, "async function rawRoom(room)");
+    expect(rawRoomBody).toContain("venue: payload?.venue");
+    const collectRoomBody = functionSource(deals, "async function collectRoom(room)");
+    expect(collectRoomBody).toContain("const { venue, room: raw } = await rawRoom(room)");
+    expect(collectRoomBody).toContain("venueTimestampMs: parseVenueTimestampMs(message.ts), venue");
+    expect(deals).not.toContain("technocore.chat");
+    expect(deals).not.toContain("TECHNOCORE_URL");
+  });
+
+  // A live record (current operational venue) and an archived record (that
+  // deal's own venue) must not be ordered against each other by raw seq.
+  it("dealTranscript orders the merged live+archived record set through the shared venue-aware comparator, not a raw seq sort", () => {
+    const body = functionSource(deals, "async function dealTranscript(deal)");
+    expect(body).toContain("sort(venueSafeRecordOrder)");
+    expect(body).not.toContain("sort((a, b) => a.seq - b.seq)");
   });
 
   // "My deals" ordering: newest OFFER first, applied only after

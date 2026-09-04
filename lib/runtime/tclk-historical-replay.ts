@@ -33,6 +33,17 @@ export type HistoricalReplayOutcome =
 export function replayArchivedFrames(frames: ArchivedTclkFrame[]): HistoricalReplayOutcome {
   if (!frames.length) return { complete: false, reason: "no archived frames for this offer" };
 
+  // Defense in depth: the repository already scopes framesForOffer() to one
+  // venue, so this should never trigger — but if it ever did, silently
+  // interleaving two different venues' frames by timestamp would fold two
+  // unrelated deals into one replay. room_generation may legitimately vary
+  // within one deal's own frames (its room can be reaped mid-deal), so only
+  // venue is checked here, not generation.
+  const venues = new Set(frames.map((frame) => frame.venue));
+  if (venues.size > 1) {
+    return { complete: false, reason: "archived frames span more than one venue" };
+  }
+
   const missing = frames.filter((frame) => frame.venueTimestampMs === null);
   if (missing.length > 0) {
     return {

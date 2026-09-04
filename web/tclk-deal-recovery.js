@@ -65,6 +65,21 @@ function hasUsableVenueTimestamp(value) {
 }
 
 /**
+ * The single place the venue-comparability rule lives. Two raw Technocore
+ * seq numbers share a namespace only when both records carry the same
+ * explicit, non-empty canonical venue. A missing or unknown venue on either
+ * side is not evidence of sameness, so this fails closed. Venue strings
+ * arrive already canonicalized from the server — nothing is normalized,
+ * inferred, or defaulted here.
+ *
+ * @param {unknown} a
+ * @param {unknown} b
+ */
+export function sameExplicitVenue(a, b) {
+  return typeof a === "string" && typeof b === "string" && a.length > 0 && b.length > 0 && a === b;
+}
+
+/**
  * Orders "My deals" cards newest-OFFER-first — presentation only. Sorts
  * strictly by the OFFER record's own Technocore venue timestamp
  * (deal.offer.venueTimestampMs), never by a later state update, receipt, or
@@ -85,8 +100,40 @@ export function newestOffersFirst(deals) {
     if (hasUsableVenueTimestamp(aTs) && hasUsableVenueTimestamp(bTs) && aTs !== bTs) {
       return bTs - aTs;
     }
+    // A room's seq namespace belongs to one venue and can restart when that
+    // room is recreated, so seq may only order two offers that both carry
+    // the same explicit venue. Anything else — differing venues, or a venue
+    // missing on either side — contributes no ordering signal at all and
+    // leaves the pair in stable input order rather than implying an order
+    // neither side's seq actually carries.
+    if (!sameExplicitVenue(a.offer?.venue, b.offer?.venue)) return 0;
     const aSeq = typeof a.offer?.seq === "number" ? a.offer.seq : 0;
     const bSeq = typeof b.offer?.seq === "number" ? b.offer.seq : 0;
     return bSeq - aSeq;
   });
+}
+
+/**
+ * Orders raw Technocore records for display when the set can mix venues —
+ * live records from the current operational venue alongside archived
+ * records recovered from whichever venue that deal was actually made on
+ * (see dealTranscript in tclk-deals.js). Authoritative venue timestamps
+ * (the same field the durable replay orders by) decide chronologically
+ * when both are present; seq is consulted only for two records sharing an
+ * explicit venue; otherwise the pair keeps its input order. No cross-venue
+ * seq order is invented, and no clock is read here.
+ *
+ * @param {{venue?: unknown, venueTimestampMs?: number|null, seq?: number}} a
+ * @param {{venue?: unknown, venueTimestampMs?: number|null, seq?: number}} b
+ */
+export function venueSafeRecordOrder(a, b) {
+  const aTs = a?.venueTimestampMs;
+  const bTs = b?.venueTimestampMs;
+  if (hasUsableVenueTimestamp(aTs) && hasUsableVenueTimestamp(bTs) && aTs !== bTs) {
+    return aTs - bTs;
+  }
+  if (!sameExplicitVenue(a?.venue, b?.venue)) return 0;
+  const aSeq = typeof a?.seq === "number" ? a.seq : 0;
+  const bSeq = typeof b?.seq === "number" ? b.seq : 0;
+  return aSeq - bSeq;
 }
