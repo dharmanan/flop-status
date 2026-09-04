@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@flop-labs/tclk": "0.1.0",
+    "@flop-labs/tclk-mcp": "0.1.0",
     "canonicalize": "^4.0.0",
     "pg": "8.23.0",
     "zod": "^3.25.76"
