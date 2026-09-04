@@ -1,4 +1,5 @@
-export const TCLK_MCP_DEFAULT_URL = "https://tclk.technocore.chat/mcp";
+import { resolveTclkMcpUrl } from "./tclk-env.js";
+
 export const TCLK_MCP_EXPECTED_VERSION = "0.1.0";
 
 export type TclkToolName =
@@ -16,7 +17,7 @@ export type TclkToolName =
   | "tclk_verify_secret"
   | "tclk_whoami";
 
-const ALLOWED_TOOLS = new Set<TclkToolName>([
+export const ALLOWED_TOOLS = new Set<TclkToolName>([
   "tclk_make_offer",
   "tclk_accept_offer",
   "tclk_make_lock",
@@ -88,7 +89,7 @@ export class TclkMcpClient implements TclkMcpClientLike {
   private compatibility: Promise<void> | null = null;
 
   constructor(
-    private readonly endpoint = process.env.TCLK_MCP_URL?.trim() || TCLK_MCP_DEFAULT_URL,
+    private readonly endpoint = resolveTclkMcpUrl(),
     private readonly fetchImpl: FetchLike = fetch,
     private readonly timeoutMs = 12_000,
   ) {

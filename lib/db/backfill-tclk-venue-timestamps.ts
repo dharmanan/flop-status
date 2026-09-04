@@ -2,8 +2,7 @@ import { createPgPool } from "./pg-adapter.js";
 import { PgTclkDealHistoryRepository } from "./tclk-deal-history-repository.js";
 import { parseExportLines, matchesArchivedFrame } from "./tclk-venue-timestamp-backfill.js";
 import { parseVenueTimestampMs } from "../runtime/tclk-venue-timestamp.js";
-
-const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
+import { resolveTechnocoreUrl } from "../runtime/tclk-env.js";
 
 interface Report {
   examined: number;
@@ -16,6 +15,7 @@ interface Report {
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is required");
+  const technocoreUrl = resolveTechnocoreUrl();
 
   const pool = createPgPool(connectionString);
   const repository = new PgTclkDealHistoryRepository(pool);
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     for (const [room, roomRows] of byRoom) {
       let exported;
       try {
-        const response = await fetch(`${TECHNOCORE_URL}/r/${room}/export`);
+        const response = await fetch(`${technocoreUrl}/r/${room}/export`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         exported = parseExportLines(await response.text());
       } catch (error) {

@@ -1,10 +1,10 @@
 import type { TclkMcpClientLike } from "./tclk-mcp-client.js";
+import { resolveTechnocoreUrl } from "./tclk-env.js";
 
 const CONTRACT_RE = /^0x[0-9a-f]{64}$/;
 const STATEMENT_RE = /^0x[0-9a-f]{64}$/;
 const SECRET_RE = /^0x[0-9a-f]{64}$/;
 const PAPER_PREFIX = "tclkpaper1";
-const DEFAULT_TECHNOCORE_URL = "https://technocore.chat";
 
 type FetchLike = typeof fetch;
 
@@ -60,7 +60,7 @@ export class TclkPaperRailAdapter {
   constructor(
     private readonly mcp: TclkMcpClientLike,
     private readonly fetchImpl: FetchLike = fetch,
-    private readonly baseUrl = process.env.TECHNOCORE_URL?.trim() || DEFAULT_TECHNOCORE_URL,
+    private readonly baseUrl = resolveTechnocoreUrl(),
     private readonly clock: () => number = Date.now,
   ) {}
 

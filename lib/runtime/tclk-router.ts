@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { TclkMcpClient, TclkMcpError, type TclkToolName } from "./tclk-mcp-client.js";
 import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
+import { resolveTechnocoreUrl } from "./tclk-env.js";
 import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history-service.js";
 
 const MAX_TCLK_BODY_BYTES = 1_048_576;
-const TECHNOCORE_URL = process.env.TECHNOCORE_URL?.trim() || "https://technocore.chat";
 const TECHNOCORE_READ_TIMEOUT_MS = 12_000;
 const TCLK_ROOM_RE = /^(?:tclk-offers|mb-p-tclk-[0-9a-f]{16})$/;
 const TERMINAL_TCLK_STATES = new Set(["claimed", "refunded", "cancelled"]);
@@ -42,7 +42,7 @@ function json(response: ServerResponse, status: number, body: unknown): void {
   response.end(JSON.stringify(body));
 }
 
-async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
+export async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
   const declared = Number(request.headers["content-length"] ?? "0");
   if (Number.isFinite(declared) && declared > MAX_TCLK_BODY_BYTES) {
     request.resume();
@@ -76,11 +76,16 @@ async function readRawRoom(room: string): Promise<RawRoom> {
     throw Object.assign(new Error("raw proxy is limited to official TCLK offer/deal rooms"), { status: 400, code: "INVALID_TCLK_ROOM" });
   }
 
+  // Resolved per call (not module load) so the raw-room proxy and the
+  // PaperRail adapter always read the same live TECHNOCORE_URL — and so
+  // importing this module never fails just because it is unconfigured.
+  const technocoreUrl = resolveTechnocoreUrl();
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TECHNOCORE_READ_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${TECHNOCORE_URL}/r/${room}?format=json`, {
+    response = await fetch(`${technocoreUrl}/r/${room}?format=json`, {
       headers: { accept: "application/json" },
       signal: controller.signal,
     });
