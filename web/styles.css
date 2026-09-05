@@ -281,6 +281,21 @@ dt { opacity: .55; padding-right: 20px; }
   line-height: 1.4;
 }
 
+.toast-auto-hide {
+  animation: toast-lifecycle 3s ease forwards;
+}
+
+@keyframes toast-lifecycle {
+  0%, 82% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+}
+
 @media (max-width: 700px) {
   .onboarding-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .progress-rail { display: none; }
