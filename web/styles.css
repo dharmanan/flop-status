@@ -46,8 +46,8 @@ button { appearance: none; border: 1px solid #eee; background: #eee; color: #111
 button:disabled { opacity: .35; cursor: default; }
 button.secondary { background: transparent; color: #eee; border-color: #444; }
 button.primary-wide { width: 100%; margin-top: 18px; font-weight: 650; }
-.onboarding-shell .primary-wide { display: block; width: auto; min-width: 240px; min-height: 46px; margin: 22px 0 0 auto; padding: 12px 22px; border-radius: 8px; border-color: #315dd0; background: #1e4fc1; color: #fff; }
-.onboarding-shell .primary-wide:hover { border-color: #3f6ee1; background: #245bd6; }
+.onboarding-shell .primary-wide { display: block; width: auto; min-width: 240px; min-height: 46px; margin: 22px auto 0; padding: 12px 22px; border-radius: 8px; border-color: #eee; background: #eee; color: #111; }
+.onboarding-shell .primary-wide:hover { border-color: #fff; background: #fff; }
 input, textarea { width: 100%; border: 1px solid #3a3a3a; background: #171717; color: #f4f4f4; border-radius: 10px; padding: 12px 13px; font: inherit; }
 input:focus, textarea:focus { outline: 1px solid #777; border-color: #777; }
 label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
