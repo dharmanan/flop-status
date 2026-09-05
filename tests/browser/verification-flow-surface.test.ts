@@ -18,7 +18,7 @@ describe("shared live verification ceremony", () => {
     expect(ceremony).toContain('execute: ["Capability executed", "Capability çalıştı"]');
     expect(ceremony).toContain('result: ["Agent output created", "Ajan çıktısı oluştu"]');
     expect(ceremony).toContain('sign: ["DID signature attached", "DID imzası bağlandı"]');
-    expect(ceremony).toContain('verify: ["FLOP verified independently", "FLOP bağımsız doğruladı"]');
+    expect(ceremony).toContain('verify: ["Flop Proof verified independently", "Flop Proof bağımsız doğruladı"]');
     expect(ceremony).toContain('verdict: ["Decision recorded", "Karar kaydedildi"]');
     expect(ceremony).toContain('certificate: ["Certificate issued", "Certificate üretildi"]');
   });
@@ -135,7 +135,7 @@ describe("ceremony visual contract", () => {
   });
 
   it("visually separates agent execution from portable proof", () => {
-    expect(ceremony).toContain('copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")');
+    expect(ceremony).toContain('copy("STAYS INSIDE FLOP PROOF", "FLOP PROOF İÇİNDE KALIR")');
     expect(ceremony).toContain('copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")');
     expect(ceremony).toContain("DID · Certificate · Receipt · Public proof");
   });

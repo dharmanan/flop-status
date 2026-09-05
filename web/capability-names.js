@@ -21,48 +21,48 @@ const CAPABILITY_IDS = {
 const UI_COPY = {
   en: {
     method: "Verification method",
-    methodBody: "Fresh challenge + deterministic FLOP verifier",
+    methodBody: "Fresh challenge + deterministic Flop Proof verifier",
     passBody: "Individual certificate + signed receipt + public proof",
     boundary: "Execution boundary",
-    boundaryBody: "Capability execution stays inside FLOP. Proof is portable.",
+    boundaryBody: "Capability execution stays inside Flop Proof. Proof is portable.",
     workspace: "CAPABILITY WORKSPACE",
-    use: "Use this capability inside FLOP",
+    use: "Use this capability inside Flop Proof",
     proofPackage: "Proof Package",
     certificate: "Certificate",
     receipt: "Receipt",
     publicProof: "Public Proof",
     profile: "Capability Profile",
-    proofSemantics: "This certificate proves that the FLOP agent bound to this DID successfully used the stated capability version on a fresh verification challenge.",
-    whyAcquire: "Capability acquired inside FLOP",
+    proofSemantics: "This certificate proves that the Flop Proof agent bound to this DID successfully used the stated capability version on a fresh verification challenge.",
+    whyAcquire: "Capability acquired inside Flop Proof",
     whyFresh: "Fresh challenge solved",
     whyDid: "DID signed submission verified",
     whyVerifier: "Deterministic verifier returned PASS",
     receiptMeta: "Signed verification receipt",
     publicMeta: "PASS · Portable & independently verifiable",
-    profileMeta: "Added to this FLOP agent",
+    profileMeta: "Added to this Flop Proof agent",
     capabilityPrefix: "Capability",
   },
   tr: {
     method: "Doğrulama yöntemi",
-    methodBody: "Yeni doğrulama girdisi + deterministik FLOP doğrulayıcısı",
+    methodBody: "Yeni doğrulama girdisi + deterministik Flop Proof doğrulayıcısı",
     passBody: "Bireysel sertifika + imzalı makbuz + herkese açık kanıt",
     boundary: "Çalıştırma sınırı",
-    boundaryBody: "Yetenek FLOP içinde çalışır. Kanıt taşınabilir.",
+    boundaryBody: "Yetenek Flop Proof içinde çalışır. Kanıt taşınabilir.",
     workspace: "YETENEK ÇALIŞMA ALANI",
-    use: "Bu yeteneği FLOP içinde kullan",
+    use: "Bu yeteneği Flop Proof içinde kullan",
     proofPackage: "Kanıt Paketi",
     certificate: "Sertifika",
     receipt: "Makbuz",
     publicProof: "Herkese Açık Kanıt",
     profile: "Yetenek Profili",
-    proofSemantics: "Bu sertifika, bu DID'e bağlı FLOP ajanının belirtilen yetenek sürümünü yeni bir doğrulama girdisinde başarıyla kullandığını kanıtlar.",
-    whyAcquire: "Yetenek FLOP içinde kazanıldı",
+    proofSemantics: "Bu sertifika, bu DID'e bağlı Flop Proof ajanının belirtilen yetenek sürümünü yeni bir doğrulama girdisinde başarıyla kullandığını kanıtlar.",
+    whyAcquire: "Yetenek Flop Proof içinde kazanıldı",
     whyFresh: "Yeni doğrulama girdisi çözüldü",
     whyDid: "DID imzalı gönderim doğrulandı",
     whyVerifier: "Deterministik doğrulayıcı PASS döndürdü",
     receiptMeta: "İmzalı doğrulama makbuzu",
     publicMeta: "PASS · Taşınabilir ve bağımsız doğrulanabilir",
-    profileMeta: "Bu FLOP ajanına eklendi",
+    profileMeta: "Bu Flop Proof ajanına eklendi",
     capabilityPrefix: "Yetenek",
   },
 };
@@ -169,7 +169,7 @@ function syncProofCopy() {
     setTextIfChanged(publicMeta, c.publicMeta);
   }
   const profileMeta = document.querySelector(".proof-profile .proof-item-meta");
-  if (profileMeta && /added to this FLOP agent|bu FLOP ajanına eklendi/i.test(profileMeta.textContent ?? "")) {
+  if (profileMeta && /added to this Flop Proof agent|bu FLOP ajanına eklendi/i.test(profileMeta.textContent ?? "")) {
     setTextIfChanged(profileMeta, c.profileMeta);
   }
 }

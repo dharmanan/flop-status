@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createHandlers } from "@flop-labs/tclk-mcp";
 import { readJson } from "./tclk-router.js";
 import { ALLOWED_TOOLS, TCLK_MCP_EXPECTED_VERSION, type TclkToolName } from "./tclk-mcp-client.js";
-import { resolveTechnocoreUrl } from "./tclk-env.js";
+import { createTechnocoreFetch, resolveTechnocoreUrl } from "./tclk-env.js";
 
 type FetchLike = typeof fetch;
 type TclkHandlers = ReturnType<typeof createHandlers>;
@@ -53,7 +53,7 @@ function assertNonCustodial(): void {
 export function createEmbeddedTclkMcpHandlers(fetchImpl: FetchLike = fetch): TclkHandlers {
   assertNonCustodial();
   const technocoreUrl = resolveTechnocoreUrl();
-  return createHandlers({ env: { TECHNOCORE_URL: technocoreUrl }, fetch: fetchImpl });
+  return createHandlers({ env: { TECHNOCORE_URL: technocoreUrl }, fetch: createTechnocoreFetch(fetchImpl) });
 }
 
 function writeJson(response: ServerResponse, status: number, body: unknown): void {

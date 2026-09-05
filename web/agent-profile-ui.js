@@ -53,7 +53,7 @@ async function identity() {
 
 async function signedProfile(displayName, handle) {
   const id = await identity();
-  if (!id?.did || !id?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required.", "Tarayıcıya ait FLOP kimliği gerekli."));
+  if (!id?.did || !id?.privateKey) throw new Error(copy("A browser-owned Flop Proof identity is required.", "Tarayıcıya ait Flop Proof kimliği gerekli."));
   parseEd25519DidKey(id.did);
   const payload = {
     version: "1",

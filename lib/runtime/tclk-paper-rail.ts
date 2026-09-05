@@ -1,5 +1,5 @@
 import type { TclkMcpClientLike } from "./tclk-mcp-client.js";
-import { resolveTechnocoreUrl } from "./tclk-env.js";
+import { createTechnocoreFetch, resolveTechnocoreUrl } from "./tclk-env.js";
 
 const CONTRACT_RE = /^0x[0-9a-f]{64}$/;
 const STATEMENT_RE = /^0x[0-9a-f]{64}$/;
@@ -59,7 +59,7 @@ function stripUntrustedBanner(body: string): string {
 export class TclkPaperRailAdapter {
   constructor(
     private readonly mcp: TclkMcpClientLike,
-    private readonly fetchImpl: FetchLike = fetch,
+    private readonly fetchImpl: FetchLike = createTechnocoreFetch(),
     private readonly baseUrl = resolveTechnocoreUrl(),
     private readonly clock: () => number = Date.now,
   ) {}

@@ -54,8 +54,9 @@ main.workspace-mode > #operation-status {
 }
 
 .product-brand strong {
-  font-size: 28px;
-  letter-spacing: .03em;
+  font-size: 22px;
+  letter-spacing: .01em;
+  white-space: nowrap;
 }
 
 .product-brand .language-switch {

@@ -42,7 +42,7 @@ export const CERTIFICATE_CAPABILITIES = {
 export function capabilityShareMeta(capabilityId) {
   return CERTIFICATE_CAPABILITIES[capabilityId] ?? {
     ordinal: 0,
-    title: { en: "Verified FLOP Capability", tr: "Doğrulanmış FLOP Yeteneği" },
+    title: { en: "Verified Flop Proof Capability", tr: "Doğrulanmış Flop Proof Yeteneği" },
     slug: "verified-capability",
   };
 }
@@ -89,16 +89,16 @@ export function buildCertificateShareText({
   const safeRank = rankName(rank);
 
   if (language === "tr") {
-    const subject = identity.name || "FLOP ajanı";
-    const line1 = `${subject}, FLOP'ta C${meta.ordinal} · ${meta.title.tr} yeteneğini doğruladı.`;
-    const identityPrefix = identity.handle ? `FLOP: ${identity.handle} · ` : "";
+    const subject = identity.name || "Flop Proof ajanı";
+    const line1 = `${subject}, Flop Proof'ta C${meta.ordinal} · ${meta.title.tr} yeteneğini doğruladı.`;
+    const identityPrefix = identity.handle ? `Flop Proof: ${identity.handle} · ` : "";
     const line2 = `${identityPrefix}${count} doğrulanmış yetenek${safeRank ? ` · ${safeRank}` : ""}`;
     return `${line1}\n${line2}\nKanıt: ${url}\n${FLOP_X_HANDLE}`;
   }
 
-  const subject = identity.name || "FLOP agent";
-  const line1 = `${subject} verified C${meta.ordinal} · ${meta.title.en} on FLOP.`;
-  const identityPrefix = identity.handle ? `FLOP: ${identity.handle} · ` : "";
+  const subject = identity.name || "Flop Proof agent";
+  const line1 = `${subject} verified C${meta.ordinal} · ${meta.title.en} on Flop Proof.`;
+  const identityPrefix = identity.handle ? `Flop Proof: ${identity.handle} · ` : "";
   const line2 = `${identityPrefix}${count} verified ${count === 1 ? "capability" : "capabilities"}${safeRank ? ` · ${safeRank}` : ""}`;
   return `${line1}\n${line2}\nProof: ${url}\n${FLOP_X_HANDLE}`;
 }
@@ -114,8 +114,8 @@ export function buildCertificateSocialDescription({
   const identity = identityParts(profile, did);
   const count = Math.max(1, Number(certificateCount) || 1);
   const rankText = rankName(rank);
-  const label = identity.name || identity.fallback || "FLOP Agent";
-  const handleText = identity.handle ? ` · FLOP: ${identity.handle}` : "";
+  const label = identity.name || identity.fallback || "Flop Proof Agent";
+  const handleText = identity.handle ? ` · Flop Proof: ${identity.handle}` : "";
   return `${label}${handleText} · C${meta.ordinal} ${meta.title.en} · ${count} verified ${count === 1 ? "capability" : "capabilities"}${rankText ? ` · ${rankText}` : ""}`;
 }
 
