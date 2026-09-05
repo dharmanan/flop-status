@@ -4,6 +4,7 @@ const IDENTITY_DB = "flop-agent-key-v1";
 const IDENTITY_STORE = "identity";
 const ACTIVE_ID = "active";
 const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:";
+const TCLK_CANCEL_EVENT_PREFIX = "flop:event:tclk-cancel:v1:";
 const encoder = new TextEncoder();
 const STORAGE_PREFIX = "flop-tclk-notifications:";
 const STORAGE_SCHEMA = 1;
@@ -175,19 +176,63 @@ async function fetchClosureEvents(did) {
   });
 }
 
+async function fetchCancelEvents(did) {
+  const response = await fetch(`${API_BASE}/api/v1/communication/mailbox/inbox`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(await signedInboxAction(did)),
+  });
+  if (!response.ok) return [];
+
+  const body = await response.json();
+  const messages = (body.messages ?? []).map(normalizeMailboxMessage);
+  const candidates = messages.filter((message) => (
+    message?.recipientDid === did
+    && typeof message.rawText === "string"
+    && message.rawText.startsWith(TCLK_CANCEL_EVENT_PREFIX)
+  ));
+
+  const verified = await Promise.all(candidates.map(async (message) => (
+    await verifyClosureMessage(message) ? message : null
+  )));
+
+  return verified.flatMap((message) => {
+    if (!message) return [];
+    let event;
+    try { event = JSON.parse(message.rawText.slice(TCLK_CANCEL_EVENT_PREFIX.length)); } catch { return []; }
+    if (
+      event?.type !== "tclk_deal_cancelled"
+      || event.actor_did !== message.senderDid
+      || typeof event.offer_id !== "string"
+      || typeof event.contract_id !== "string"
+    ) return [];
+
+    return [{
+      notificationKind: "cancelled",
+      notificationKey: `cancelled|${message.id}`,
+      actorDid: message.senderDid,
+      offerId: event.offer_id,
+      contractId: event.contract_id,
+      amount: String(event.amount ?? ""),
+      asset: String(event.asset ?? ""),
+      updatedAt: message.sentAt,
+    }];
+  });
+}
 function eventKey(deal) {
-  if (deal.notificationKind === "closure") return deal.notificationKey;
+  if (deal.notificationKind === "closure" || deal.notificationKind === "cancelled") return deal.notificationKey;
   return [deal.notificationKind, deal.venue, deal.offerId, deal.contractId, deal.payerDid, deal.payeeDid]
     .map((value) => String(value ?? ""))
     .join("|");
 }
 
 function notificationActorDid(deal) {
-  if (deal.notificationKind === "closure") return deal.actorDid;
+  if (deal.notificationKind === "closure" || deal.notificationKind === "cancelled") return deal.actorDid;
   return deal.notificationKind === "locked" ? deal.payerDid : deal.payeeDid;
 }
 
 function notificationTitle(deal) {
+  if (deal.notificationKind === "cancelled") return copy("Agreement cancelled", "Anlaşma iptal edildi");
   if (deal.notificationKind === "closure") {
     return copy("Closure record signed", "Kapanış kaydı imzalandı");
   }
@@ -201,6 +246,7 @@ function notificationTitle(deal) {
 }
 
 function notificationBody(deal, actor) {
+  if (deal.notificationKind === "cancelled") return copy(`${actor} cancelled the agreement.`, `${actor} anlaşmayı iptal etti.`);
   if (deal.notificationKind === "closure") {
     return copy(
       `${actor} signed the closure record.`,
@@ -608,6 +654,12 @@ async function poll() {
       // Closure events are additive. Failure here must never suppress the
       // already-working accepted/locked/completed notifications.
     }
+    let cancelEvents = [];
+    try {
+      cancelEvents = await fetchCancelEvents(did);
+    } catch {
+      // Cancellation events are isolated from every existing notification.
+    }
     const state = loadState(did);
 
     // First successful sync establishes one durable baseline for this DID.
@@ -634,7 +686,7 @@ async function poll() {
     }
 
     const seen = new Set(state.seen);
-    const allNotifications = [...deals, ...closureEvents];
+    const allNotifications = [...deals, ...closureEvents, ...cancelEvents];
     pending = new Map(
       allNotifications
         .filter((deal) => !seen.has(eventKey(deal)))

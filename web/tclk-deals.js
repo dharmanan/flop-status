@@ -37,6 +37,7 @@ const short = (value, max = 34) => {
 };
 
 const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:";
+const TCLK_CANCEL_EVENT_PREFIX = "flop:event:tclk-cancel:v1:";
 
 function canonicalizeClosureEnvelope(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return JSON.stringify(value);
@@ -81,6 +82,39 @@ async function sendClosureEvent(id, recipientDid, offer, contract) {
         encoding: "base64url",
         value: bytesToBase64Url(signature),
       },
+    }),
+  });
+}
+async function sendCancelEvent(id, recipientDid, offer, contract) {
+  if (!recipientDid || recipientDid === id.did) return;
+  const text = TCLK_CANCEL_EVENT_PREFIX + JSON.stringify({
+    type: "tclk_deal_cancelled",
+    offer_id: offer.id,
+    contract_id: contract,
+    actor_did: id.did,
+    amount: String(offer.amount ?? ""),
+    asset: String(offer.asset ?? ""),
+  });
+  const payload = {
+    version: "1",
+    actor_did: id.did,
+    nonce: crypto.randomUUID(),
+    issued_at: new Date().toISOString(),
+    action: "SEND_DIRECT_MESSAGE",
+    recipient_did: recipientDid,
+    text,
+  };
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    { name: "Ed25519" },
+    id.privateKey,
+    encoder.encode(canonicalizeClosureEnvelope(payload)),
+  ));
+  await api("/api/v1/communication/mailbox/send", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      payload,
+      signature: { algorithm: "Ed25519", encoding: "base64url", value: bytesToBase64Url(signature) },
     }),
   });
 }
@@ -952,6 +986,12 @@ async function appendDealActions(container, context) {
     addAction(container, copy("Cancel agreement", "Anlaşmayı iptal et"), async () => {
       const built = await tool("tclk_make_cancel", { from: id.did, contract, reason: "cancelled by party" });
       await postLine(room, built.line);
+      const otherDid = id.did === offer.from ? accept.from : offer.from;
+      try {
+        await sendCancelEvent(id, otherDid, offer, accept.contract);
+      } catch {
+        // The signed cancellation is authoritative; notification delivery is best-effort.
+      }
     });
   }
 
