@@ -111,6 +111,8 @@ PaperRail is rehearsal evidence only. It is not escrow and is not proof of payme
 
 New production TCLK activity currently uses a self hosted Technocore venue protected by a backend-only ingress credential.
 
+The deployment fork is maintained at [dharmanan/flop-technocore](https://github.com/dharmanan/flop-technocore) and remains attributed to the FLOP Labs upstream Technocore project.
+
 The exact deployment origin is intentionally not documented as a product endpoint. Knowing the origin is not treated as a security boundary: direct requests without the private ingress credential are rejected.
 
 Historical TCLK records created on:
