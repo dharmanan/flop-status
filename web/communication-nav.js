@@ -1,7 +1,7 @@
-void import("/tclk-deals.js?v=tclk-deals-v1");
+void import("/tclk-deals.js?v=tclk-deals-v2");
 void import("/tclk-profile-hint.js?v=tclk-deals-v1");
-void import("/tclk-notifications.js?v=tclk-notifications-v7");
-void import("/mailbox-nav.js?v=direct-mailbox-v1");
+void import("/tclk-notifications.js?v=tclk-notifications-v8");
+void import("/mailbox-nav.js?v=direct-mailbox-v2");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
 import { friendlyErrorMessage } from "/error-copy.js";

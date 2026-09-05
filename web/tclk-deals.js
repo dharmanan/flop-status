@@ -36,6 +36,55 @@ const short = (value, max = 34) => {
   return text.length <= max ? text : `${text.slice(0, Math.max(8, max - 9))}…${text.slice(-8)}`;
 };
 
+const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:";
+
+function canonicalizeClosureEnvelope(value) {
+  if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalizeClosureEnvelope).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalizeClosureEnvelope(value[key])}`).join(",")}}`;
+  }
+  throw new Error("unsupported canonical JSON value");
+}
+
+async function sendClosureEvent(id, recipientDid, offer, contract) {
+  if (!recipientDid || recipientDid === id.did) return;
+  const text = TCLK_CLOSURE_EVENT_PREFIX + JSON.stringify({
+    type: "tclk_closure_signed",
+    offer_id: offer.id,
+    contract_id: contract,
+    actor_did: id.did,
+    amount: String(offer.amount ?? ""),
+    asset: String(offer.asset ?? ""),
+  });
+  const payload = {
+    version: "1",
+    actor_did: id.did,
+    nonce: crypto.randomUUID(),
+    issued_at: new Date().toISOString(),
+    action: "SEND_DIRECT_MESSAGE",
+    recipient_did: recipientDid,
+    text,
+  };
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    { name: "Ed25519" },
+    id.privateKey,
+    encoder.encode(canonicalizeClosureEnvelope(payload)),
+  ));
+  await api("/api/v1/communication/mailbox/send", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      payload,
+      signature: {
+        algorithm: "Ed25519",
+        encoding: "base64url",
+        value: bytesToBase64Url(signature),
+      },
+    }),
+  });
+}
+
 function stateLabel(status) {
   const value = String(status ?? "unknown").toLowerCase();
   const labels = {
@@ -958,6 +1007,13 @@ async function appendDealActions(container, context) {
         ...(state.railRef ? { ref: state.railRef } : {}),
       });
       await postLine(room, built.line);
+      const otherDid = id.did === offer.from ? accept.from : offer.from;
+      try {
+        await sendClosureEvent(id, otherDid, offer, accept.contract);
+      } catch {
+        // The signed TCLK receipt is authoritative. A notification delivery
+        // failure must never undo or block the closure record itself.
+      }
     });
   }
 

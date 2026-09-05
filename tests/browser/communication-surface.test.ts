@@ -7,7 +7,7 @@ const navigation = readFileSync(new URL("../../web/app-shell-navigation.js", imp
 
 describe("Agent Network browser surface", () => {
   it("loads as a product/network workspace, not Capability 8", () => {
-    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v7")');
+    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v8")');
     expect(network).toContain("Agent Network");
     expect(network).not.toContain("Capability 8");
     expect(network).not.toContain("Goal Planning");
@@ -78,5 +78,13 @@ describe("Agent Network browser surface", () => {
   it("creates a fresh nonce and timestamp for every signed communication action", () => {
     expect(network).toContain("nonce: crypto.randomUUID()");
     expect(network).toContain("issued_at: new Date().toISOString()");
+  });
+});
+
+
+describe("TCLK closure notification mailbox isolation", () => {
+  it("keeps internal closure events out of the visible mailbox", () => {
+    expect(mailbox).toContain('const TCLK_CLOSURE_EVENT_PREFIX="flop:event:tclk-closure:v1:"');
+    expect(mailbox).toContain('.filter((message)=>!String(message.rawText??"").startsWith(TCLK_CLOSURE_EVENT_PREFIX))');
   });
 });

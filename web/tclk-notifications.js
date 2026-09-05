@@ -1,4 +1,10 @@
+import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
 const API_BASE = "https://flop-status-production.up.railway.app";
+const IDENTITY_DB = "flop-agent-key-v1";
+const IDENTITY_STORE = "identity";
+const ACTIVE_ID = "active";
+const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:";
+const encoder = new TextEncoder();
 const STORAGE_PREFIX = "flop-tclk-notifications:";
 const STORAGE_SCHEMA = 1;
 const LEGACY_STORAGE_KEYS = [
@@ -24,17 +30,165 @@ function copy(en, trText) {
   return tr() ? trText : en;
 }
 
+function canonicalizeMailboxEnvelope(value) {
+  if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalizeMailboxEnvelope).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalizeMailboxEnvelope(value[key])}`).join(",")}}`;
+  }
+  throw new Error("unsupported canonical JSON value");
+}
+
+function idbRequest(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function openNotificationIdentityDb() {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(IDENTITY_DB, 1);
+    open.onsuccess = () => resolve(open.result);
+    open.onerror = () => reject(open.error);
+  });
+}
+
+async function notificationIdentity() {
+  const db = await openNotificationIdentityDb();
+  try {
+    const tx = db.transaction(IDENTITY_STORE, "readonly");
+    return await idbRequest(tx.objectStore(IDENTITY_STORE).get(ACTIVE_ID));
+  } finally {
+    db.close();
+  }
+}
+
+async function signedInboxAction(did) {
+  const id = await notificationIdentity();
+  if (!id?.did || !id?.privateKey || id.did !== did) throw new Error("active identity unavailable");
+  const payload = {
+    version: "1",
+    actor_did: id.did,
+    nonce: crypto.randomUUID(),
+    issued_at: new Date().toISOString(),
+    action: "LIST_DIRECT_INBOX",
+  };
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    { name: "Ed25519" },
+    id.privateKey,
+    encoder.encode(canonicalizeMailboxEnvelope(payload)),
+  ));
+  return {
+    payload,
+    signature: {
+      algorithm: "Ed25519",
+      encoding: "base64url",
+      value: bytesToBase64Url(signature),
+    },
+  };
+}
+
+function normalizeMailboxMessage(raw) {
+  return {
+    id: raw.id,
+    senderDid: raw.senderDid ?? raw.sender_did,
+    recipientDid: raw.recipientDid ?? raw.recipient_did,
+    nonce: raw.nonce,
+    rawText: raw.rawText ?? raw.raw_text,
+    senderSignature: raw.senderSignature ?? raw.sender_signature,
+    sentAt: raw.sentAt ?? raw.sent_at,
+  };
+}
+
+async function verifyClosureMessage(message) {
+  try {
+    const rawKey = parseEd25519DidKey(message.senderDid);
+    const key = await crypto.subtle.importKey("raw", rawKey, { name: "Ed25519" }, false, ["verify"]);
+    const payload = {
+      version: "1",
+      actor_did: message.senderDid,
+      nonce: message.nonce,
+      issued_at: message.sentAt,
+      action: "SEND_DIRECT_MESSAGE",
+      recipient_did: message.recipientDid,
+      text: message.rawText,
+    };
+    return crypto.subtle.verify(
+      { name: "Ed25519" },
+      key,
+      base64UrlToBytes(message.senderSignature),
+      encoder.encode(canonicalizeMailboxEnvelope(payload)),
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function fetchClosureEvents(did) {
+  const response = await fetch(`${API_BASE}/api/v1/communication/mailbox/inbox`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(await signedInboxAction(did)),
+  });
+  if (!response.ok) return [];
+
+  const body = await response.json();
+  const messages = (body.messages ?? []).map(normalizeMailboxMessage);
+  const candidates = messages.filter((message) => (
+    message?.recipientDid === did
+    && typeof message.rawText === "string"
+    && message.rawText.startsWith(TCLK_CLOSURE_EVENT_PREFIX)
+  ));
+
+  const verified = await Promise.all(candidates.map(async (message) => (
+    await verifyClosureMessage(message) ? message : null
+  )));
+
+  return verified.flatMap((message) => {
+    if (!message) return [];
+    let event;
+    try {
+      event = JSON.parse(message.rawText.slice(TCLK_CLOSURE_EVENT_PREFIX.length));
+    } catch {
+      return [];
+    }
+    if (
+      event?.type !== "tclk_closure_signed"
+      || event.actor_did !== message.senderDid
+      || typeof event.offer_id !== "string"
+      || typeof event.contract_id !== "string"
+    ) return [];
+
+    return [{
+      notificationKind: "closure",
+      notificationKey: `closure|${message.id}`,
+      actorDid: message.senderDid,
+      offerId: event.offer_id,
+      contractId: event.contract_id,
+      amount: String(event.amount ?? ""),
+      asset: String(event.asset ?? ""),
+      updatedAt: message.sentAt,
+    }];
+  });
+}
+
 function eventKey(deal) {
+  if (deal.notificationKind === "closure") return deal.notificationKey;
   return [deal.notificationKind, deal.venue, deal.offerId, deal.contractId, deal.payerDid, deal.payeeDid]
     .map((value) => String(value ?? ""))
     .join("|");
 }
 
 function notificationActorDid(deal) {
+  if (deal.notificationKind === "closure") return deal.actorDid;
   return deal.notificationKind === "locked" ? deal.payerDid : deal.payeeDid;
 }
 
 function notificationTitle(deal) {
+  if (deal.notificationKind === "closure") {
+    return copy("Closure record signed", "Kapanış kaydı imzalandı");
+  }
   if (deal.notificationKind === "completed") {
     return copy("Agreement completed", "Anlaşma tamamlandı");
   }
@@ -45,6 +199,12 @@ function notificationTitle(deal) {
 }
 
 function notificationBody(deal, actor) {
+  if (deal.notificationKind === "closure") {
+    return copy(
+      `${actor} signed the closure record.`,
+      `${actor} kapanış kaydını imzaladı.`,
+    );
+  }
   if (deal.notificationKind === "completed") {
     return copy(
       `${actor} verified the agreement code and completed the deal.`,
@@ -431,6 +591,13 @@ async function poll() {
   try {
     const previousKeys = new Set(pending.keys());
     const deals = await fetchNotifications(did);
+    let closureEvents = [];
+    try {
+      closureEvents = await fetchClosureEvents(did);
+    } catch {
+      // Closure events are additive. Failure here must never suppress the
+      // already-working accepted/locked/completed notifications.
+    }
     const state = loadState(did);
 
     // First successful sync establishes one durable baseline for this DID.
@@ -457,8 +624,9 @@ async function poll() {
     }
 
     const seen = new Set(state.seen);
+    const allNotifications = [...deals, ...closureEvents];
     pending = new Map(
-      deals
+      allNotifications
         .filter((deal) => !seen.has(eventKey(deal)))
         .map((deal) => [eventKey(deal), deal]),
     );

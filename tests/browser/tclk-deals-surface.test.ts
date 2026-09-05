@@ -8,7 +8,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
-    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v1")');
+    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v2")');
     expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v1")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
@@ -216,5 +216,15 @@ describe("TCLK Deals browser surface", () => {
   it("labels a rejected record as an ATTEMPT, distinct from an applied step", () => {
     expect(deals).toContain('function rejectedAttemptLabel(type)');
     expect(deals).toContain('copy("ATTEMPT", "GİRİŞİMİ")');
+  });
+});
+
+
+describe("TCLK closure notification bridge", () => {
+  it("emits a best-effort private closure event only after the signed receipt is posted", () => {
+    expect(deals).toContain('const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:"');
+    expect(deals).toContain('await postLine(room, built.line);');
+    expect(deals).toContain('await sendClosureEvent(id, otherDid, offer, accept.contract);');
+    expect(deals).toContain("A notification delivery failure must never undo or block the closure record itself.");
   });
 });
