@@ -9,7 +9,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
     expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v4")');
-    expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v1")');
+    expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v2")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
     expect(deals).not.toContain("Capability 8");
@@ -235,5 +235,14 @@ describe("TCLK accepted agreement actions", () => {
   it("renders cancellation in both accepted payer and payee branches", () => {
     expect(deals).toContain("addAcceptedCancelAction();");
     expect(deals.match(/addAcceptedCancelAction\(\);/g)?.length).toBe(2);
+  });
+});
+
+
+describe("TCLK accepted cancellation visibility", () => {
+  it("does not hide or intercept the accepted agreement cancel action", () => {
+    expect(profileHint).toContain('button.hidden = false;');
+    expect(profileHint).not.toContain("This accepted deal is being kept idle until the payer locks it");
+    expect(profileHint).not.toContain("target.hidden = true");
   });
 });

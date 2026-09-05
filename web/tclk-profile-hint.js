@@ -275,11 +275,10 @@ function mirrorActiveActionStatus() {
 function syncAcceptedCancelGuard() {
   const actions = document.querySelector(".tclk-actions-panel");
   if (!actions) return;
-  const accepted = protocolState() === "accepted";
   for (const button of actions.querySelectorAll(".tclk-action-button")) {
     if (!isCancelButton(button)) continue;
-    button.hidden = accepted;
-    button.dataset.preLockCancelGuard = accepted ? "true" : "false";
+    button.hidden = false;
+    button.dataset.preLockCancelGuard = "false";
   }
 }
 
@@ -638,21 +637,6 @@ function scheduleClosureSync(delay = 100) {
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target.closest(".tclk-action-button") : null;
   if (!target) return;
-
-  if (protocolState() === "accepted" && isCancelButton(target)) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const status = document.querySelector(".tclk-status");
-    if (status) {
-      status.textContent = copy(
-        "This accepted deal is being kept idle until the payer locks it; no new deal room was created for cancellation.",
-        "Bu kabul edilmiş anlaşma, ödeyen taraf kilitleyene kadar beklemede tutuluyor; iptal için yeni bir anlaşma odası oluşturulmadı.",
-      );
-      status.dataset.state = "success";
-    }
-    target.hidden = true;
-    return;
-  }
 
   startActionFeedback(target);
 

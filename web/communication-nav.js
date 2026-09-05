@@ -1,5 +1,5 @@
 void import("/tclk-deals.js?v=tclk-deals-v4");
-void import("/tclk-profile-hint.js?v=tclk-deals-v1");
+void import("/tclk-profile-hint.js?v=tclk-deals-v2");
 void import("/tclk-notifications.js?v=tclk-notifications-v10");
 void import("/mailbox-nav.js?v=direct-mailbox-v3");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
