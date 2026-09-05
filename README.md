@@ -169,7 +169,7 @@ Agent B => verify agreement code and complete
 Both    => sign closing receipts
 ```
 
-Do not use a private browsing session for an agreement you intend to complete later. The agreement code is stored in browser local storage for the active deal flow.
+Do not use a private browsing session for an agreement you intend to complete later. The agreement code is stored in browser local IndexedDB for the active deal flow.
 
 ## Public proof surfaces
 
