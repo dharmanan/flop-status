@@ -1,281 +1,109 @@
-# FLOP Capability Program v1
+# Flop Proof Capability Program v1
 
-## Product outcome
+## Core rule
 
-FLOP v1 contains ten certificate-eligible capabilities.
+Every successful capability verification creates one separate certificate.
 
-They are divided into:
+A certificate proves only that the DID bound agent successfully used the stated capability version on a fresh challenge under the named trial and verifier versions.
 
-* seven deterministic Core capabilities
-* three optional LLM-backed Agentic capabilities
+It does not prove human identity, model provenance, permanent future performance or general intelligence.
 
-Every successful capability verification issues its own individual capability certificate.
+## Production sequence
 
-Cumulative rank is a separate layer derived from the set of valid individual certificates. See `docs/certification-model-v1.md`.
+```text
+ACQUIRE
+=> PRACTICE
+=> VERIFY
+=> PASS / FAIL / UNKNOWN
+=> INDIVIDUAL CERTIFICATE
+=> USE
+=> PUBLIC PROOF
+```
 
-Each capability uses the same trust path:
+Practice never issues a certificate.
 
-DID → unique challenge → capability runtime result → DID-signed submission → deterministic verifier → immutable server-signed receipt → public capability certificate.
+Only a successful production verification does.
 
-A PASS proves only that this DID passed this exact capability under the named capability/trial/verifier versions. It does not prove human identity, model provenance or permanent future performance.
+## Core capabilities
 
-## User sequence
+### C1 Ed25519 Signature Verification
 
-The production certificate journey starts at Capability 1 and proceeds one capability at a time.
+The agent verifies whether an Ed25519 signature matches the exact supplied key and message.
 
-For each capability:
+### C2 Canonical JSON + SHA256
 
-**ACQUIRE → PRACTICE → VERIFY → CERTIFY → USE → PROVE**
+The agent canonicalizes supported JSON and produces the required SHA256 digest.
 
-There is no bulk certification path and no credit from internal development acceptance runs.
+### C3 Technocore Canonical Message
 
-## Core capabilities 1–7
+The agent applies the versioned Technocore text cleaning rule and constructs the exact canonical signing string.
 
-Core capabilities require no LLM and must be usable and certifiable without an LLM API key.
+Core verification does not require a live Technocore request.
 
-### 1. Ed25519 Signature Verification
+### C4 Signed Receipt Verification
 
-Capability: cryptographic verification.
+The agent verifies Flop Proof signed receipt evidence against the bounded public server key set.
 
-Acquired behavior: the FLOP agent can verify an Ed25519 signature against a message and public key and return a strict result.
+### C5 Structured Data Transformation
 
-Challenge: message, Ed25519 public key and signature.
+The agent transforms structured data according to an explicit machine readable deterministic specification.
 
-Expected result: determine whether the signature is valid and return the required reason code and message hash.
+### C6 Constraint & Policy Compliance
 
-Verification: exact deterministic cryptographic verification.
+The agent evaluates structured data against explicit deterministic policy rules.
 
-Certificate: `Ed25519 Signature Verification Certificate`.
+### C7 Failure Recovery & Idempotency
 
-### 2. Canonical JSON + SHA256
+The agent handles bounded retry, duplicate delivery and eventual success scenarios without applying the same side effect twice.
 
-Capability: deterministic data canonicalization and hashing.
+## Optional Agentic capabilities
 
-Acquired behavior: the FLOP agent can canonicalize supported JSON using RFC 8785 JCS and produce the required SHA256 digest.
+Capabilities 8 to 10 are defined but not enabled in the current production flow.
 
-Challenge: structured JSON containing nested objects, arrays, Unicode and numeric edge cases.
+### C8 Goal Planning & Tool Use
 
-Expected result: RFC 8785 JCS canonical form plus SHA256 digest.
+A bounded goal plus fixed tool catalog is executed under explicit constraints.
 
-Verification: exact canonical bytes and digest.
+### C9 Grounded Research & Synthesis
 
-Certificate: `Canonical JSON + SHA256 Certificate`.
+A research task is completed against a versioned provided corpus with explicit grounding requirements.
 
-### 3. Technocore Canonical Message Construction
+### C10 Autonomous Multi Step Execution
 
-Capability: protocol-compliant message construction.
+A bounded multi step goal is executed through allowed state transitions and explicit final state requirements.
 
-Reference behavior: the inspected Technocore implementation cleans the text, uses a nonce string, and signs the exact UTF-8 string `room|nonce|cleaned text`. The sender DID is carried separately by the protocol and is not part of that canonical signing string. FLOP supplies the nonce directly in the deterministic challenge rather than depending on wall-clock time.
+These capabilities may use an LLM after explicit user opt in.
 
-Acquired behavior: the FLOP agent can apply the Technocore text-cleaning rule and construct the exact canonical message.
+The LLM may perform the task but is not the certification judge.
 
-Challenge: sender DID binding, room, nonce and raw text containing deterministic cleaning edge cases.
+Verification must remain deterministic.
 
-Expected result: apply the reference text-cleaning rule and construct the exact canonical Technocore signing string `room|nonce|cleaned text`.
+## Rank
 
-Verification: byte-for-byte canonical string comparison plus exact cleaned-text comparison. Core verification does not call Technocore.
+Rank is derived from valid individual certificates:
 
-Certificate: `Technocore Canonical Message Certificate`.
+```text
+0     => Unranked
+1–2   => individually certified
+3–4   => Rookie
+5–6   => Regular
+7     => Core Verified
+8–9   => Advanced
+10    => Agentic Verified
+```
 
-### 4. Signed Receipt Verification
+Messaging, room activity and TCLK deals do not increase rank.
 
-Capability: evidence verification.
+## Public proof
 
-Acquired behavior: the FLOP agent can verify a FLOP-style signed receipt against a bounded server-key set and distinguish valid, invalid, key-mismatch and unknown-key states.
+A public certificate exposes the DID, capability version, verifier version, signed receipt evidence and current certificate count.
 
-Challenge: FLOP-style signed receipt, server public-key set and tampered/untampered variants.
+## Future testnet representation
 
-Expected result: determine validity, identify the applicable key id when possible and return the required status/reason code.
+If an official FLOP Labs testnet interface exists later, a testnet artifact may reference a Flop Proof certificate or rank state.
 
-Verification: deterministic signature and field-binding checks.
+It must not replace the canonical public proof.
 
-Certificate: `Signed Receipt Verification Certificate`.
+No private key, seed or recovery material is placed on chain.
 
-### 5. Structured Data Transformation
-
-Capability: reliable machine-readable transformation.
-
-Acquired behavior: the FLOP agent can transform structured records according to explicit field mapping, normalization and schema rules without inventing data.
-
-Challenge: source records plus a target JSON schema and explicit mapping rules.
-
-Expected result: produce schema-valid normalized output without adding or dropping prohibited fields.
-
-Verification: JSON Schema validation plus exact rule checks.
-
-Certificate: `Structured Data Transformation Certificate`.
-
-### 6. Constraint and Policy Compliance
-
-Capability: following explicit operational rules.
-
-Acquired behavior: the FLOP agent can apply a bounded deterministic policy/rule set to proposed actions and return the correct decisions and reason codes.
-
-Challenge: deterministic policy/rule set plus proposed actions and edge cases.
-
-Expected result: ALLOW/BLOCK decisions with exact reason codes and safe alternatives only where permitted.
-
-Verification: deterministic rule-engine comparison against the versioned policy fixture.
-
-Certificate: `Constraint and Policy Compliance Certificate`.
-
-### 7. Failure Recovery and Idempotency
-
-Capability: reliable behavior under deterministic failures.
-
-Acquired behavior: the FLOP agent can handle bounded retry, lost-response, duplicate-request and eventual-success scenarios without duplicate side effects or false failure claims.
-
-Challenge: simulated API/workflow responses such as timeout, 429, malformed response, duplicate request, lost response and eventual success.
-
-Expected result: choose the correct retry/recovery/state transition and preserve idempotency.
-
-Verification: deterministic state-machine and side-effect checks.
-
-Certificate: `Failure Recovery and Idempotency Certificate`.
-
-## Optional Agentic capabilities 8–10
-
-Capabilities 8–10 require an LLM and explicit user opt-in.
-
-The user must be told before enabling them that an LLM is required and that usage may create cost.
-
-The LLM performs the task, but FLOP PASS/FAIL remains deterministically verifiable. FLOP does not use an LLM judge.
-
-### 8. Goal Planning & Tool Use
-
-Capability: converting a goal into a valid bounded plan and selecting the correct tools and arguments.
-
-Acquired behavior: given a goal and a fixed tool catalog, the agent can produce and execute the correct plan and tool calls inside the FLOP runtime.
-
-Challenge: natural-language goal, deterministic environment state and a fixed catalog of tool/function schemas with distractors and forbidden calls.
-
-Expected result: produce the required structured plan and tool-call sequence with valid arguments and no forbidden calls.
-
-Verification: allowed call graph, required dependency order, exact required arguments, schema validation, deterministic tool outputs and forbidden-call checks.
-
-Certificate: `Goal Planning & Tool Use Certificate`.
-
-### 9. Grounded Research & Synthesis
-
-Capability: finding relevant evidence and producing a grounded answer without unsupported claims.
-
-Acquired behavior: the agent can inspect a bounded versioned corpus, select relevant evidence and synthesize an answer with exact source references.
-
-Challenge: natural-language research request plus a versioned FLOP-provided corpus containing relevant, irrelevant and conflicting material.
-
-Expected result: answer in a fixed schema, cite the exact supporting source ids/evidence spans and avoid claims that are not supported by the corpus.
-
-Verification: accepted-fact set, required evidence references, contradiction handling and unsupported-claim rejection.
-
-Certificate: `Grounded Research & Synthesis Certificate`.
-
-### 10. Autonomous Multi Step Execution
-
-Capability: completing a bounded multi-step goal while adapting to deterministic intermediate outcomes.
-
-Acquired behavior: the agent can plan, execute, observe, recover and finish a bounded task across multiple steps inside FLOP without human correction during the run.
-
-Challenge: natural-language goal, deterministic task environment, tool catalog, dependencies, recoverable failures and success conditions.
-
-Expected result: reach the required final state through a valid sequence while respecting constraints, handling failures and avoiding duplicate or forbidden side effects.
-
-Verification: deterministic environment trace, allowed state transitions, required final state, constraint checks, recovery behavior and side-effect checks.
-
-Certificate: `Autonomous Multi Step Execution Certificate`.
-
-## Individual capability certificates
-
-Every successful capability produces a separate public certificate.
-
-Each certificate must show at minimum:
-
-* capability name
-* agent DID
-* capability/program version
-* verifier version
-* verification timestamp
-* PASS receipt id
-* FLOP server attestation status
-* public proof URL
-
-The certificate has a live public proof page. A downloadable/shareable image may mirror it, but the image is not the source of truth.
-
-A user with four valid capabilities has four separate certificates.
-
-A user with ten valid capabilities has ten separate certificates.
-
-## Cumulative rank
-
-Rank never replaces individual certificates.
-
-The initial rank model is defined in `docs/certification-model-v1.md`:
-
-* 0: Unranked
-* 1–2: individually certified, no cumulative named rank
-* 3–4: Rookie
-* 5–6: Regular
-* 7: Core Verified
-* 8–9: Advanced
-* 10: Agentic Verified
-
-Display names may be refined later, but certificate counting and the separation between certificate and rank are product invariants.
-
-## Public agent profile
-
-The public profile aggregates all individual capability certificates for one DID.
-
-It must show:
-
-* agent visual/avatar or deterministic identity mark
-* public DID
-* current cumulative rank
-* certificate count
-* ten capability slots with CERTIFIED or UNTESTED state
-* latest verification timestamp
-* program version
-* receipt count
-* server attestation status
-* proof/profile URL
-
-Every certified capability links to its own certificate/proof page and receipt evidence.
-
-The profile should support:
-
-* Download image
-* Copy image
-* Post/share to X
-* Copy proof link
-* Open live proof profile
-* independent verification without login
-
-## Internal development acceptance records
-
-Trial 1–4 browser auto-solver runs created before this production certificate model are development acceptance evidence for the verification infrastructure.
-
-They are not production capability certificates and must not be counted toward a user's certificate total or cumulative rank.
-
-Their signed receipts remain immutable historical protocol evidence.
-
-The production user journey always starts at Capability 1 and each capability must be acquired, practiced, verified and certified individually through the normal FLOP runtime.
-
-## FLOP testnet NFT seam
-
-When an official FLOP testnet specification exists, FLOP may represent certificate or rank state on testnet using identity-bound primitives supported by that official specification.
-
-A future on-chain artifact must reference the live public proof and receipt bundle rather than replacing them.
-
-No agent private key, seed or recovery material is ever placed on-chain.
-
-Exact token amounts, wallet APIs, chain ids, contract addresses, faucet rules and eligibility logic must not be invented before official specifications exist.
-
-## Implementation order
-
-Do not continue by simply adding a fifth browser auto-solver.
-
-The next product milestone is to implement the production capability runtime and certificate flow starting again with Capability 1.
-
-Capability 1 must pass the full production flow:
-
-**ACQUIRE → PRACTICE → VERIFY → CERTIFY → USE → PROVE**
-
-After that vertical slice passes acceptance, apply the same product pattern sequentially to Capabilities 2 through 10.
+No faucet amount, chain id, wallet API, contract address or eligibility rule is invented before an official specification exists.
