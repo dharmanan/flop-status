@@ -1,5 +1,5 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-accept-notifications-v3:";
+const STORAGE_PREFIX = "flop-tclk-accept-notifications-v4:";
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -28,8 +28,8 @@ function storageKey(did) {
 function loadState(did) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 3 || !Array.isArray(parsed.seen)) return { version: 3, seen: [] };
-    return { version: 3, seen: parsed.seen.filter((value) => typeof value === "string") };
+    if (!parsed || parsed.version !== 4 || !Array.isArray(parsed.seen)) return { version: 4, initialized: false, seen: [] };
+    return { version: 4, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
   } catch {
     return { version: 3, seen: [] };
   }
@@ -37,7 +37,8 @@ function loadState(did) {
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 3,
+    version: 4,
+    initialized: state.initialized === true,
     seen: Array.from(new Set(state.seen)).slice(-500),
   }));
 }
@@ -314,7 +315,10 @@ async function showToast(deal, key) {
   close.className = "tclk-accept-toast-close";
   close.setAttribute("aria-label", copy("Close notification", "Bildirimi kapat"));
   close.textContent = "×";
-  close.addEventListener("click", () => dismissToast(toast));
+  close.addEventListener("click", () => {
+    markSeen([key]);
+    dismissToast(toast);
+  });
   head.append(copyWrap, close);
 
   const action = document.createElement("button");
@@ -352,6 +356,19 @@ async function poll() {
     const previousKeys = new Set(pending.keys());
     const deals = await fetchAccepted(did);
     const state = loadState(did);
+
+    // First successful sync establishes a clean baseline for this DID.
+    // Historical accepted deals are not "new notifications".
+    if (!state.initialized) {
+      state.initialized = true;
+      state.seen.push(...deals.map(eventKey));
+      saveState(did, state);
+      pending.clear();
+      announced.clear();
+      updateBell();
+      return;
+    }
+
     const seen = new Set(state.seen);
     pending = new Map(
       deals
