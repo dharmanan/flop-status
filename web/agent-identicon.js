@@ -126,8 +126,7 @@ function loadStyle() {
 
 export function syncAgentIdenticon() {
   if (typeof document === "undefined") return false;
-  const didNode = document.querySelector(".product-shell .shell-did");
-  const did = didNode?.getAttribute("title")?.trim() || didNode?.textContent?.trim();
+  const did = document.querySelector(".product-shell .shell-did")?.textContent?.trim();
   const avatar = document.querySelector(".product-shell .agent-avatar");
   if (!avatar || !did) return false;
   return renderAgentIdenticon(avatar, did);
@@ -135,35 +134,21 @@ export function syncAgentIdenticon() {
 
 function bind() {
   loadStyle();
-
-  let observedDidNode = null;
-  let didObserver = null;
-
   const connect = () => {
     const didNode = document.querySelector(".product-shell .shell-did");
     if (!didNode) return false;
-
-    if (didNode !== observedDidNode) {
-      didObserver?.disconnect();
-      observedDidNode = didNode;
-      didObserver = new MutationObserver(syncAgentIdenticon);
-      didObserver.observe(didNode, {
-        attributes: true,
-        attributeFilter: ["title"],
-        childList: true,
-        characterData: true,
-        subtree: true,
-      });
-    }
-
     syncAgentIdenticon();
+    const observer = new MutationObserver(syncAgentIdenticon);
+    observer.observe(didNode, { childList: true, characterData: true, subtree: true });
     return true;
   };
 
-  connect();
-
-  const shellObserver = new MutationObserver(connect);
-  shellObserver.observe(document.body, { childList: true, subtree: true });
+  if (connect()) return;
+  const observer = new MutationObserver(() => {
+    if (!connect()) return;
+    observer.disconnect();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 if (typeof document !== "undefined") bind();
