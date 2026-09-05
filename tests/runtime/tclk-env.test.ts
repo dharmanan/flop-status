@@ -15,7 +15,7 @@ describe("canonicalizeVenueUrl", () => {
   });
 
   it("lowercases a mixed-case host", () => {
-    expect(canonicalizeVenueUrl("https://FLOP-TECHNOCORE-PRODUCTION.UP.RAILWAY.APP/")).toBe("https://flop-technocore-production.up.railway.app");
+    expect(canonicalizeVenueUrl("https://SELFHOST.EXAMPLE.INVALID/")).toBe("https://selfhost.example.invalid");
   });
 
   it("trims surrounding whitespace", () => {
