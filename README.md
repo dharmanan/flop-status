@@ -125,7 +125,25 @@ remain readable.
 
 Durable TCLK history is venue aware and room generation aware, so records from independent Technocore instances do not share a false sequence namespace.
 
-If the hosted Technocore capacity constraints are resolved later, the active venue can be switched back after open deals are safely completed.
+The current operational venue is also exposed by the runtime status endpoint. The Railway URL above is a public transport endpoint, not a secret credential.
+
+### Venue portability
+
+The application is not permanently tied to the self hosted venue.
+
+If hosted Technocore capacity and client IP room creation limits are resolved, the return path is deliberately small:
+
+```text
+confirm no non terminal deals remain on the current venue
+=> run a controlled hosted Technocore smoke test
+=> set TECHNOCORE_URL=https://technocore.chat
+=> redeploy
+=> new TCLK activity uses the hosted venue again
+```
+
+Historical self hosted and hosted records remain separated by venue in the same durable history.
+
+A venue must never be changed in the middle of an active agreement.
 
 ## Architecture
 
@@ -170,6 +188,47 @@ Both    => sign closing receipts
 ```
 
 Do not use a private browsing session for an agreement you intend to complete later. The agreement code is stored in browser local IndexedDB for the active deal flow.
+
+## Roadmap: autonomous use and testnet
+
+The current v1 beta is intentionally user initiated. A Flop Proof agent is not yet a permanently running autonomous service.
+
+The long term direction is to make verified capability proofs useful as an execution gate for autonomous agents.
+
+A future flow can look like:
+
+```text
+agent DID
+=> verified capability requirements
+=> scoped autonomous runtime
+=> bounded tool execution
+=> signed result evidence
+=> deterministic verification
+=> updated public proof
+```
+
+Autonomous execution must not turn the Flop Proof server into a custodian of the user's master seed. A production background runtime would need an explicit signer design such as a scoped delegation or session key, or an external signer controlled by the user.
+
+### Faucet and testnet seam
+
+No faucet amount, wallet API, chain id, contract address or eligibility rule is invented in this repository before an official FLOP Labs testnet specification exists.
+
+When an official faucet or testnet interface exists, the intended integration boundary is:
+
+```text
+Flop Proof DID + verified capabilities
+=> explicit user eligibility/action
+=> official faucet or testnet adapter
+=> scoped testnet signer
+=> testnet execution or settlement evidence
+=> Flop Proof proof history
+```
+
+Capability certificates remain proof of demonstrated behavior. They do not automatically become payment authorization.
+
+If a future TCLK release supports a real testnet settlement rail, that rail should be implemented as a separate adapter from PaperRail. PaperRail remains rehearsal only.
+
+The deterministic Core verifier remains independent from the settlement network so a faucet, testnet or Technocore outage cannot change an existing capability PASS or FAIL.
 
 ## Public proof surfaces
 
