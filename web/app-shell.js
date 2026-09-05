@@ -13,7 +13,7 @@ const CAPABILITY_NUMBERS = Object.keys(CAPABILITIES).map(Number);
 
 const COPY = {
   en: {
-    agent: "FLOP Agent",
+    agent: "Flop Proof Agent",
     agentStatus: "Agent Status",
     certificates: "Certificates",
     rank: "Rank",
@@ -23,15 +23,15 @@ const COPY = {
     certificatesNav: "Certificates",
     activity: "Activity",
     settings: "Settings",
-    boundaryTitle: "This capability runs only inside FLOP.",
+    boundaryTitle: "This capability runs only inside Flop Proof.",
     boundaryBody: "Portable: DID, certificate, receipt and public proof.",
     what: "What does this capability give the agent?",
     method: "Verification method",
-    methodBody: "Fresh challenge + deterministic FLOP verifier",
+    methodBody: "Fresh challenge + deterministic Flop Proof verifier",
     pass: "If passed",
     passBody: "Individual certificate + signed receipt + public proof",
     boundary: "Execution boundary",
-    boundaryBody2: "Capability execution stays inside FLOP. Proof is portable.",
+    boundaryBody2: "Capability execution stays inside Flop Proof. Proof is portable.",
     proofPackage: "Proof Package",
     certificate: "Certificate",
     receipt: "Receipt",
@@ -41,9 +41,9 @@ const COPY = {
     available: "Available",
     verified: "Verified",
     portable: "Portable & independently verifiable",
-    profileActive: "Added to this FLOP agent",
+    profileActive: "Added to this Flop Proof agent",
     why: "Why PASS?",
-    whyAcquire: "Capability acquired inside FLOP",
+    whyAcquire: "Capability acquired inside Flop Proof",
     whyFresh: "Fresh challenge solved",
     whyDid: "DID signed submission verified",
     whyVerifier: "Deterministic verifier returned PASS",
@@ -51,7 +51,7 @@ const COPY = {
     waiting: "Waiting for certification",
   },
   tr: {
-    agent: "FLOP Ajanı",
+    agent: "Flop Proof Ajanı",
     agentStatus: "Ajan Durumu",
     certificates: "Sertifika",
     rank: "Rank",
@@ -61,15 +61,15 @@ const COPY = {
     certificatesNav: "Sertifikalar",
     activity: "Aktivite",
     settings: "Ayarlar",
-    boundaryTitle: "Bu capability yalnızca FLOP içinde çalışır.",
+    boundaryTitle: "Bu capability yalnızca Flop Proof içinde çalışır.",
     boundaryBody: "Taşınabilir: DID, certificate, receipt ve public proof.",
     what: "Bu capability ne kazandırır?",
     method: "Verification method",
-    methodBody: "Fresh challenge + deterministic FLOP verifier",
+    methodBody: "Fresh challenge + deterministic Flop Proof verifier",
     pass: "Başarırsa",
     passBody: "Bireysel certificate + signed receipt + public proof",
     boundary: "Execution boundary",
-    boundaryBody2: "Capability FLOP içinde çalışır. Kanıt taşınabilir.",
+    boundaryBody2: "Capability Flop Proof içinde çalışır. Kanıt taşınabilir.",
     proofPackage: "Proof Package",
     certificate: "Certificate",
     receipt: "Receipt",
@@ -79,9 +79,9 @@ const COPY = {
     available: "Hazır",
     verified: "Doğrulandı",
     portable: "Taşınabilir ve bağımsız doğrulanabilir",
-    profileActive: "Bu FLOP ajanına eklendi",
+    profileActive: "Bu Flop Proof ajanına eklendi",
     why: "Neden PASS?",
-    whyAcquire: "Capability FLOP içinde kazanıldı",
+    whyAcquire: "Capability Flop Proof içinde kazanıldı",
     whyFresh: "Fresh challenge çözüldü",
     whyDid: "DID imzalı submission doğrulandı",
     whyVerifier: "Deterministic verifier PASS döndürdü",
@@ -138,7 +138,7 @@ function makeBrand() {
   const brand = node("div", "product-brand");
   const mark = node("span", "product-brand-mark");
   for (let i = 0; i < 8; i += 1) mark.appendChild(node("i", ""));
-  brand.append(mark, node("strong", "", "FLOP"));
+  brand.append(mark, node("strong", "", "Flop Proof"));
   const language = document.querySelector(".language-switch");
   if (language) brand.appendChild(language);
   return brand;
@@ -237,7 +237,7 @@ function makeProofPanel() {
   );
   const semantics = node("section", "proof-semantics");
   semantics.textContent = lang() === "tr"
-    ? "Bu certificate, bu DID’e bağlı FLOP ajanının belirtilen capability sürümünü fresh verification challenge üzerinde başarıyla kullandığını kanıtlar."
+    ? "Bu certificate, bu DID’e bağlı Flop Proof ajanının belirtilen capability sürümünü fresh verification challenge üzerinde başarıyla kullandığını kanıtlar."
     : "This certificate proves that the FLOP agent bound to this DID successfully used the stated capability version on a fresh verification challenge.";
   const why = node("section", "proof-why");
   why.appendChild(node("h3", "", t("why")));
@@ -328,7 +328,7 @@ function updateHeader(number) {
   state.dataset.verifying = isVerifying(number) ? "true" : "false";
   const purpose = card?.querySelector(`#capability-${number}-purpose`)?.textContent?.trim()
     || card?.querySelector(".capability-purpose")?.textContent?.trim()
-    || (lang() === "tr" ? "Bu capability ajan içinde aktif olduğunda gerçek FLOP verification akışında test edilir." : "When active on the agent, this capability is tested in the real FLOP verification flow.");
+    || (lang() === "tr" ? "Bu capability ajan içinde aktif olduğunda gerçek Flop Proof verification akışında test edilir." : "When active on the agent, this capability is tested in the real Flop Proof verification flow.");
   shell.querySelector(".workspace-purpose-row .workspace-summary-copy span").textContent = purpose;
   shell.querySelector(".workspace-stage-status").textContent = isCertified(number)
     ? (lang() === "tr" ? "SERTİFİKALI" : "CERTIFIED")

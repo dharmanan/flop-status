@@ -70,15 +70,20 @@ describe("TCLK runtime router", () => {
   });
 
   it("labels the status surface alpha and no-real-value", async () => {
-    const mcp = { call: async () => ({ did: null, paymentPublicKey: null }) };
+    vi.stubEnv("TECHNOCORE_URL", "https://selfhost.example.invalid");
+    const mcp = { call: async () => ({ technocoreUrl: "https://selfhost.example.invalid", did: null, paymentPublicKey: null }) };
     const base = await start(mcp, {});
     const response = await fetch(`${base}/api/v1/tclk/status`);
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json() as any;
+    expect(body).toMatchObject({
       protocol: "tclk/1",
       mode: "alpha-paper-only",
       real_value: false,
+      venue_mode: "self-hosted",
+      mcp: { did: null, paymentPublicKey: null },
     });
+    expect(body.mcp.technocoreUrl).toBeUndefined();
   });
 
   it("returns an explicit no-value warning on PaperRail mutations", async () => {

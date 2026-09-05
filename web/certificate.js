@@ -16,78 +16,78 @@ const copy = (en, tr) => (language() === "tr" ? tr : en);
 const CAPABILITY_COPY = {
   "cryptography.signature-verification": {
     verified: [
-      "This FLOP agent correctly completed an independent Ed25519 signature verification test.",
-      "Bu FLOP ajanı bağımsız bir Ed25519 imza doğrulama testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent Ed25519 signature verification test.",
+      "Bu Flop Proof ajanı bağımsız bir Ed25519 imza doğrulama testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can use the certified capability version inside FLOP.",
-      "Bu sertifika, bu ajanın sertifikalanan yetenek sürümünü FLOP içinde kullanabildiğini kanıtlar.",
+      "This certificate proves that this agent can use the certified capability version inside Flop Proof.",
+      "Bu sertifika, bu ajanın sertifikalanan yetenek sürümünü Flop Proof içinde kullanabildiğini kanıtlar.",
     ],
   },
   "data.canonical-json-sha256": {
     verified: [
-      "This FLOP agent correctly completed an independent RFC 8785 Canonical JSON and SHA256 test.",
-      "Bu FLOP ajanı bağımsız bir RFC 8785 Kanonik JSON ve SHA256 testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent RFC 8785 Canonical JSON and SHA256 test.",
+      "Bu Flop Proof ajanı bağımsız bir RFC 8785 Kanonik JSON ve SHA256 testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can canonicalize JSON and calculate its SHA256 hash inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde JSON'u kanonik hale getirip SHA256 hashini hesaplayabildiğini kanıtlar.",
+      "This certificate proves that this agent can canonicalize JSON and calculate its SHA256 hash inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde JSON'u kanonik hale getirip SHA256 hashini hesaplayabildiğini kanıtlar.",
     ],
   },
   "protocol.technocore-canonical-message": {
     verified: [
-      "This FLOP agent correctly completed an independent Technocore canonical message construction test.",
-      "Bu FLOP ajanı bağımsız bir Technocore kanonik mesaj oluşturma testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent Technocore canonical message construction test.",
+      "Bu Flop Proof ajanı bağımsız bir Technocore kanonik mesaj oluşturma testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can build the exact Technocore canonical signing message inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde tam Technocore kanonik imzalama mesajını oluşturabildiğini kanıtlar.",
+      "This certificate proves that this agent can build the exact Technocore canonical signing message inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde tam Technocore kanonik imzalama mesajını oluşturabildiğini kanıtlar.",
     ],
   },
   "evidence.signed-receipt-verification": {
     verified: [
-      "This FLOP agent correctly completed an independent signed receipt verification test, including tampered and unknown-key evidence.",
-      "Bu FLOP ajanı, değiştirilmiş ve bilinmeyen anahtar kanıtları dahil olmak üzere bağımsız bir imzalı makbuz doğrulama testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent signed receipt verification test, including tampered and unknown-key evidence.",
+      "Bu Flop Proof ajanı, değiştirilmiş ve bilinmeyen anahtar kanıtları dahil olmak üzere bağımsız bir imzalı makbuz doğrulama testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can independently check FLOP signed receipts and capability evidence inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde imzalı makbuz ve yetenek kanıtlarını bağımsız olarak kontrol edebildiğini kanıtlar.",
+      "This certificate proves that this agent can independently check Flop Proof signed receipts and capability evidence inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde imzalı makbuz ve yetenek kanıtlarını bağımsız olarak kontrol edebildiğini kanıtlar.",
     ],
   },
   "data.structured-transformation": {
     verified: [
-      "This FLOP agent correctly completed an independent structured data transformation test, applying an explicit deterministic specification.",
-      "Bu FLOP ajanı, açık bir deterministik spesifikasyonu uygulayarak bağımsız bir yapılandırılmış veri dönüşümü testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent structured data transformation test, applying an explicit deterministic specification.",
+      "Bu Flop Proof ajanı, açık bir deterministik spesifikasyonu uygulayarak bağımsız bir yapılandırılmış veri dönüşümü testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can transform structured data according to an explicit machine-readable specification inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde açık makine tarafından okunabilir bir spesifikasyona göre yapılandırılmış veriyi dönüştürebildiğini kanıtlar.",
+      "This certificate proves that this agent can transform structured data according to an explicit machine-readable specification inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde açık makine tarafından okunabilir bir spesifikasyona göre yapılandırılmış veriyi dönüştürebildiğini kanıtlar.",
     ],
   },
   "policy.constraint-compliance": {
     verified: [
-      "This FLOP agent correctly completed an independent constraint and policy compliance test, evaluating explicit deterministic rules.",
-      "Bu FLOP ajanı, açık deterministik kuralları değerlendirerek bağımsız bir kısıt ve politika uyumluluğu testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent constraint and policy compliance test, evaluating explicit deterministic rules.",
+      "Bu Flop Proof ajanı, açık deterministik kuralları değerlendirerek bağımsız bir kısıt ve politika uyumluluğu testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can evaluate structured data against an explicit machine-readable policy inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde açık makine tarafından okunabilir bir politikaya göre yapılandırılmış veriyi değerlendirebildiğini kanıtlar.",
+      "This certificate proves that this agent can evaluate structured data against an explicit machine-readable policy inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde açık makine tarafından okunabilir bir politikaya göre yapılandırılmış veriyi değerlendirebildiğini kanıtlar.",
     ],
   },
   "runtime.failure-recovery-idempotency": {
     verified: [
-      "This FLOP agent correctly completed an independent failure recovery and idempotency test, recovering from a scripted transient failure and absorbing a duplicate delivery without applying its side effect twice.",
-      "Bu FLOP ajanı, senaryolanmış geçici bir hatadan kurtularak ve tekrar teslimatı yan etkisini iki kez uygulamadan absorbe ederek bağımsız bir hata kurtarma ve idempotans testini doğru tamamladı.",
+      "This Flop Proof agent correctly completed an independent failure recovery and idempotency test, recovering from a scripted transient failure and absorbing a duplicate delivery without applying its side effect twice.",
+      "Bu Flop Proof ajanı, senaryolanmış geçici bir hatadan kurtularak ve tekrar teslimatı yan etkisini iki kez uygulamadan absorbe ederek bağımsız bir hata kurtarma ve idempotans testini doğru tamamladı.",
     ],
     scope: [
-      "This certificate proves that this agent can retry a failed attempt and apply a retryable operation exactly once under a shared idempotency key inside FLOP under the certified version.",
-      "Bu sertifika, bu ajanın sertifikalanan sürümde FLOP içinde başarısız bir denemeyi yeniden deneyebildiğini ve ortak bir idempotency anahtarı altında yeniden denenebilir bir işlemi tam olarak bir kez uygulayabildiğini kanıtlar.",
+      "This certificate proves that this agent can retry a failed attempt and apply a retryable operation exactly once under a shared idempotency key inside Flop Proof under the certified version.",
+      "Bu sertifika, bu ajanın sertifikalanan sürümde Flop Proof içinde başarısız bir denemeyi yeniden deneyebildiğini ve ortak bir idempotency anahtarı altında yeniden denenebilir bir işlemi tam olarak bir kez uygulayabildiğini kanıtlar.",
     ],
   },
 };
 
 const PROOF_LABELS = {
-  "certificate-eyebrow": ["FLOP Capability Certificate", "FLOP Yetenek Sertifikası"],
+  "certificate-eyebrow": ["Flop Proof Capability Certificate", "Flop Proof Yetenek Sertifikası"],
   "agent-did": ["Agent DID", "Ajan DID"],
   capability: ["Capability", "Yetenek"],
   "capability-version": ["Capability version", "Yetenek sürümü"],
@@ -96,9 +96,9 @@ const PROOF_LABELS = {
   verifier: ["Verifier", "Doğrulayıcı"],
   issued: ["Issued", "Verildi"],
   receipt: ["Receipt", "Makbuz"],
-  attestation: ["FLOP attestation", "FLOP doğrulama imzası"],
+  attestation: ["Flop Proof attestation", "Flop Proof doğrulama imzası"],
   "open-receipt": ["Open signed receipt proof", "İmzalı makbuz kanıtını aç"],
-  "back-to-lab": ["Back to Capability Lab", "FLOP'a dön"],
+  "back-to-lab": ["Back to Capability Lab", "Flop Proof'a dön"],
   "issued-to": ["Issued to", "Sertifika sahibi"],
   "verified-capabilities": ["Verified capabilities", "Doğrulanmış yetenek"],
   rank: ["Rank", "Rank"],
@@ -189,7 +189,7 @@ async function loadAgentContext(did) {
 
 function renderAgentContext(certificate, context) {
   const profile = context.profile;
-  const name = String(profile?.display_name ?? "").trim() || copy("FLOP Agent", "FLOP Ajanı");
+  const name = String(profile?.display_name ?? "").trim() || copy("Flop Proof Agent", "Flop Proof Ajanı");
   const handle = String(profile?.handle ?? "").trim().replace(/^@+/, "");
   const resolvedRank = rankName(context.rank);
   byId("certificate-agent-name").textContent = name;

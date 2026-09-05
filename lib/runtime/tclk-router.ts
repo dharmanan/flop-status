@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { TclkMcpClient, TclkMcpError, type TclkToolName } from "./tclk-mcp-client.js";
 import { TclkPaperRailAdapter } from "./tclk-paper-rail.js";
-import { canonicalizeVenueUrl, resolveTechnocoreUrl } from "./tclk-env.js";
+import { canonicalizeVenueUrl, createTechnocoreFetch, resolveTechnocoreUrl } from "./tclk-env.js";
 import type { RawTclkMessage, TclkDealHistoryService } from "./tclk-deal-history-service.js";
 
 const MAX_TCLK_BODY_BYTES = 1_048_576;
@@ -96,7 +96,7 @@ async function readRawRoom(room: string): Promise<RawRoom> {
   const timer = setTimeout(() => controller.abort(), TECHNOCORE_READ_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${technocoreUrl}/r/${room}?format=json`, {
+    response = await createTechnocoreFetch()(`${technocoreUrl}/r/${room}?format=json`, {
       headers: { accept: "application/json" },
       signal: controller.signal,
     });
@@ -249,8 +249,10 @@ export function createTclkAwareHandler(
       }
       try {
         if (request.method === "GET" && path === "/api/v1/tclk/status") {
-          const upstream = await mcp.call("tclk_whoami", {});
-          json(response, 200, { protocol: "tclk/1", mode: "alpha-paper-only", real_value: false, mcp: upstream });
+          const upstream = await mcp.call<Record<string, unknown>>("tclk_whoami", {});
+          const { technocoreUrl: _hiddenVenue, ...publicMcp } = upstream;
+          const venueMode = resolveTechnocoreUrl() === "https://technocore.chat" ? "hosted" : "self-hosted";
+          json(response, 200, { protocol: "tclk/1", mode: "alpha-paper-only", real_value: false, venue_mode: venueMode, mcp: publicMcp });
           return;
         }
 

@@ -130,7 +130,7 @@ async function identity() {
   try {
     const tx = db.transaction(IDENTITY_STORE, "readonly");
     const value = await request(tx.objectStore(IDENTITY_STORE).get(ACTIVE_ID));
-    if (!value?.did || !value?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required.", "Bu işlem için tarayıcıdaki FLOP kimliğin gerekli."));
+    if (!value?.did || !value?.privateKey) throw new Error(copy("A browser-owned Flop Proof identity is required.", "Bu işlem için tarayıcıdaki Flop Proof kimliğin gerekli."));
     parseEd25519DidKey(value.did);
     return value;
   } finally { db.close(); }
@@ -487,7 +487,7 @@ function verifyingPanel() {
         <span class="packet back"></span><span class="packet back"></span><span class="packet back"></span>
       </div>
       <div class="tclk-verify-node node-verifier">
-        <span class="node-kicker">FLOP</span>
+        <span class="node-kicker">FLOP PROOF</span>
         <span class="node-title">${copy("VERIFIER", "DOĞRULAYICI")}</span>
         <span class="node-count"></span>
       </div>

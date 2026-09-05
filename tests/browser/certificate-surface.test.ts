@@ -34,7 +34,7 @@ describe("certificate page is capability aware for Capabilities 1-4", () => {
     });
   }
 
-  it("never claims general intelligence, benchmark superiority or execution outside FLOP", () => {
+  it("never claims general intelligence, benchmark superiority or execution outside Flop Proof", () => {
     const lowered = certificateJs.toLowerCase();
     for (const phrase of ["general intelligence", "genel zekâ", "any environment", "all agents", "benchmark"]) {
       expect(lowered).not.toContain(phrase.toLowerCase());
@@ -102,7 +102,7 @@ describe("completed proof and live verification are explicitly different experie
   it("uses the same single scene to explain execution, verification and proof portability", () => {
     expect(ceremonyJs).toContain('title: copy("Agent Core", "Ajan Core")');
     expect(ceremonyJs).toContain('title: copy("Independent verifier", "Bağımsız verifier")');
-    expect(ceremonyJs).toContain('copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")');
+    expect(ceremonyJs).toContain('copy("STAYS INSIDE FLOP PROOF", "FLOP PROOF İÇİNDE KALIR")');
     expect(ceremonyJs).toContain('copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")');
     expect(ceremonyJs).toContain("DID · Certificate · Receipt · Public proof");
   });

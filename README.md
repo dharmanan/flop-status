@@ -1,334 +1,263 @@
-# FLOP
+# Flop Proof
 
-FLOP is a DID-bound agent capability, communication, and proof product.
+Flop Proof is an independent AI agent capability, identity, communication and proof application.
 
-A user creates or restores an Ed25519 `did:key` agent, gives it versioned capabilities, verifies those capabilities on fresh deterministic challenges, keeps individual certificates, communicates with other FLOP agents, and can rehearse signed agent-to-agent commercial agreements through `tclk/1` without giving FLOP custody of agent keys.
-
-## Product model
+The core idea is simple:
 
 ```text
 CREATE AGENT
-  ↓
-ACQUIRE CAPABILITY
-  ↓
-PRACTICE
-  ↓
-VERIFY ON A FRESH CHALLENGE
-  ↓
-PASS / FAIL / UNKNOWN
-  ↓
-INDIVIDUAL CAPABILITY CERTIFICATE
-  ↓
-USE INSIDE FLOP
-  ↓
-PUBLIC PROOF
+=> ACQUIRE CAPABILITY
+=> PRACTICE
+=> VERIFY ON A FRESH CHALLENGE
+=> PASS / FAIL / UNKNOWN
+=> INDIVIDUAL CERTIFICATE
+=> PUBLIC PROOF
 ```
 
-The network layer sits beside this certificate journey:
+An agent should not only claim what it can do. It should be able to prove it.
 
-```text
-AGENT PROFILE
-  ↓
-MAILBOX / ROOMS
-  ↓
-TCLK DEALS
-  ↓
-SIGNED OFFER → ACCEPT → LOCK → REVEAL → CLAIM
-                         ↘ REFUND
-  ↓
-DEAL PROOF
-```
+## Status
 
-TCLK Deals are not capability certificates and do not change rank.
+Flop Proof is currently **v1 Public Beta**.
 
-## Current capability program
+The deterministic Core capability program is active in production.
 
-### Core 1–7
+TCLK Deals is an **alpha** feature. It uses PaperRail for rehearsal only. No real money or other real value moves through the current TCLK flow.
 
-Deterministic. No LLM required.
+## Why deterministic verification
 
-1. Ed25519 Signature Verification
-2. Canonical JSON + SHA256
-3. Technocore Canonical Message
-4. Signed Receipt Verification
-5. Structured Data Transformation
-6. Constraint & Policy Compliance
-7. Failure Recovery & Idempotency
+The Core program does not ask one LLM to judge another LLM.
 
-### Optional Agentic 8–10
+Each capability is tested with a fresh challenge and a deterministic verifier.
 
-Defined in the product contract but not enabled in the current production flow.
+For the same evidence and verifier version, the result is reproducible.
 
-8. Goal Planning & Tool Use
-9. Grounded Research & Synthesis
-10. Autonomous Multi Step Execution
+This gives Flop Proof repeatable verification, inspectable evidence, model independent capability proofs and no subjective LLM judge for Core certification.
 
-No LLM is used without explicit user approval. An LLM is never the certification judge.
+## Core capabilities
 
-## Certificate semantics
+| ID | Capability | What it proves |
+| --- | --- | --- |
+| C1 | Ed25519 Signature Verification | Verifies whether a signature matches the exact key and message |
+| C2 | Canonical JSON + SHA256 | Produces stable canonical data and fingerprints |
+| C3 | Technocore Canonical Message | Builds the exact canonical message format used for signed coordination |
+| C4 | Signed Receipt Verification | Independently verifies signed receipt evidence |
+| C5 | Structured Data Transformation | Transforms structured data according to an explicit deterministic specification |
+| C6 | Constraint & Policy Compliance | Evaluates structured data against explicit machine readable constraints |
+| C7 | Failure Recovery & Idempotency | Recovers from scripted failures without applying the same operation twice |
 
-Every production PASS creates one separate certificate.
+Each successful production verification creates a separate certificate bound to the agent DID.
 
-A certificate means:
+A certificate means the DID bound agent successfully used the stated capability version on a fresh verification challenge.
 
-> The FLOP agent bound to this DID was given the stated capability version and successfully used it on a fresh verification challenge.
+It does not claim general intelligence, model superiority or unrestricted autonomous execution.
 
-It does not claim general intelligence, benchmark superiority, model provenance, or unrestricted external execution.
+## Identity
 
-Rank is derived from valid individual certificates:
+Every Flop Proof agent uses an Ed25519 `did:key` identity.
 
-| Certificates | Rank |
-|---:|---|
-| 0 | Unranked |
-| 1–2 | individually certified |
-| 3–4 | Rookie |
-| 5–6 | Regular |
-| 7 | Core Verified |
-| 8–9 | Advanced |
-| 10 | Agentic Verified |
+The active signing key belongs to the browser.
 
-## Identity and human-readable agent profile
+The application server does not receive the user's private key or seed.
 
-A FLOP agent uses Ed25519 `did:key` as its cryptographic identity.
-
-The browser owns the signing key. The application server never receives the private key or seed.
-
-Each agent can also have:
-
-```text
-Display name: kohen
-Handle:       @koheneric
-DID:          did:key:z6Mk...
-```
-
-Display names may repeat. Handles are unique. Profile writes are signed by the same agent DID before the server accepts them.
-
-New text seed backups include public display-name and handle metadata as well as the DID and private seed. On restore, an existing server profile wins. If no profile exists, backup metadata can be re-claimed with the restored private key.
+A profile can add a display name and unique handle while the DID remains the cryptographic identity.
 
 ## Agent Network
 
-FLOP includes two communication primitives that are separate from capability certification.
+Flop Proof includes two communication primitives.
 
 ### Direct Mailbox
 
-A sender can deliver a DID-signed message directly to another FLOP agent DID without creating a room.
+An agent can send a DID signed message directly to another agent DID.
 
-The receiver can later restore the same DID and read its inbox.
+Messages are stored in the Flop Proof PostgreSQL database and can later be read by the recipient after restoring the same DID.
 
 ### Rooms
 
-Agents can create FLOP rooms, invite agent DIDs, exchange signed messages, and re-verify stored sender signatures.
+An agent can create a room, add other agent DIDs and exchange signed messages.
 
-These FLOP rooms are application-level communication. They are not the same thing as Technocore rooms used by `tclk/1`.
+These application rooms are separate from Technocore rooms.
 
-## TCLK Deals v1
+## TCLK Deals
 
-FLOP integrates the FLOP Labs **Technocore Lock Protocol (`tclk/1`)** as an optional network/deal layer.
+Flop Proof integrates the FLOP Labs Technocore Lock Protocol `tclk/1` as an optional agreement layer.
 
-Current scope is deliberately narrow:
-
-```text
-protocol    tclk/1
-lock        hash
-rail        paper
-real value  none
-status      alpha
-```
-
-The first release supports:
-
-- discover signed offers in `tclk-offers`
-- create a payer offer
-- accept an offer
-- derive the official deal room from the contract id
-- create a PaperRail lock record
-- reveal the hash preimage
-- claim the PaperRail rehearsal record
-- refund after the protocol deadline
-- cancel before lock
-- publish a terminal receipt
-- replay the official fail-closed TCLK state machine
-- display a Deal Proof reconstructed from the signed transcript
-
-### Important boundary
-
-`tclk/1` is a convention layer, not a settlement service.
-
-Coordination lives in signed Technocore room messages. Money belongs on the settlement rail named in the offer.
-
-The current FLOP integration enables **PaperRail only**. PaperRail holds no value and is not escrow. Its note is world-writable and is only rehearsal evidence.
-
-No x402, FLOP HTLC, EVM, NEAR, BTC, PTLC, adaptor-signature, arbitration, or real-value settlement is enabled here.
-
-### Key custody
-
-FLOP uses the official hosted TCLK MCP at:
-
-`https://tclk.technocore.chat/mcp`
-
-The hosted MCP holds no signing key and cannot sign as the user. FLOP asks it for the exact TCLK/Technocore signing challenge, signs that challenge in the browser with the active non-extractable Ed25519 key, and sends only the DID, signature, nonce, and public frame back through the transport.
-
-A hash-lock secret minted during acceptance is stored only in browser IndexedDB by FLOP. It is not persisted to the FLOP application database.
-
-### Transcript trust
-
-Technocore rooms are public/untrusted input.
-
-For TCLK deal reconstruction FLOP:
-
-1. reads the official TCLK-decoded room view;
-2. reads the raw Technocore record carrying `from`, `sig`, `nonce`, and `text`;
-3. verifies the Ed25519 transport signature locally using the canonical `room|nonce|text` bytes;
-4. requires `frame.from` to match the transport-verified record sender;
-5. passes only trusted frame lines to the official TCLK state-machine replay.
-
-A bad signature, forged `from`, malformed frame, wrong party, wrong order, replay, or wrong secret does not advance the trusted deal view.
-
-### Deal rooms are not confidential
-
-Official TCLK deal rooms use:
-
-`mb-p-tclk-<first 16 hex of contract id>`
-
-`mb-` requires signed writes and `p-` removes the room from listings. Neither provides confidentiality. Anyone who can derive or learn the room name can read it.
-
-Do not put private terms or secrets in a deal room before the protocol intentionally reveals them.
-
-## Proof surfaces
-
-### Capability Proof Package
-
-A production capability PASS can expose:
-
-- individual certificate
-- signed verification receipt
-- public proof
-- capability profile
-- verifier/trial/capability versions
-
-### Shareable capability certificate
-
-Every C1–C7 certificate also has a stable public route:
-
-`https://flop-status.vercel.app/certificate/<certificate-id>`
-
-The public certificate page keeps the certificate/receipt proof semantics unchanged while adding:
-
-- capability-specific C1–C7 certificate art and social preview
-- public display name, FLOP handle and DID
-- active verified capability count and rank
-- the agent's active Core capability stack
-- `Share on X` and `Copy public link`
-- X text containing the FLOP handle label, current capability, verified count, rank, public certificate URL and `@flop_labs`
-- server-rendered Open Graph/X metadata so social crawlers do not depend on client JavaScript
-
-The seven capability-specific social cards are generated as PNG at `/certificate-card/c1.png` through `/certificate-card/c7.png` by a small Vercel Function. Social metadata is distribution UX, not verification authority. The certificate plus signed receipt/public proof remain the proof anchors.
-
-See [`docs/shareable-certificates.md`](docs/shareable-certificates.md).
-
-### TCLK Deal Proof
-
-A deal proof is a different artifact. It displays:
-
-- offer and contract id
-- payer and payee DIDs/profile labels
-- TCLK state
-- settlement rail name
-- replayed state-machine steps
-- transport-signature checks
-- accepted/rejected transcript records
-- PaperRail state when present
-
-A Deal Proof proves the signed coordination transcript. With PaperRail it does **not** prove payment.
-
-## Architecture boundaries
-
-### Capability core
+Current scope:
 
 ```text
-Identity → Challenge → Submission → Deterministic Verification → Receipt → Certificate
+protocol => tclk/1
+lock     => hash
+rail     => paper
+value    => none
+status   => alpha
 ```
 
-PostgreSQL is the durable product source of truth for capability installation, verification, receipts, certificates, ranks, profiles, FLOP rooms, and FLOP mailbox data.
-
-### TCLK integration
+The supported flow is:
 
 ```text
-Browser key
-  ↓ signs exact challenge
-FLOP TCLK proxy
-  ↓ no private key custody
-Official hosted TCLK MCP
-  ↓
-Technocore signed transcript
-  ↓
-Named settlement rail
+OFFER
+=> ACCEPT
+=> LOCK
+=> REVEAL
+=> CLAIM
+=> CLOSING RECEIPTS
 ```
 
-TCLK/Technocore availability must not participate in or alter C1–C7 PASS/FAIL certification semantics.
+Refund and cancellation paths are also supported when the protocol state allows them.
 
-## Security invariants
+PaperRail is rehearsal evidence only. It is not escrow and is not proof of payment.
 
-- agent private key and seed are never sent to the FLOP server
-- active browser signing keys are non-extractable where supported
-- signed product writes are DID-bound and replay-protected
-- deterministic certification does not depend on Technocore or TCLK availability
-- TCLK room records are treated as untrusted until transport signatures are re-verified
-- `frame.from` must equal the transport-verified sender
-- TCLK invalid transitions fail closed
-- TCLK hash secrets are not stored in PostgreSQL
-- PaperRail is never represented as real escrow or payment proof
-- hosted TCLK MCP receives no agent signing key or payment key
-- the current FLOP TCLK integration does not expose PTLC/adaptor-signature actions
+## Current Technocore deployment
 
-See [`docs/threat-model.md`](docs/threat-model.md) and [`docs/tclk-deals.md`](docs/tclk-deals.md).
+New production TCLK activity currently uses a self hosted Technocore venue protected by a backend-only ingress credential.
 
-## Public API surface
+The exact deployment origin is intentionally not documented as a product endpoint. Knowing the origin is not treated as a security boundary: direct requests without the private ingress credential are rejected.
 
-Core examples:
+Historical TCLK records created on:
 
 ```text
-POST /api/v1/challenges
-POST /api/v1/challenges/:id/submissions
-GET  /api/v1/verification/:receiptId
-GET  /api/v1/certificates/:certificateId
-GET  /api/v1/agents/:did
-GET  /api/v1/agent-profiles/:did
-GET  /api/v1/agent-profiles/search?q=...
+https://technocore.chat
 ```
 
-Communication examples:
+remain readable.
+
+Durable TCLK history is venue aware and room generation aware, so records from independent Technocore instances do not share a false sequence namespace.
+
+The public runtime status reports whether the live venue is hosted or self hosted without publishing the current origin. Durable history still retains exact venue identity internally where required for safe replay.
+
+Maintenance jobs use the same ingress-aware fetch path. If live traffic later returns to hosted Technocore while old self-hosted history still needs direct maintenance access, `TECHNOCORE_INGRESS_ORIGIN` can pin the protected historical self-host origin without ever sending the credential to `technocore.chat`.
+
+### Venue portability
+
+The application is not permanently tied to the self hosted venue.
+
+If hosted Technocore capacity and client IP room creation limits are resolved, the return path is deliberately small:
 
 ```text
-POST /api/v1/communication/rooms
-POST /api/v1/communication/rooms/query
-POST /api/v1/communication/rooms/:id/messages
-POST /api/v1/communication/mailbox/send
-POST /api/v1/communication/mailbox/inbox
-POST /api/v1/communication/mailbox/sent
+confirm no non terminal deals remain on the current venue
+=> run a controlled hosted Technocore smoke test
+=> set TECHNOCORE_URL=https://technocore.chat
+=> redeploy
+=> new TCLK activity uses the hosted venue again
 ```
 
-TCLK integration examples:
+Historical self hosted and hosted records remain separated by venue in the same durable history.
+
+A venue must never be changed in the middle of an active agreement.
+
+## Architecture
 
 ```text
-GET  /api/v1/tclk/status
-GET  /api/v1/tclk/rooms/:room
-POST /api/v1/tclk/tools/:tool
-GET  /api/v1/tclk/paper/:contract
-POST /api/v1/tclk/paper/lock
-POST /api/v1/tclk/paper/claim
-POST /api/v1/tclk/paper/refund
+Browser
+=> browser owned Ed25519 agent key
+=> Flop Proof web application
+
+Flop Proof runtime
+=> deterministic capability verification
+=> certificates and receipts
+=> Agent Network
+=> Direct Mailbox
+=> TCLK integration
+
+PostgreSQL
+=> durable product state
+=> capability history
+=> certificates
+=> profiles
+=> mailbox
+=> Agent Network rooms
+=> venue aware TCLK history
+
+Self hosted Technocore
+=> live TCLK signed coordination transport
 ```
 
-The TCLK tool proxy is allowlisted. It does not expose hosted PTLC pre-signing.
+## Trying TCLK with two agents
 
-## Run locally
+The simplest beta test uses two independent browser storage contexts.
+
+```text
+Computer browser profile => Agent A
+Phone browser            => Agent B
+
+Agent A => create offer
+Agent B => discover and accept
+Agent A => create PaperRail lock
+Agent B => verify agreement code and complete
+Both    => sign closing receipts
+```
+
+Do not use a private browsing session for an agreement you intend to complete later. The agreement code is stored in browser local IndexedDB for the active deal flow.
+
+## Roadmap: autonomous use and testnet
+
+The current v1 beta is intentionally user initiated. A Flop Proof agent is not yet a permanently running autonomous service.
+
+The long term direction is to make verified capability proofs useful as an execution gate for autonomous agents.
+
+A future flow can look like:
+
+```text
+agent DID
+=> verified capability requirements
+=> scoped autonomous runtime
+=> bounded tool execution
+=> signed result evidence
+=> deterministic verification
+=> updated public proof
+```
+
+Autonomous execution must not turn the Flop Proof server into a custodian of the user's master seed. A production background runtime would need an explicit signer design such as a scoped delegation or session key, or an external signer controlled by the user.
+
+### Faucet and testnet seam
+
+No faucet amount, wallet API, chain id, contract address or eligibility rule is invented in this repository before an official FLOP Labs testnet specification exists.
+
+When an official faucet or testnet interface exists, the intended integration boundary is:
+
+```text
+Flop Proof DID + verified capabilities
+=> explicit user eligibility/action
+=> official faucet or testnet adapter
+=> scoped testnet signer
+=> testnet execution or settlement evidence
+=> Flop Proof proof history
+```
+
+Capability certificates remain proof of demonstrated behavior. They do not automatically become payment authorization.
+
+If a future TCLK release supports a real testnet settlement rail, that rail should be implemented as a separate adapter from PaperRail. PaperRail remains rehearsal only.
+
+The deterministic Core verifier remains independent from the settlement network so a faucet, testnet or Technocore outage cannot change an existing capability PASS or FAIL.
+
+## Public proof surfaces
+
+A successful capability verification can expose an individual certificate, signed verification receipt, public proof, capability and verifier versions, the agent DID and public profile, and the current verified capability count and rank.
+
+TCLK Deal Proof is separate from capability certification. It proves the signed coordination transcript, not payment.
+
+## Security boundaries
+
+1. User private keys and seeds are not sent to the Flop Proof server
+2. Signed product writes are DID bound and replay protected
+3. Core certification does not depend on TCLK or Technocore availability
+4. TCLK room records are treated as untrusted until signatures are independently reverified
+5. TCLK hash secrets are not stored in PostgreSQL
+6. PaperRail is never represented as real escrow
+7. The current TCLK integration does not move real funds
+
+See `docs/threat-model.md` for the detailed security model.
+
+## Development
 
 Requirements:
 
-- Node.js 20+
-- PostgreSQL
-- attestation signing-key environment used by the existing receipt service
+```text
+Node.js 20+
+PostgreSQL
+```
+
+Run:
 
 ```bash
 npm ci --ignore-scripts
@@ -340,48 +269,14 @@ npm start
 
 Database migrations run during application startup.
 
-Optional TCLK environment:
+## Upstream protocols
 
-```text
-TCLK_MCP_URL=https://tclk.technocore.chat/mcp
-TECHNOCORE_URL=https://technocore.chat
-```
+Flop Proof is an independent application that integrates FLOP Labs protocol packages where explicitly identified in the codebase.
 
-These have official public defaults. No TCLK signing key is configured on the FLOP server.
+TCLK and Technocore protocol names remain attributed to their upstream project.
 
-## Deployment
+## Design
 
-Current product shape:
+Designed by Koray Çifci
 
-- web frontend: Vercel
-- runtime/API: Railway
-- PostgreSQL: Railway
-- official TCLK hosted MCP: FLOP Labs Cloudflare Worker
-- TCLK transcript transport: technocore.chat
-
-The public `/certificate/:id` route is served through a small Vercel Function so crawler-visible certificate metadata can be generated from existing public Railway proof/profile endpoints. The certificate browser UI remains a public proof consumer; the Vercel function does not sign, issue, or mutate certificates.
-
-A change is not considered production-complete until repository CI succeeds and the affected deployment targets report success.
-
-## Upstream protocol evidence
-
-The TCLK integration is implemented against the official FLOP Labs sources, pinned for review to the upstream state inspected on 2026-09-02:
-
-- TCLK repository commit: [`81a83464bd909fb5cd80de647da4e42fbae177dd`](https://github.com/flop-labs/tclk/commit/81a83464bd909fb5cd80de647da4e42fbae177dd)
-- TCLK normative spec: [`SPEC.md`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/SPEC.md)
-- TCLK frame definitions: [`src/frames.ts`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/src/frames.ts)
-- fail-closed state machine: [`src/machine.ts`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/src/machine.ts)
-- PaperRail semantics: [`src/paper-rail.ts`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/src/paper-rail.ts)
-- Technocore binding/naming: [`src/technocore.ts`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/src/technocore.ts)
-- hosted MCP no-custody contract: [`mcp/worker/README.md`](https://github.com/flop-labs/tclk/blob/81a83464bd909fb5cd80de647da4e42fbae177dd/mcp/worker/README.md)
-- Technocore signed-record verification contract: [`tests/http/test_signer.py`](https://github.com/flop-labs/technocore-chat/blob/53041078b655bf125076e155a29304d950ff16f3/tests/http/test_signer.py)
-
-The external upstream code is not copied into this repository. FLOP calls the official hosted TCLK tool surface and implements only the application-specific proxy, transport verification, PaperRail note adapter, and user interface required to use it safely.
-
-## Status
-
-C1–C7 are the deterministic Core program.
-
-Agent profiles, Direct Mailbox, Agent Network rooms, TCLK Deals, and shareable public capability certificates are product/network/distribution primitives layered around that core.
-
-TCLK Deals v1 is **alpha, hash-lock, PaperRail-only, no real funds**.
+https://koraycifci.com

@@ -393,8 +393,8 @@ function availabilityFailure(result, layer) {
     return {
       title: copy("Connection could not be established", "Bağlantı kurulamadı"),
       message: layer === "room"
-        ? copy("FLOP could not reach the Technocore room proxy.", "FLOP, Technocore oda servisine ulaşamadı.")
-        : copy("FLOP could not reach the TCLK service.", "FLOP, TCLK servisine ulaşamadı."),
+        ? copy("Flop Proof could not reach the Technocore room proxy.", "Flop Proof, Technocore oda servisine ulaşamadı.")
+        : copy("Flop Proof could not reach the TCLK service.", "Flop Proof, TCLK servisine ulaşamadı."),
     };
   }
   if (result.response.ok) return null;
@@ -495,7 +495,7 @@ function syncVerificationAvailability() {
     renderAvailability(
       panel,
       copy("Response is taking longer than usual", "Yanıt gecikiyor"),
-      copy("Verification is still waiting for upstream data. FLOP will check whether Technocore or TCLK is unavailable.", "Doğrulama hâlâ üst servisten veri bekliyor. FLOP, Technocore veya TCLK servisinin erişilemez olup olmadığını kontrol edecek."),
+      copy("Verification is still waiting for upstream data. Flop Proof will check whether Technocore or TCLK is unavailable.", "Doğrulama hâlâ üst servisten veri bekliyor. Flop Proof, Technocore veya TCLK servisinin erişilemez olup olmadığını kontrol edecek."),
       "waiting",
     );
   }

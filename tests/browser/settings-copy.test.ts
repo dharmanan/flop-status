@@ -6,7 +6,7 @@ describe("settings custody copy", () => {
     const text = settingsCustodyCopy("tr");
     expect(text).toContain("Aktif imzalama anahtarı");
     expect(text).toContain("IndexedDB");
-    expect(text).toContain("FLOP değil");
+    expect(text).toContain("Flop Proof değil");
     expect(text).not.toContain("signing key");
   });
 });

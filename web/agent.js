@@ -101,8 +101,8 @@ const CAPABILITIES = [
       tr: "Ed25519 İmza Doğrulama Sertifikası",
     },
     purpose: {
-      en: "Checks whether a digital signature really belongs to the supplied key and message. Used inside FLOP to verify signed data and identity proofs.",
-      tr: "Dijital imzaların gerçekten doğru anahtar ve mesaja ait olup olmadığını kontrol eder. FLOP içinde imzalı veri ve kimlik kanıtlarını doğrulamak için kullanılır.",
+      en: "Checks whether a digital signature really belongs to the supplied key and message. Used inside Flop Proof to verify signed data and identity proofs.",
+      tr: "Dijital imzaların gerçekten doğru anahtar ve mesaja ait olup olmadığını kontrol eder. Flop Proof içinde imzalı veri ve kimlik kanıtlarını doğrulamak için kullanılır.",
     },
     execute: executeEd25519SignatureVerification,
     createPracticeFixture: createCapability1PracticeFixture,
@@ -188,8 +188,8 @@ const CAPABILITIES = [
       tr: "İmzalı Receipt Doğrulama Sertifikası",
     },
     purpose: {
-      en: "Checks whether FLOP signed receipts and capability evidence are authentic. This allows certificates and proofs to be independently checked for tampering or forgery.",
-      tr: "FLOP tarafından imzalanmış receipt ve capability kanıtlarının gerçekten geçerli olup olmadığını kontrol eder. Böylece bir sertifika veya kanıtın sahte ya da değiştirilmiş olup olmadığı bağımsız olarak anlaşılabilir.",
+      en: "Checks whether Flop Proof signed receipts and capability evidence are authentic. This allows certificates and proofs to be independently checked for tampering or forgery.",
+      tr: "Flop Proof tarafından imzalanmış receipt ve capability kanıtlarının gerçekten geçerli olup olmadığını kontrol eder. Böylece bir sertifika veya kanıtın sahte ya da değiştirilmiş olup olmadığı bağımsız olarak anlaşılabilir.",
     },
     execute: executeSignedReceiptVerification,
     createPracticeFixture: createCapability4PracticeFixture,
@@ -275,8 +275,8 @@ const CAPABILITIES = [
       tr: "Hata Kurtarma ve İdempotentlik Sertifikası",
     },
     purpose: {
-      en: "Recovers safely from a scripted transient failure and applies a retryable operation exactly once, even when the same delivery is repeated. Not autonomous planning or distributed consensus — a bounded, deterministic simulation inside FLOP.",
-      tr: "Senaryolanmış geçici bir hatadan güvenle kurtulur ve aynı teslimat tekrarlansa bile yeniden denenebilir bir işlemi tam olarak bir kez uygular. Otonom planlama veya dağıtık konsensüs değildir — FLOP içinde sınırlı, deterministik bir simülasyondur.",
+      en: "Recovers safely from a scripted transient failure and applies a retryable operation exactly once, even when the same delivery is repeated. Not autonomous planning or distributed consensus — a bounded, deterministic simulation inside Flop Proof.",
+      tr: "Senaryolanmış geçici bir hatadan güvenle kurtulur ve aynı teslimat tekrarlansa bile yeniden denenebilir bir işlemi tam olarak bir kez uygular. Otonom planlama veya dağıtık konsensüs değildir — Flop Proof içinde sınırlı, deterministik bir simülasyondur.",
     },
     execute: executeFailureRecoveryIdempotency,
     createPracticeFixture: createCapability7PracticeFixture,
@@ -476,8 +476,8 @@ function renderOneCapability(config) {
     );
   } else if (certified) {
     description.textContent = uiText(
-      `Capability ${config.number} is certified and ready to use inside FLOP.`,
-      `Yetenek ${config.number} sertifikalı ve FLOP içinde kullanıma hazır.`,
+      `Capability ${config.number} is certified and ready to use inside Flop Proof.`,
+      `Yetenek ${config.number} sertifikalı ve Flop Proof içinde kullanıma hazır.`,
     );
   } else if (installed) {
     description.textContent = uiText(
@@ -835,7 +835,7 @@ async function certifyCapability(number) {
     flow.complete("sign", { en: "The result was signed with this agent's own DID key.", tr: "Sonuç bu ajanın kendi DID anahtarı ile imzalandı." });
 
     flow.begin("verify");
-    setOperation(uiText("FLOP is verifying the result…", "Sonuç FLOP tarafından doğrulanıyor…"));
+    setOperation(uiText("Flop Proof is verifying the result…", "Sonuç Flop Proof tarafından doğrulanıyor…"));
     let submitted;
     try {
       submitted = await jsonRequest(`/api/v1/challenges/${challenge.challenge_id}/submissions`, {
@@ -851,7 +851,7 @@ async function certifyCapability(number) {
       // infrastructure state, never a capability failure, so it gets its own
       // visual state instead of being shown as FAIL.
       if (error instanceof Error && error.message === "VERIFICATION_UNKNOWN") {
-        const unknownSummary = { en: "FLOP could not complete verification. This is an infrastructure state, not a capability failure.", tr: "FLOP doğrulamayı tamamlayamadı. Bu bir altyapı durumudur, yetenek başarısızlığı değildir." };
+        const unknownSummary = { en: "Flop Proof could not complete verification. This is an infrastructure state, not a capability failure.", tr: "Flop Proof doğrulamayı tamamlayamadı. Bu bir altyapı durumudur, yetenek başarısızlığı değildir." };
         flow.unknown("verify", unknownSummary);
         flow.unknown("verdict", { en: "UNKNOWN — no verdict was recorded.", tr: "UNKNOWN — sonuç kaydedilmedi." });
         setOperation(uiText("UNKNOWN. Try again later.", "UNKNOWN. Daha sonra tekrar dene."));
@@ -862,7 +862,7 @@ async function certifyCapability(number) {
       throw error;
     }
 
-    flow.complete("verify", { en: "FLOP recomputed the expected answer independently and compared it.", tr: "FLOP beklenen cevabı bağımsız olarak yeniden hesapladı ve karşılaştırdı." });
+    flow.complete("verify", { en: "Flop Proof recomputed the expected answer independently and compared it.", tr: "Flop Proof beklenen cevabı bağımsız olarak yeniden hesapladı ve karşılaştırdı." });
 
     if (submitted.verdict !== "PASS") {
       flow.fail("verdict", { en: "FAIL — the answers did not match. No certificate was issued.", tr: "FAIL — sonuçlar eşleşmedi. Sertifika verilmedi." });

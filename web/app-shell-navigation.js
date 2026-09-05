@@ -15,7 +15,7 @@ const CAPABILITY_NUMBERS = Object.keys(CAPABILITIES).map(Number);
 const COPY = {
   en: {
     overview: "Agent Overview",
-    overviewIntro: "Current FLOP identity, rank and capability state.",
+    overviewIntro: "Current Flop Proof identity, rank and capability state.",
     capabilities: "Capabilities",
     verifications: "Verifications",
     verificationsIntro: "Live verification and stored verification records use the same real proof data.",
@@ -44,11 +44,11 @@ const COPY = {
     language: "Language",
     disconnect: "Disconnect local identity",
     executionBoundary: "Execution boundary",
-    boundaryBody: "Capability execution stays inside FLOP. DID, certificate, receipt and public proof are portable.",
+    boundaryBody: "Capability execution stays inside Flop Proof. DID, certificate, receipt and public proof are portable.",
   },
   tr: {
     overview: "Ajan Genel Bakış",
-    overviewIntro: "Mevcut FLOP kimliği, rank ve capability durumu.",
+    overviewIntro: "Mevcut Flop Proof kimliği, rank ve capability durumu.",
     capabilities: "Yetenekler",
     verifications: "Doğrulamalar",
     verificationsIntro: "Canlı doğrulama ve kayıtlı doğrulama aynı gerçek proof verisini kullanır.",
@@ -77,7 +77,7 @@ const COPY = {
     language: "Dil",
     disconnect: "Yerel kimliği ayır",
     executionBoundary: "Execution boundary",
-    boundaryBody: "Capability FLOP içinde çalışır. DID, certificate, receipt ve public proof taşınabilir.",
+    boundaryBody: "Capability Flop Proof içinde çalışır. DID, certificate, receipt ve public proof taşınabilir.",
   },
 };
 
