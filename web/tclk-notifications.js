@@ -1,6 +1,6 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-accept-notifications-v1:";
-const POLL_MS = 25_000;
+const STORAGE_PREFIX = "flop-tclk-accept-notifications-v2:";
+const POLL_MS = 10_000;
 
 let activeDid = "";
 let polling = false;
@@ -27,17 +27,16 @@ function storageKey(did) {
 function loadState(did) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.seen)) return { version: 1, initialized: false, seen: [] };
-    return { version: 1, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
+    if (!parsed || parsed.version !== 2 || !Array.isArray(parsed.seen)) return { version: 2, seen: [] };
+    return { version: 2, seen: parsed.seen.filter((value) => typeof value === "string") };
   } catch {
-    return { version: 1, initialized: false, seen: [] };
+    return { version: 2, seen: [] };
   }
 }
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 1,
-    initialized: true,
+    version: 2,
     seen: Array.from(new Set(state.seen)).slice(-500),
   }));
 }
@@ -283,16 +282,6 @@ async function poll() {
   try {
     const deals = await fetchAccepted(did);
     const state = loadState(did);
-    const keys = deals.map(eventKey);
-
-    if (!state.initialized) {
-      state.seen.push(...keys);
-      saveState(did, state);
-      pending.clear();
-      updateBadge();
-      return;
-    }
-
     const seen = new Set(state.seen);
     pending = new Map(
       deals

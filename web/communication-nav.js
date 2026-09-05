@@ -1,6 +1,6 @@
 void import("/tclk-deals.js?v=tclk-deals-v1");
 void import("/tclk-profile-hint.js?v=tclk-deals-v1");
-void import("/tclk-notifications.js?v=tclk-notifications-v1");
+void import("/tclk-notifications.js?v=tclk-notifications-v2");
 void import("/mailbox-nav.js?v=direct-mailbox-v1");
 import { base64UrlToBytes, bytesToBase64Url, parseEd25519DidKey } from "/identity-crypto.js";
 import { ensureSidebarEntry } from "/sidebar-entry.js";
