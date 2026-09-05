@@ -1,4 +1,4 @@
-void import("/tclk-deals.js?v=tclk-deals-v4");
+void import("/tclk-deals.js?v=tclk-deals-v5");
 void import("/tclk-profile-hint.js?v=tclk-deals-v2");
 void import("/tclk-notifications.js?v=tclk-notifications-v10");
 void import("/mailbox-nav.js?v=direct-mailbox-v3");

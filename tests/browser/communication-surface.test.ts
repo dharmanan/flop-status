@@ -7,7 +7,7 @@ const navigation = readFileSync(new URL("../../web/app-shell-navigation.js", imp
 
 describe("Agent Network browser surface", () => {
   it("loads as a product/network workspace, not Capability 8", () => {
-    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v12")');
+    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v13")');
     expect(network).toContain("Agent Network");
     expect(network).not.toContain("Capability 8");
     expect(network).not.toContain("Goal Planning");

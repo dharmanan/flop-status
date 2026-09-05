@@ -729,10 +729,9 @@ function renderCreate() {
         <label>${copy("Job id", "İş kodu")}</label><input name="job" placeholder="task-001" maxlength="120">
         <label>${copy("Job context", "İş notu")}</label><input name="context" placeholder="${copy("optional reference", "isteğe bağlı kısa açıklama")}" maxlength="240">
         <div class="tclk-deadlines">
-          <label>${copy("Offer expires", "Teklif geçerlilik süresi")}<select name="expires"><option value="10">${minuteLabel(10)}</option><option value="30">${minuteLabel(30)}</option><option value="60">${minuteLabel(60)}</option></select></label>
-          <label>${copy("Safe claim", "Tamamlama son süresi")}<select name="claim"><option value="30">${minuteLabel(30)}</option><option value="60">${minuteLabel(60)}</option></select></label>
-          <label>${copy("Refund after", "Geri alma hakkı")}<select name="refund"><option value="60">${minuteLabel(60)}</option><option value="120">${minuteLabel(120)}</option></select></label>
+          <label>${copy("Offer duration", "Teklif süresi")}<select name="offerHours"><option value="1">${copy("1 hour", "1 saat")}</option><option value="6" selected>${copy("6 hours", "6 saat")}</option><option value="12">${copy("12 hours", "12 saat")}</option><option value="24">${copy("24 hours", "24 saat")}</option></select></label>
         </div>
+        <p class="tclk-deadline-note">${copy("After the offer window closes, there is a 2 hour completion window.", "Teklif süresi bittikten sonra tamamlamak için 2 saat ek süre vardır.")}</p>
         <button class="tclk-primary" type="submit">${copy("Sign & publish offer", "Teklifi imzala ve yayınla")}</button>
       </form>
     </section>`;
@@ -749,10 +748,11 @@ async function createOffer(form) {
     setStatus(copy("Preparing and signing the offer with TCLK…", "Teklif hazırlanıyor ve TCLK ile imzalanıyor…"), "working");
     const id = await identity();
     const now = Date.now();
-    const expires = Number(form.get("expires")) * 60_000;
-    const claim = Number(form.get("claim")) * 60_000;
-    const refund = Number(form.get("refund")) * 60_000;
-    if (!(expires < claim && claim < refund)) throw new Error(copy("Offer expiry must be before completion, and completion before refund.", "Teklif süresi, tamamlama son süresinden; tamamlama son süresi de geri alma süresinden kısa olmalı."));
+    const offerHours = Number(form.get("offerHours"));
+    if (![1, 6, 12, 24].includes(offerHours)) throw new Error(copy("Offer duration is invalid.", "Teklif süresi geçersiz."));
+    const expires = offerHours * 60 * 60_000;
+    const claim = expires + (2 * 60 * 60_000);
+    const refund = claim + (2 * 60 * 60_000);
     const jobId = String(form.get("job") ?? "").trim();
     const context = String(form.get("context") ?? "").trim();
     const built = await tool("tclk_make_offer", {

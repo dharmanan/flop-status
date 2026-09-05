@@ -8,7 +8,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
-    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v4")');
+    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v5")');
     expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v2")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
@@ -244,5 +244,20 @@ describe("TCLK accepted cancellation visibility", () => {
     expect(profileHint).toContain('button.hidden = false;');
     expect(profileHint).not.toContain("This accepted deal is being kept idle until the payer locks it");
     expect(profileHint).not.toContain("target.hidden = true");
+  });
+});
+
+
+describe("TCLK offer duration defaults", () => {
+  it("offers 1, 6, 12, and 24 hour visibility with 6 hours selected", () => {
+    expect(deals).toContain('<option value="1">');
+    expect(deals).toContain('<option value="6" selected>');
+    expect(deals).toContain('<option value="12">');
+    expect(deals).toContain('<option value="24">');
+  });
+
+  it("derives completion and refund windows from the offer duration", () => {
+    expect(deals).toContain('const claim = expires + (2 * 60 * 60_000);');
+    expect(deals).toContain('const refund = claim + (2 * 60 * 60_000);');
   });
 });

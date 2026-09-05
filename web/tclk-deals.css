@@ -217,7 +217,7 @@
 .tclk-create-form input,
 .tclk-create-form select,
 .tclk-secret-import input { width: 100%; box-sizing: border-box; min-height: 38px; padding: 9px 10px; border: 1px solid #30404c; border-radius: 7px; background: #080e13; color: #d9e1e8; }
-.tclk-deadlines { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 5px 0 8px; }
+.tclk-deadlines { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 5px 0 4px; }\n.tclk-deadline-note { margin: 0 0 8px; color: #798691; font-size: 11px; line-height: 1.45; }
 .tclk-deadlines label { display: grid; gap: 6px; }
 
 .tclk-back { margin-bottom: 12px; }
