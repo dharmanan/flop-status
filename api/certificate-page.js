@@ -7,8 +7,8 @@ import {
 } from "../web/certificate-share.js";
 
 const API_BASE = "https://flop-status-production.up.railway.app";
-const FALLBACK_TITLE = "FLOP Certificate";
-const FALLBACK_DESCRIPTION = "Public FLOP certificate. Open the proof page to inspect its current verification state.";
+const FALLBACK_TITLE = "Flop Proof Certificate";
+const FALLBACK_DESCRIPTION = "Public Flop Proof certificate. Open the proof page to inspect its current verification state.";
 const CERTIFICATE_TEMPLATE = readFileSync(new URL("../web/certificate.html", import.meta.url), "utf8");
 const CERTIFICATE_BODY = `<body${CERTIFICATE_TEMPLATE.split("<body")[1] ?? ""}`;
 
@@ -49,7 +49,7 @@ async function socialContext(certificateId) {
   const meta = capabilityShareMeta(certificate.capability_id);
   const certificateCount = Number(list?.certificate_count) || 1;
   const rank = rankName(list?.rank);
-  const title = `C${meta.ordinal} · ${meta.title.en} · FLOP`;
+  const title = `C${meta.ordinal} · ${meta.title.en} · Flop Proof`;
   const description = buildCertificateSocialDescription({
     capabilityId: certificate.capability_id,
     profile,
@@ -76,7 +76,7 @@ function pageHead(meta) {
   <meta name="description" content="${esc(meta.description)}">
   <link rel="canonical" href="${esc(meta.url)}">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="FLOP">
+  <meta property="og:site_name" content="Flop Proof">
   <meta property="og:url" content="${esc(meta.url)}">
   <meta property="og:title" content="${esc(meta.title)}">
   <meta property="og:description" content="${esc(meta.description)}">
@@ -86,7 +86,7 @@ function pageHead(meta) {
   <meta name="twitter:description" content="${esc(meta.description)}">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/certificate.css?v=shareable-certificates-v1">
-</head>`;
+  <link rel="icon" type="image/png" sizes="64x64" href="/koray-mark.png">\n</head>`;
 }
 
 export default async function handler(request, response) {
