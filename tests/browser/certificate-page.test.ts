@@ -64,9 +64,9 @@ describe("shareable certificate Vercel page", () => {
     expect(capture.html).not.toContain("summary_large_image");
     expect(capture.html).not.toContain("og:image");
     expect(capture.html).not.toContain("twitter:image");
-    expect(capture.html).toContain("C7 · Failure Recovery &amp; Idempotency · FLOP");
+    expect(capture.html).toContain("C7 · Failure Recovery &amp; Idempotency · Flop Proof");
     expect(capture.html).toContain("kohen");
-    expect(capture.html).toContain("FLOP: koheneric");
+    expect(capture.html).toContain("Flop Proof: koheneric");
     expect(capture.html).toContain("Core Verified");
     expect(capture.html).not.toContain("[object Object]");
     expect(capture.html).toContain(`/certificate/${certificateId}`);
@@ -78,7 +78,7 @@ describe("shareable certificate Vercel page", () => {
     await certificatePage({ query: { certificateId } }, capture.response);
 
     expect(capture.statusCode).toBe(200);
-    expect(capture.html).toContain("FLOP Certificate");
+    expect(capture.html).toContain("Flop Proof Certificate");
     expect(capture.html).toContain("current verification state");
     expect(capture.html).not.toContain("Verified Working Capability");
     expect(capture.html).not.toContain("summary_large_image");

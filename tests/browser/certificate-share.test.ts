@@ -40,8 +40,8 @@ describe("shareable capability certificates", () => {
       language: "tr",
       did: "did:key:z6Mkexample",
     });
-    expect(text).toContain("kohen, FLOP'ta C7");
-    expect(text).toContain("FLOP: koheneric");
+    expect(text).toContain("kohen, Flop Proof'ta C7");
+    expect(text).toContain("Flop Proof: koheneric");
     expect(text).toContain("Hata Kurtarma ve İdempotans");
     expect(text).toContain("7 doğrulanmış yetenek");
     expect(text).toContain("Core Verified");
@@ -61,7 +61,7 @@ describe("shareable capability certificates", () => {
       did: "did:key:z6Mkexample",
     });
     expect(description).toContain("kohen");
-    expect(description).toContain("FLOP: koheneric");
+    expect(description).toContain("Flop Proof: koheneric");
     expect(description).toContain("Core Verified");
     expect(description).not.toContain("[object Object]");
     expect(buildXIntentUrl("hello FLOP")).toContain("twitter.com/intent/tweet?text=");
