@@ -8,7 +8,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
-    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v2")');
+    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v3")');
     expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v1")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
