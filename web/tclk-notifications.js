@@ -1,5 +1,12 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-notifications-v6:";
+const STORAGE_PREFIX = "flop-tclk-notifications:";
+const STORAGE_SCHEMA = 1;
+const LEGACY_STORAGE_KEYS = [
+  "flop-tclk-notifications-v6:",
+  "flop-tclk-notifications-v5:",
+  "flop-tclk-accept-notifications-v4:",
+];
+const SUPPORTED_KINDS = ["accepted", "locked", "completed"];
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -57,21 +64,45 @@ function storageKey(did) {
   return STORAGE_PREFIX + did;
 }
 
+function cleanState(parsed) {
+  if (!parsed || !Array.isArray(parsed.seen)) return null;
+  return {
+    schema: STORAGE_SCHEMA,
+    initialized: parsed.initialized === true,
+    seen: parsed.seen.filter((value) => typeof value === "string"),
+    knownKinds: Array.isArray(parsed.knownKinds)
+      ? parsed.knownKinds.filter((value) => SUPPORTED_KINDS.includes(value))
+      : [...SUPPORTED_KINDS],
+  };
+}
+
 function loadState(did) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 6 || !Array.isArray(parsed.seen)) return { version: 6, initialized: false, seen: [] };
-    return { version: 6, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
-  } catch {
-    return { version: 6, initialized: false, seen: [] };
-  }
+    const current = cleanState(JSON.parse(localStorage.getItem(storageKey(did)) ?? "null"));
+    if (current) return current;
+
+    for (const prefix of LEGACY_STORAGE_KEYS) {
+      const legacy = cleanState(JSON.parse(localStorage.getItem(prefix + did) ?? "null"));
+      if (!legacy) continue;
+      saveState(did, legacy);
+      return legacy;
+    }
+  } catch {}
+
+  return {
+    schema: STORAGE_SCHEMA,
+    initialized: false,
+    seen: [],
+    knownKinds: [...SUPPORTED_KINDS],
+  };
 }
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 6,
+    schema: STORAGE_SCHEMA,
     initialized: state.initialized === true,
     seen: Array.from(new Set(state.seen)).slice(-500),
+    knownKinds: Array.from(new Set(state.knownKinds ?? [])).filter((value) => SUPPORTED_KINDS.includes(value)),
   }));
 }
 
@@ -402,16 +433,27 @@ async function poll() {
     const deals = await fetchNotifications(did);
     const state = loadState(did);
 
-    // First successful sync establishes a clean baseline for this DID.
-    // Historical accepted deals are not "new notifications".
+    // First successful sync establishes one durable baseline for this DID.
+    // Adding a new notification type later must not reset the whole baseline.
     if (!state.initialized) {
       state.initialized = true;
+      state.knownKinds = [...SUPPORTED_KINDS];
       state.seen.push(...deals.map(eventKey));
       saveState(did, state);
       pending.clear();
       announced.clear();
       updateBell();
       return;
+    }
+
+    // A newly introduced notification kind gets its own one-time baseline.
+    // Existing kinds keep their read/unread history untouched.
+    const knownKinds = new Set(state.knownKinds ?? []);
+    const newKinds = SUPPORTED_KINDS.filter((kind) => !knownKinds.has(kind));
+    if (newKinds.length) {
+      state.seen.push(...deals.filter((deal) => newKinds.includes(deal.notificationKind)).map(eventKey));
+      state.knownKinds = [...knownKinds, ...newKinds];
+      saveState(did, state);
     }
 
     const seen = new Set(state.seen);
