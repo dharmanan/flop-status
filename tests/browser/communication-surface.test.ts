@@ -7,7 +7,7 @@ const navigation = readFileSync(new URL("../../web/app-shell-navigation.js", imp
 
 describe("Agent Network browser surface", () => {
   it("loads as a product/network workspace, not Capability 8", () => {
-    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v8")');
+    expect(navigation).toContain('import("/communication-nav.js?v=agent-network-v9")');
     expect(network).toContain("Agent Network");
     expect(network).not.toContain("Capability 8");
     expect(network).not.toContain("Goal Planning");
@@ -86,5 +86,15 @@ describe("TCLK closure notification mailbox isolation", () => {
   it("keeps internal closure events out of the visible mailbox", () => {
     expect(mailbox).toContain('const TCLK_CLOSURE_EVENT_PREFIX="flop:event:tclk-closure:v1:"');
     expect(mailbox).toContain('.filter((message)=>!String(message.rawText??"").startsWith(TCLK_CLOSURE_EVENT_PREFIX))');
+  });
+});
+
+
+describe("TCLK notification deep link", () => {
+  it("waits for the exact deal card by offer and contract identity", () => {
+    const notifications = readFileSync(new URL("../../web/tclk-notifications.js", import.meta.url), "utf8");
+    expect(notifications).toContain("OPEN_DEAL_WAIT_LIMIT_MS = 30_000");
+    expect(notifications).toContain('card.dataset.offerId !== offerId');
+    expect(notifications).toContain('card.dataset.contractId !== contractId');
   });
 });

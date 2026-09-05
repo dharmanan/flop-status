@@ -14,6 +14,8 @@ const LEGACY_STORAGE_KEYS = [
 ];
 const SUPPORTED_KINDS = ["accepted", "locked", "completed"];
 const POLL_MS = 10_000;
+const OPEN_DEAL_WAIT_STEP_MS = 250;
+const OPEN_DEAL_WAIT_LIMIT_MS = 30_000;
 
 let activeDid = "";
 let polling = false;
@@ -452,20 +454,28 @@ async function openDeal(deal, key, toast) {
   if (mine instanceof HTMLButtonElement) mine.click();
 
   const offerId = String(deal.offerId ?? "");
+  const contractId = String(deal.contractId ?? "");
   const start = Date.now();
   const findCard = () => {
-    const cards = Array.from(document.querySelectorAll(".tclk-workspace .tclk-deal-card"));
-    return cards.find((card) => card.dataset.offerId === offerId) ?? null;
+    const cards = Array.from(document.querySelectorAll(".tclk-workspace:not([hidden]) .tclk-deal-card"));
+    const matches = cards.filter((card) => {
+      if (card.dataset.offerId !== offerId) return false;
+      if (contractId && card.dataset.contractId !== contractId) return false;
+      return true;
+    });
+    return matches.length === 1 ? matches[0] : null;
   };
 
   let card = findCard();
-  while (!card && Date.now() - start < 6000) {
-    await new Promise((resolve) => setTimeout(resolve, 120));
+  while (!card && Date.now() - start < OPEN_DEAL_WAIT_LIMIT_MS) {
+    await new Promise((resolve) => setTimeout(resolve, OPEN_DEAL_WAIT_STEP_MS));
     card = findCard();
   }
   if (!card) return;
+
   card.scrollIntoView({ behavior: "smooth", block: "center" });
-  card.querySelector(".tclk-card-actions button")?.click();
+  const open = card.querySelector(".tclk-card-actions button");
+  if (open instanceof HTMLButtonElement) open.click();
 }
 
 async function renderPanel() {
