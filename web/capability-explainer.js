@@ -12,7 +12,7 @@ function loadProductShellStyle() {
 
 loadProductShellStyle();
 void import("/app-shell.js?v=workspace-shell-v3");
-void import("/app-shell-navigation.js?v=workspace-navigation-v2");
+void import("/app-shell-navigation.js?v=workspace-navigation-v3");
 
 const API_BASE = "https://flop-status-production.up.railway.app";
 const replayScenes = new Map();
