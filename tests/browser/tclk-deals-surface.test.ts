@@ -107,7 +107,7 @@ describe("TCLK Deals browser surface", () => {
   // reconcileMyDeals in tclk-deal-recovery.test.ts) to the one shared,
   // independently-tested implementation rather than a second, ad hoc one.
   it("renderDealCards recovers every known archived offer id and merges via the shared reconcileMyDeals helper", () => {
-    const body = functionSource(deals, "async function renderDealCards(filter)");
+    const body = functionSource(deals, "async function renderDealCards(filter, renderToken = tabRenderToken)");
     expect(body).not.toContain("known.has(summary.offerId)) continue");
     expect(body).not.toContain("else if (!byOfferId.has(summary.offerId))");
     expect(body).toContain("recoveryResults.push(recovered)");
@@ -144,7 +144,7 @@ describe("TCLK Deals browser surface", () => {
   // proved behaviorally in tclk-deal-recovery.test.ts — this only checks
   // that renderDealCards wires the shared helper in after reconcileMyDeals.
   it("renderDealCards sorts 'My deals' newest-offer-first, after reconciliation, via the shared newestOffersFirst helper", () => {
-    const body = functionSource(deals, "async function renderDealCards(filter)");
+    const body = functionSource(deals, "async function renderDealCards(filter, renderToken = tabRenderToken)");
     const mergeIndex = body.indexOf("reconcileMyDeals(deals, recoveryResults)");
     const sortIndex = body.indexOf("deals = newestOffersFirst(deals)");
     expect(mergeIndex).toBeGreaterThanOrEqual(0);
