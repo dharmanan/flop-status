@@ -6,7 +6,7 @@ const LEGACY_STORAGE_KEYS = [
   "flop-tclk-notifications-v5:",
   "flop-tclk-accept-notifications-v4:",
 ];
-const SUPPORTED_KINDS = ["accepted", "locked", "completed", "closure"];\nconst NEW_KIND_GRACE_MS = 30 * 60_000;
+const SUPPORTED_KINDS = ["accepted", "locked", "completed"];
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -25,31 +25,16 @@ function copy(en, trText) {
 }
 
 function eventKey(deal) {
-  return [
-    deal.notificationKind,
-    deal.notificationId,
-    deal.venue,
-    deal.offerId,
-    deal.contractId,
-    deal.payerDid,
-    deal.payeeDid,
-  ].map((value) => String(value ?? "")).join("|");
-}
-
-function notificationTimeMs(deal) {
-  const value = Date.parse(deal.updatedAt ?? "");
-  return Number.isFinite(value) ? value : 0;
+  return [deal.notificationKind, deal.venue, deal.offerId, deal.contractId, deal.payerDid, deal.payeeDid]
+    .map((value) => String(value ?? ""))
+    .join("|");
 }
 
 function notificationActorDid(deal) {
-  if (deal.notificationKind === "closure") return deal.actorDid;
   return deal.notificationKind === "locked" ? deal.payerDid : deal.payeeDid;
 }
 
 function notificationTitle(deal) {
-  if (deal.notificationKind === "closure") {
-    return copy("Closure record signed", "Kapanış kaydı imzalandı");
-  }
   if (deal.notificationKind === "completed") {
     return copy("Agreement completed", "Anlaşma tamamlandı");
   }
@@ -60,12 +45,6 @@ function notificationTitle(deal) {
 }
 
 function notificationBody(deal, actor) {
-  if (deal.notificationKind === "closure") {
-    return copy(
-      `${actor} signed the closure record.`,
-      `${actor} kapanış kaydını imzaladı.`,
-    );
-  }
   if (deal.notificationKind === "completed") {
     return copy(
       `${actor} verified the agreement code and completed the deal.`,
@@ -159,39 +138,6 @@ function notificationForDeal(deal, did) {
   return null;
 }
 
-async function fetchClosureNotifications(deal, did) {
-  if (!["claimed", "refunded", "cancelled"].includes(String(deal?.status ?? ""))) return [];
-  if (typeof deal?.venue !== "string" || typeof deal?.offerId !== "string") return [];
-
-  const response = await fetch(
-    `${API_BASE}/api/v1/tclk/history/${encodeURIComponent(deal.offerId)}?venue=${encodeURIComponent(deal.venue)}`,
-    { headers: { accept: "application/json" } },
-  );
-  if (!response.ok) return [];
-
-  const detail = await response.json();
-  const frames = Array.isArray(detail?.frames) ? detail.frames : [];
-  const parties = new Set([deal.payerDid, deal.payeeDid].filter((value) => typeof value === "string"));
-
-  return frames
-    .filter((frame) => (
-      frame?.frameType === "receipt"
-      && typeof frame.fromDid === "string"
-      && frame.fromDid !== did
-      && parties.has(frame.fromDid)
-    ))
-    .map((frame) => {
-      const occurredAtMs = Number(frame.venueTimestampMs);
-      return {
-        ...deal,
-        notificationKind: "closure",
-        notificationId: [frame.room, frame.seq, frame.transportSig].map((value) => String(value ?? "")).join("|"),
-        actorDid: frame.fromDid,
-        updatedAt: Number.isFinite(occurredAtMs) ? new Date(occurredAtMs).toISOString() : deal.updatedAt,
-      };
-    });
-}
-
 async function fetchNotifications(did) {
   const response = await fetch(`${API_BASE}/api/v1/tclk/history?did=${encodeURIComponent(did)}`, {
     headers: { accept: "application/json" },
@@ -199,9 +145,7 @@ async function fetchNotifications(did) {
   if (!response.ok) return [];
   const body = await response.json();
   const deals = Array.isArray(body?.deals) ? body.deals : [];
-  const stateNotifications = deals.map((deal) => notificationForDeal(deal, did)).filter(Boolean);
-  const closureGroups = await Promise.all(deals.map((deal) => fetchClosureNotifications(deal, did)));
-  return [...stateNotifications, ...closureGroups.flat()];
+  return deals.map((deal) => notificationForDeal(deal, did)).filter(Boolean);
 }
 
 async function profileLabel(did) {
@@ -507,12 +451,7 @@ async function poll() {
     const knownKinds = new Set(state.knownKinds ?? []);
     const newKinds = SUPPORTED_KINDS.filter((kind) => !knownKinds.has(kind));
     if (newKinds.length) {
-      const cutoff = Date.now() - NEW_KIND_GRACE_MS;
-      state.seen.push(
-        ...deals
-          .filter((deal) => newKinds.includes(deal.notificationKind) && notificationTimeMs(deal) < cutoff)
-          .map(eventKey),
-      );
+      state.seen.push(...deals.filter((deal) => newKinds.includes(deal.notificationKind)).map(eventKey));
       state.knownKinds = [...knownKinds, ...newKinds];
       saveState(did, state);
     }
