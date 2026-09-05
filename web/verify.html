@@ -18,13 +18,13 @@
       </div>
     </div>
     <a class="back-link" href="/">
-      <span class="lang-copy en-copy">← Back to Capability Lab</span>
-      <span class="lang-copy tr-copy">← Capability Lab'e dön</span>
+      <span class="lang-copy en-copy">← Back to Flop Proof</span>
+      <span class="lang-copy tr-copy">← Flop Proof'a dön</span>
     </a>
     <h1 data-i18n="verify_title">Receipt verification</h1>
     <p class="status"><span data-i18n="receipt_signature">Receipt signature</span>: <strong id="signature-status" data-i18n="checking">CHECKING</strong></p>
     <dl id="receipt-fields"></dl>
-    <p class="note" data-i18n="verify_note">This page independently verifies the server-signed receipt in this browser using the public Ed25519 key published by the Railway API.</p>
+    <p class="note" data-i18n="verify_note">This page checks whether the receipt was signed by Flop Proof and whether it has been altered.</p>
     <p id="verification-error" class="operation"></p>
   </main>
   <footer class="designer-credit">
@@ -38,6 +38,6 @@
       <img src="/koray-mark.png" alt="Koray Çifci">
     </a>
   </footer>
-  <script type="module" src="/verify.js"></script>
+  <script type="module" src="/verify.js?v=receipt-proof-v2"></script>
 </body>
 </html>

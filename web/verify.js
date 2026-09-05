@@ -45,12 +45,12 @@ function render() {
     [t("verifier"), receipt.verifier_id],
     [t("verifier_version"), receipt.verifier_version],
     [t("verdict"), receipt.verdict],
-    [t("evidence_type"), receipt.evidence_type],
+    [t("evidence_type"), receipt.evidence_type === "DETERMINISTICALLY_VERIFIED" ? t("evidence_deterministic") : receipt.evidence_type],
     [t("challenge_hash"), receipt.challenge_hash],
     [t("result_hash"), receipt.result_hash],
     [t("issued_at"), receipt.issued_at],
     [t("server_key_id"), receipt.server_key_id],
-    [t("server_key_status"), verificationData.server_key.status],
+    [t("server_key_status"), verificationData.server_key.status === "ACTIVE" ? t("server_key_active") : verificationData.server_key.status],
   ];
   for (const [label, value] of labels) addField(label, value);
 }
