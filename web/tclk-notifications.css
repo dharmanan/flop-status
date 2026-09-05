@@ -1,0 +1,239 @@
+.product-brand:has(.tclk-notification-center) .language-switch {
+  margin-left: 0;
+}
+
+.tclk-notification-center {
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tclk-notification-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #27343f;
+  border-radius: 999px;
+  background: #0b1116;
+  color: #8998a5;
+}
+
+.tclk-notification-bell:hover {
+  border-color: #3e5263;
+  background: #10171d;
+  color: #d5dee6;
+}
+
+.tclk-notification-bell.has-unread {
+  border-color: #557ae2;
+  background: #101a2c;
+  color: #dfe8ff;
+  box-shadow: 0 0 0 1px rgba(85, 122, 226, .12);
+}
+
+.tclk-notification-bell svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tclk-notification-bell.is-ringing svg {
+  animation: tclk-bell-ring .72s ease-in-out 2;
+  transform-origin: 50% 18%;
+}
+
+@keyframes tclk-bell-ring {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-5deg); }
+}
+
+.tclk-notification-count {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #090d11;
+  border-radius: 999px;
+  background: #315dd0;
+  color: #fff;
+  font: 750 9px/1 ui-sans-serif, system-ui, sans-serif;
+}
+
+.tclk-notification-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1300;
+  width: 300px;
+  padding: 8px;
+  border: 1px solid #263541;
+  border-radius: 12px;
+  background: #0a0f14;
+  box-shadow: 0 20px 52px rgba(0, 0, 0, .46);
+}
+
+.tclk-notification-panel[hidden] {
+  display: none !important;
+}
+
+.tclk-notification-panel-head {
+  padding: 8px 9px 10px;
+  border-bottom: 1px solid #1c2730;
+}
+
+.tclk-notification-panel-head strong {
+  font-size: 12px;
+  color: #e7edf2;
+}
+
+.tclk-notification-empty {
+  margin: 0;
+  padding: 14px 9px;
+  color: #788691;
+  font-size: 11px;
+}
+
+.tclk-notification-item {
+  width: 100%;
+  min-height: 0;
+  margin-top: 6px;
+  padding: 10px 11px;
+  display: block;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: #0d141a;
+  color: #dfe6ec;
+  text-align: left;
+}
+
+.tclk-notification-item:hover {
+  border-color: #334552;
+  background: #111a21;
+}
+
+.tclk-notification-item strong,
+.tclk-notification-item span {
+  display: block;
+}
+
+.tclk-notification-item strong {
+  font-size: 11px;
+}
+
+.tclk-notification-item span {
+  margin-top: 4px;
+  color: #83919d;
+  font-size: 10px;
+}
+
+.tclk-accept-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1400;
+  width: min(390px, calc(100vw - 32px));
+  padding: 15px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid #30414f;
+  border-radius: 13px;
+  background: #0a1015;
+  color: #e7edf2;
+  box-shadow: 0 22px 58px rgba(0, 0, 0, .48);
+  animation: tclk-toast-in .22s ease-out both;
+}
+
+@keyframes tclk-toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tclk-accept-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #3d5fbd;
+  border-radius: 10px;
+  background: #111d36;
+  color: #b9ccff;
+}
+
+.tclk-accept-toast-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.tclk-accept-toast-content {
+  min-width: 0;
+}
+
+.tclk-accept-toast-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tclk-accept-toast strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.tclk-accept-toast p {
+  margin: 6px 0 0;
+  color: #91a0ac;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.tclk-accept-toast-close {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #6e7d89;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tclk-accept-toast-action {
+  margin-top: 12px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid #dfe5ea;
+  border-radius: 8px;
+  background: #eef2f5;
+  color: #11161a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .tclk-notification-panel {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+
+  .tclk-accept-toast {
+    right: 16px;
+    bottom: 16px;
+  }
+}

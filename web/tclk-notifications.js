@@ -1,5 +1,5 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-accept-notifications-v2:";
+const STORAGE_PREFIX = "flop-tclk-accept-notifications-v3:";
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -7,6 +7,7 @@ let polling = false;
 let intervalId = null;
 let pending = new Map();
 let announced = new Set();
+let uiEventsBound = false;
 
 function tr() {
   return document.documentElement.lang === "tr";
@@ -27,16 +28,16 @@ function storageKey(did) {
 function loadState(did) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 2 || !Array.isArray(parsed.seen)) return { version: 2, seen: [] };
-    return { version: 2, seen: parsed.seen.filter((value) => typeof value === "string") };
+    if (!parsed || parsed.version !== 3 || !Array.isArray(parsed.seen)) return { version: 3, seen: [] };
+    return { version: 3, seen: parsed.seen.filter((value) => typeof value === "string") };
   } catch {
-    return { version: 2, seen: [] };
+    return { version: 3, seen: [] };
   }
 }
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 2,
+    version: 3,
     seen: Array.from(new Set(state.seen)).slice(-500),
   }));
 }
@@ -46,9 +47,10 @@ function currentIdentityDid() {
   return did.startsWith("did:key:") ? did : "";
 }
 
-function acceptedForPayer(deal, did) {
+function acceptedForOfferOwner(deal, did) {
   return deal
     && deal.payerDid === did
+    && deal.payeeDid !== did
     && typeof deal.payeeDid === "string"
     && deal.payeeDid.startsWith("did:key:")
     && typeof deal.contractId === "string"
@@ -63,7 +65,7 @@ async function fetchAccepted(did) {
   if (!response.ok) return [];
   const body = await response.json();
   const deals = Array.isArray(body?.deals) ? body.deals : [];
-  return deals.filter((deal) => acceptedForPayer(deal, did));
+  return deals.filter((deal) => acceptedForOfferOwner(deal, did));
 }
 
 async function profileLabel(did) {
@@ -76,102 +78,106 @@ async function profileLabel(did) {
   return text.length <= 24 ? text : `${text.slice(0, 12)}…${text.slice(-8)}`;
 }
 
-function ensureStyle() {
+function loadStyle() {
   if (document.getElementById("flop-tclk-notification-style")) return;
-  const style = document.createElement("style");
-  style.id = "flop-tclk-notification-style";
-  style.textContent = `
-    .tclk-entry { position: relative; }
-    .tclk-notification-badge {
-      position: absolute;
-      top: 8px;
-      right: 9px;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      display: grid;
-      place-items: center;
-      border: 1px solid #5f88ff;
-      border-radius: 999px;
-      background: #173c9b;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 750;
-      line-height: 1;
-    }
-    .tclk-accept-toast {
-      position: fixed;
-      right: 24px;
-      bottom: 24px;
-      z-index: 1200;
-      width: min(360px, calc(100vw - 32px));
-      padding: 16px;
-      border: 1px solid #2c3d4d;
-      border-radius: 12px;
-      background: #0b1116;
-      color: #e6edf3;
-      box-shadow: 0 18px 48px rgba(0,0,0,.4);
-    }
-    .tclk-accept-toast-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .tclk-accept-toast strong {
-      display: block;
-      font-size: 14px;
-      line-height: 1.25;
-    }
-    .tclk-accept-toast p {
-      margin: 7px 0 0;
-      color: #93a1ad;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-    .tclk-accept-toast-close {
-      min-height: 0;
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      color: #73808b;
-      font-size: 18px;
-      line-height: 1;
-    }
-    .tclk-accept-toast-action {
-      margin-top: 13px;
-      min-height: 38px;
-      padding: 9px 13px;
-      border: 1px solid #3b4b59;
-      border-radius: 8px;
-      background: #eef2f5;
-      color: #11161a;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    @media (max-width: 640px) {
-      .tclk-accept-toast { right: 16px; bottom: 16px; }
-    }
-  `;
-  document.head.appendChild(style);
+  const link = document.createElement("link");
+  link.id = "flop-tclk-notification-style";
+  link.rel = "stylesheet";
+  link.href = "/tclk-notifications.css?v=tclk-notifications-v3";
+  document.head.appendChild(link);
 }
 
-function updateBadge() {
-  const entry = document.querySelector(".tclk-entry");
-  if (!entry) return;
-  let badge = entry.querySelector(".tclk-notification-badge");
-  if (!pending.size) {
-    badge?.remove();
-    return;
-  }
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "tclk-notification-badge";
-    badge.setAttribute("aria-label", copy("Unread deal notifications", "Okunmamış anlaşma bildirimleri"));
-    entry.appendChild(badge);
-  }
-  badge.textContent = pending.size > 9 ? "9+" : String(pending.size);
+function bellSvg() {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+
+  const bell = document.createElementNS(ns, "path");
+  bell.setAttribute("d", "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9");
+  bell.setAttribute("fill", "none");
+  bell.setAttribute("stroke", "currentColor");
+  bell.setAttribute("stroke-width", "1.7");
+  bell.setAttribute("stroke-linecap", "round");
+  bell.setAttribute("stroke-linejoin", "round");
+
+  const clapper = document.createElementNS(ns, "path");
+  clapper.setAttribute("d", "M10 20h4");
+  clapper.setAttribute("fill", "none");
+  clapper.setAttribute("stroke", "currentColor");
+  clapper.setAttribute("stroke-width", "1.7");
+  clapper.setAttribute("stroke-linecap", "round");
+
+  svg.append(bell, clapper);
+  return svg;
+}
+
+function ensureBell() {
+  const brand = document.querySelector(".product-brand");
+  if (!brand) return null;
+
+  let center = brand.querySelector(".tclk-notification-center");
+  if (center) return center;
+
+  center = document.createElement("span");
+  center.className = "tclk-notification-center";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tclk-notification-bell";
+  button.setAttribute("aria-label", copy("Notifications", "Bildirimler"));
+  button.setAttribute("aria-expanded", "false");
+  button.appendChild(bellSvg());
+
+  const badge = document.createElement("span");
+  badge.className = "tclk-notification-count";
+  badge.hidden = true;
+  button.appendChild(badge);
+
+  const panel = document.createElement("section");
+  panel.className = "tclk-notification-panel";
+  panel.hidden = true;
+
+  center.append(button, panel);
+  const language = brand.querySelector(".language-switch");
+  brand.insertBefore(center, language);
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = panel.hidden;
+    panel.hidden = !open;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) void renderPanel();
+  });
+
+  return center;
+}
+
+function updateBell() {
+  const center = ensureBell();
+  if (!center) return;
+  const button = center.querySelector(".tclk-notification-bell");
+  const badge = center.querySelector(".tclk-notification-count");
+  if (!(button instanceof HTMLButtonElement) || !(badge instanceof HTMLElement)) return;
+
+  const count = pending.size;
+  button.classList.toggle("has-unread", count > 0);
+  badge.hidden = count === 0;
+  badge.textContent = count > 9 ? "9+" : String(count);
+  badge.setAttribute("aria-label", copy(`${count} unread notifications`, `${count} okunmamış bildirim`));
+
+  const panel = center.querySelector(".tclk-notification-panel");
+  if (panel && !panel.hidden) void renderPanel();
+}
+
+function ringBell() {
+  const button = ensureBell()?.querySelector(".tclk-notification-bell");
+  if (!(button instanceof HTMLButtonElement)) return;
+  button.classList.remove("is-ringing");
+  void button.offsetWidth;
+  button.classList.add("is-ringing");
+  button.addEventListener("animationend", () => button.classList.remove("is-ringing"), { once: true });
 }
 
 function markSeen(keys) {
@@ -184,7 +190,7 @@ function markSeen(keys) {
     pending.delete(key);
     announced.delete(key);
   }
-  updateBadge();
+  updateBell();
 }
 
 function dismissToast(toast) {
@@ -194,6 +200,9 @@ function dismissToast(toast) {
 async function openDeal(deal, key, toast) {
   markSeen([key]);
   dismissToast(toast);
+  const panel = document.querySelector(".tclk-notification-panel");
+  if (panel) panel.hidden = true;
+  document.querySelector(".tclk-notification-bell")?.setAttribute("aria-expanded", "false");
 
   const entry = document.querySelector(".tclk-entry");
   if (!(entry instanceof HTMLButtonElement)) return;
@@ -219,10 +228,59 @@ async function openDeal(deal, key, toast) {
   card.querySelector(".tclk-card-actions button")?.click();
 }
 
+async function renderPanel() {
+  const center = ensureBell();
+  const panel = center?.querySelector(".tclk-notification-panel");
+  if (!(panel instanceof HTMLElement)) return;
+
+  panel.replaceChildren();
+
+  const head = document.createElement("div");
+  head.className = "tclk-notification-panel-head";
+  const title = document.createElement("strong");
+  title.textContent = copy("Notifications", "Bildirimler");
+  head.appendChild(title);
+  panel.appendChild(head);
+
+  if (!pending.size) {
+    const empty = document.createElement("p");
+    empty.className = "tclk-notification-empty";
+    empty.textContent = copy("No new notifications.", "Yeni bildirim yok.");
+    panel.appendChild(empty);
+    return;
+  }
+
+  const entries = [...pending.entries()].sort(
+    (a, b) => Date.parse(b[1].updatedAt ?? "0") - Date.parse(a[1].updatedAt ?? "0"),
+  );
+
+  for (const [key, deal] of entries) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "tclk-notification-item";
+
+    const itemTitle = document.createElement("strong");
+    itemTitle.textContent = copy("Your offer was accepted", "Teklifin kabul edildi");
+
+    const meta = document.createElement("span");
+    meta.textContent = deal.amount && deal.asset ? `${deal.amount} ${deal.asset}` : copy("Deal update", "Anlaşma güncellemesi");
+
+    item.append(itemTitle, meta);
+    item.addEventListener("click", () => void openDeal(deal, key, null));
+    panel.appendChild(item);
+
+    void profileLabel(deal.payeeDid).then((actor) => {
+      if (!item.isConnected) return;
+      meta.textContent = deal.amount && deal.asset
+        ? `${actor} · ${deal.amount} ${deal.asset}`
+        : actor;
+    });
+  }
+}
+
 async function showToast(deal, key) {
   if (announced.has(key)) return;
   announced.add(key);
-  ensureStyle();
 
   document.querySelector(".tclk-accept-toast")?.remove();
   const actor = await profileLabel(deal.payeeDid);
@@ -231,8 +289,16 @@ async function showToast(deal, key) {
   toast.className = "tclk-accept-toast";
   toast.setAttribute("role", "status");
 
+  const icon = document.createElement("span");
+  icon.className = "tclk-accept-toast-icon";
+  icon.appendChild(bellSvg());
+
+  const content = document.createElement("div");
+  content.className = "tclk-accept-toast-content";
+
   const head = document.createElement("div");
   head.className = "tclk-accept-toast-head";
+
   const copyWrap = document.createElement("div");
   const title = document.createElement("strong");
   title.textContent = copy("Your offer was accepted", "Teklifin kabul edildi");
@@ -257,18 +323,21 @@ async function showToast(deal, key) {
   action.textContent = copy("Open deal", "Anlaşmayı aç");
   action.addEventListener("click", () => void openDeal(deal, key, toast));
 
-  toast.append(head, action);
+  content.append(head, action);
+  toast.append(icon, content);
   document.body.appendChild(toast);
 }
 
 async function poll() {
   if (polling || document.hidden) return;
+  ensureBell();
+
   const did = currentIdentityDid();
   if (!did) {
     activeDid = "";
     pending.clear();
     announced.clear();
-    updateBadge();
+    updateBell();
     return;
   }
 
@@ -280,6 +349,7 @@ async function poll() {
 
   polling = true;
   try {
+    const previousKeys = new Set(pending.keys());
     const deals = await fetchAccepted(did);
     const state = loadState(did);
     const seen = new Set(state.seen);
@@ -288,10 +358,18 @@ async function poll() {
         .filter((deal) => !seen.has(eventKey(deal)))
         .map((deal) => [eventKey(deal), deal]),
     );
-    updateBadge();
 
-    const newest = [...pending.entries()]
-      .sort((a, b) => Date.parse(b[1].updatedAt ?? "0") - Date.parse(a[1].updatedAt ?? "0"))[0];
+    const newEntries = [...pending.entries()].filter(([key]) => !previousKeys.has(key));
+    updateBell();
+
+    if (newEntries.length) ringBell();
+
+    const newest = newEntries
+      .sort((a, b) => Date.parse(b[1].updatedAt ?? "0") - Date.parse(a[1].updatedAt ?? "0"))[0]
+      ?? [...pending.entries()]
+        .filter(([key]) => !announced.has(key))
+        .sort((a, b) => Date.parse(b[1].updatedAt ?? "0") - Date.parse(a[1].updatedAt ?? "0"))[0];
+
     if (newest) await showToast(newest[1], newest[0]);
   } catch {
     // Notifications are non-blocking. TCLK itself must remain usable if this poll fails.
@@ -300,18 +378,34 @@ async function poll() {
   }
 }
 
-function bindEntryRead() {
+function bindUiEvents() {
+  if (uiEventsBound) return;
+  uiEventsBound = true;
+
   document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest(".tclk-entry") || !pending.size) return;
-    markSeen([...pending.keys()]);
-    document.querySelector(".tclk-accept-toast")?.remove();
+    if (target?.closest(".tclk-notification-center")) return;
+    const panel = document.querySelector(".tclk-notification-panel");
+    if (panel) panel.hidden = true;
+    document.querySelector(".tclk-notification-bell")?.setAttribute("aria-expanded", "false");
+  });
+
+  document.documentElement.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element) || !event.target.closest(".lang-button")) return;
+    queueMicrotask(() => {
+      const oldCenter = document.querySelector(".tclk-notification-center");
+      if (oldCenter && !oldCenter.closest(".product-brand")) oldCenter.remove();
+      ensureBell();
+      updateBell();
+    });
   });
 }
 
 function boot() {
-  ensureStyle();
-  bindEntryRead();
+  loadStyle();
+  bindUiEvents();
+  ensureBell();
+  updateBell();
   void poll();
 
   intervalId = window.setInterval(() => void poll(), POLL_MS);

@@ -1,4 +1,4 @@
-void import("/communication-nav.js?v=agent-network-v2");
+void import("/communication-nav.js?v=agent-network-v3");
 
 const VIEWS = ["overview", "capabilities", "verifications", "certificates", "activity", "settings"];
 const CAPABILITIES = {
