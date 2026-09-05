@@ -105,11 +105,9 @@ The Flop Proof server has no TCLK user signing key and no payment key.
 
 ## Technocore transport
 
-The active production TCLK venue is currently:
+The active production TCLK venue is currently a self hosted Technocore deployment protected by a backend-only ingress credential.
 
-```text
-https://flop-technocore-production.up.railway.app
-```
+Direct requests without that credential receive a generic 404.
 
 Historical records from:
 
@@ -118,6 +116,10 @@ https://technocore.chat
 ```
 
 remain readable.
+
+The Flop Proof backend adds the ingress credential only when calling the configured protected self hosted venue. It is never sent to the official hosted venue.
+
+The venue timestamp backfill utility uses the same ingress-aware fetch path. After a future hosted return, an optional `TECHNOCORE_INGRESS_ORIGIN` can identify the old protected self-host for maintenance without changing the active `TECHNOCORE_URL`.
 
 Technocore room content is untrusted input until the raw signed transport record is independently verified.
 

@@ -109,11 +109,9 @@ PaperRail is rehearsal evidence only. It is not escrow and is not proof of payme
 
 ## Current Technocore deployment
 
-New production TCLK activity currently uses a self hosted Technocore venue:
+New production TCLK activity currently uses a self hosted Technocore venue protected by a backend-only ingress credential.
 
-```text
-https://flop-technocore-production.up.railway.app
-```
+The exact deployment origin is intentionally not documented as a product endpoint. Knowing the origin is not treated as a security boundary: direct requests without the private ingress credential are rejected.
 
 Historical TCLK records created on:
 
@@ -125,7 +123,9 @@ remain readable.
 
 Durable TCLK history is venue aware and room generation aware, so records from independent Technocore instances do not share a false sequence namespace.
 
-The current operational venue is also exposed by the runtime status endpoint. The Railway URL above is a public transport endpoint, not a secret credential.
+The public runtime status reports whether the live venue is hosted or self hosted without publishing the current origin. Durable history still retains exact venue identity internally where required for safe replay.
+
+Maintenance jobs use the same ingress-aware fetch path. If live traffic later returns to hosted Technocore while old self-hosted history still needs direct maintenance access, `TECHNOCORE_INGRESS_ORIGIN` can pin the protected historical self-host origin without ever sending the credential to `technocore.chat`.
 
 ### Venue portability
 

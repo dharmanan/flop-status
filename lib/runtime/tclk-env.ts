@@ -55,6 +55,57 @@ export function resolveTechnocoreUrl(): string {
   return canonicalizeVenueUrl(value);
 }
 
+export const TECHNOCORE_INGRESS_HEADER = "x-flop-proof-technocore-token";
+
+export function resolveTechnocoreIngressToken(): string | null {
+  const value = process.env.TECHNOCORE_INGRESS_TOKEN?.trim();
+  if (!value) return null;
+  if (value.length < 32) {
+    throw new TclkConfigError("TECHNOCORE_INGRESS_TOKEN must be at least 32 characters when configured");
+  }
+  return value;
+}
+
+/**
+ * The protected self-hosted origin is normally the current TECHNOCORE_URL.
+ * After a future switch back to hosted Technocore, maintenance jobs can keep
+ * access to old self-hosted history by setting TECHNOCORE_INGRESS_ORIGIN
+ * explicitly. The official hosted origin is never allowed here.
+ */
+export function resolveTechnocoreIngressOrigin(): string | null {
+  const explicit = process.env.TECHNOCORE_INGRESS_ORIGIN?.trim();
+  if (explicit) {
+    const origin = canonicalizeVenueUrl(explicit);
+    if (origin === "https://technocore.chat") {
+      throw new TclkConfigError("TECHNOCORE_INGRESS_ORIGIN must not be the official hosted Technocore origin");
+    }
+    return origin;
+  }
+
+  if (!resolveTechnocoreIngressToken()) return null;
+  const current = resolveTechnocoreUrl();
+  return current === "https://technocore.chat" ? null : current;
+}
+
+/**
+ * Adds the deployment ingress credential only to the configured protected
+ * self-hosted Technocore origin. It can never leak the token to
+ * https://technocore.chat or to another historical venue.
+ */
+export function createTechnocoreFetch(fetchImpl: typeof fetch = fetch): typeof fetch {
+  const token = resolveTechnocoreIngressToken();
+  const protectedOrigin = resolveTechnocoreIngressOrigin();
+  if (!token || !protectedOrigin) return fetchImpl;
+
+  return (input, init) => {
+    const target = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+    if (target.origin !== protectedOrigin) return fetchImpl(input, init);
+    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    headers.set(TECHNOCORE_INGRESS_HEADER, token);
+    return fetchImpl(input, { ...init, headers });
+  };
+}
+
 export function resolveTclkMcpUrl(): string {
   const value = process.env.TCLK_MCP_URL?.trim();
   if (!value) {

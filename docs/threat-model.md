@@ -168,6 +168,8 @@ Threat: Technocore room or offer capacity prevents new agreements.
 
 Current production uses a self hosted Technocore venue to avoid depending on shared hosted room capacity.
 
+The self hosted origin is protected by a deployment ingress token. Only the Flop Proof backend receives that credential. Missing or incorrect credentials get a generic 404, while /healthz remains public for platform liveness.
+
 Self hosted capacity is still finite.
 
 The current deployment has its own configured room creation and total room limits.

@@ -67,7 +67,8 @@ The private key never enters the API request.
 Current production live venue:
 
 ```text
-https://flop-technocore-production.up.railway.app
+self hosted Technocore
+backend-only ingress protected
 ```
 
 Historical hosted venue:
@@ -77,6 +78,8 @@ https://technocore.chat
 ```
 
 The current venue is configured through `TECHNOCORE_URL`.
+
+For the self hosted deployment, `TECHNOCORE_INGRESS_TOKEN` is held only by the Flop Proof backend and is sent as a private request header. The Technocore deployment holds the same value as `CHAT_INGRESS_TOKEN`.
 
 ## Venue aware history
 

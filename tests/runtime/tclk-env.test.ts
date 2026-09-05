@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { canonicalizeVenueUrl, resolveTechnocoreUrl, resolveTclkMcpUrl, TclkConfigError } from "../../lib/runtime/tclk-env.js";
+import { canonicalizeVenueUrl, createTechnocoreFetch, resolveTechnocoreIngressOrigin, resolveTechnocoreIngressToken, resolveTechnocoreUrl, resolveTclkMcpUrl, TECHNOCORE_INGRESS_HEADER, TclkConfigError } from "../../lib/runtime/tclk-env.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -77,5 +77,75 @@ describe("resolveTclkMcpUrl", () => {
   it("returns the configured value trimmed, unchanged otherwise (not a venue origin — a loopback or hosted MCP endpoint path)", () => {
     vi.stubEnv("TCLK_MCP_URL", "  http://127.0.0.1:3000/mcp  ");
     expect(resolveTclkMcpUrl()).toBe("http://127.0.0.1:3000/mcp");
+  });
+});
+
+
+describe("Technocore private ingress fetch", () => {
+  it("adds the ingress token only to the configured self-hosted venue", async () => {
+    vi.stubEnv("TECHNOCORE_URL", "https://selfhost.example.invalid");
+    vi.stubEnv("TECHNOCORE_INGRESS_TOKEN", "a".repeat(32));
+    const seen: Array<{ url: string; token: string | null }> = [];
+    const fake = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      seen.push({ url, token: new Headers(init?.headers).get(TECHNOCORE_INGRESS_HEADER) });
+      return new Response("ok");
+    }) as typeof fetch;
+
+    const guarded = createTechnocoreFetch(fake);
+    await guarded("https://selfhost.example.invalid/r/tclk-offers");
+    await guarded("https://example.invalid/not-technocore");
+
+    expect(seen).toEqual([
+      { url: "https://selfhost.example.invalid/r/tclk-offers", token: "a".repeat(32) },
+      { url: "https://example.invalid/not-technocore", token: null },
+    ]);
+  });
+
+  it("never sends a configured ingress token to the official hosted venue", async () => {
+    vi.stubEnv("TECHNOCORE_URL", "https://technocore.chat");
+    vi.stubEnv("TECHNOCORE_INGRESS_TOKEN", "b".repeat(32));
+    let token: string | null = null;
+    const fake = (async (_input: string | URL | Request, init?: RequestInit) => {
+      token = new Headers(init?.headers).get(TECHNOCORE_INGRESS_HEADER);
+      return new Response("ok");
+    }) as typeof fetch;
+
+    await createTechnocoreFetch(fake)("https://technocore.chat/r/tclk-offers");
+    expect(token).toBeNull();
+    expect(resolveTechnocoreIngressOrigin()).toBeNull();
+  });
+
+  it("can keep authenticated maintenance access to an old self-hosted venue after switching live traffic back to hosted", async () => {
+    vi.stubEnv("TECHNOCORE_URL", "https://technocore.chat");
+    vi.stubEnv("TECHNOCORE_INGRESS_TOKEN", "c".repeat(32));
+    vi.stubEnv("TECHNOCORE_INGRESS_ORIGIN", "https://old-selfhost.example.invalid/");
+    const seen: Array<{ url: string; token: string | null }> = [];
+    const fake = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      seen.push({ url, token: new Headers(init?.headers).get(TECHNOCORE_INGRESS_HEADER) });
+      return new Response("ok");
+    }) as typeof fetch;
+
+    const guarded = createTechnocoreFetch(fake);
+    await guarded("https://old-selfhost.example.invalid/r/tclk-offers/export");
+    await guarded("https://technocore.chat/r/tclk-offers/export");
+
+    expect(seen).toEqual([
+      { url: "https://old-selfhost.example.invalid/r/tclk-offers/export", token: "c".repeat(32) },
+      { url: "https://technocore.chat/r/tclk-offers/export", token: null },
+    ]);
+  });
+
+  it("refuses to designate the official hosted venue as a protected ingress origin", () => {
+    vi.stubEnv("TECHNOCORE_URL", "https://technocore.chat");
+    vi.stubEnv("TECHNOCORE_INGRESS_TOKEN", "d".repeat(32));
+    vi.stubEnv("TECHNOCORE_INGRESS_ORIGIN", "https://technocore.chat");
+    expect(() => resolveTechnocoreIngressOrigin()).toThrow(TclkConfigError);
+  });
+
+  it("rejects a weak configured ingress token", () => {
+    vi.stubEnv("TECHNOCORE_INGRESS_TOKEN", "short");
+    expect(() => resolveTechnocoreIngressToken()).toThrow(TclkConfigError);
   });
 });
