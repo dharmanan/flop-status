@@ -233,7 +233,6 @@ function makeProofPanel() {
     proofItem("◇", t("certificate"), "proof-certificate"),
     proofItem("▤", t("receipt"), "proof-receipt"),
     proofItem("◎", t("publicProof"), "proof-public"),
-    proofItem("◉", t("profile"), "proof-profile"),
   );
   const semantics = node("section", "proof-semantics");
   semantics.textContent = lang() === "tr"
@@ -292,7 +291,6 @@ async function syncProof(number) {
   const certId = certificateId(number);
   const certified = isCertified(number);
   setProofItem("proof-certificate", { id: certId ? short(certId, 28) : t("unavailable"), meta: certified ? t("verified") : t("waiting"), ready: Boolean(certId), href: certId ? `/certificate/${encodeURIComponent(certId)}` : null });
-  setProofItem("proof-profile", { id: `Capability ${number}`, meta: certified ? t("profileActive") : t("waiting"), ready: certified });
   setProofItem("proof-receipt", { id: t("unavailable"), meta: certified ? t("available") : t("waiting"), ready: false });
   setProofItem("proof-public", { id: t("unavailable"), meta: certified ? t("available") : t("waiting"), ready: false });
   if (!certId) return;
