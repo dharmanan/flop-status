@@ -200,3 +200,29 @@ dt { opacity: .55; padding-right: 20px; }
 .designer-credit-inline:hover {
   color: #c6d0d8;
 }
+
+
+.footer-repo-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #2a3037;
+  border-radius: 8px;
+  color: #7f8993;
+  background: #0d1013;
+  transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+}
+
+.footer-repo-link svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.footer-repo-link:hover {
+  color: #d9e0e6;
+  border-color: #414a54;
+  background: #12171c;
+}
