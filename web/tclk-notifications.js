@@ -1,5 +1,5 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-accept-notifications-v4:";
+const STORAGE_PREFIX = "flop-tclk-notifications-v5:";
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -18,7 +18,25 @@ function copy(en, trText) {
 }
 
 function eventKey(deal) {
-  return [deal.venue, deal.offerId, deal.contractId, deal.payeeDid].map((value) => String(value ?? "")).join("|");
+  return [deal.notificationKind, deal.venue, deal.offerId, deal.contractId, deal.payerDid, deal.payeeDid]
+    .map((value) => String(value ?? ""))
+    .join("|");
+}
+
+function notificationActorDid(deal) {
+  return deal.notificationKind === "locked" ? deal.payerDid : deal.payeeDid;
+}
+
+function notificationTitle(deal) {
+  return deal.notificationKind === "locked"
+    ? copy("PaperRail lock created", "PaperRail kilidi oluşturuldu")
+    : copy("Your offer was accepted", "Teklifin kabul edildi");
+}
+
+function notificationBody(deal, actor) {
+  return deal.notificationKind === "locked"
+    ? copy(`${actor} created the PaperRail lock. It is your turn.`, `${actor} PaperRail kilidini oluşturdu. Sıra sende.`)
+    : copy(`${actor} accepted your offer.`, `${actor} teklifini kabul etti.`);
 }
 
 function storageKey(did) {
@@ -28,16 +46,16 @@ function storageKey(did) {
 function loadState(did) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 4 || !Array.isArray(parsed.seen)) return { version: 4, initialized: false, seen: [] };
-    return { version: 4, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
+    if (!parsed || parsed.version !== 5 || !Array.isArray(parsed.seen)) return { version: 5, initialized: false, seen: [] };
+    return { version: 5, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
   } catch {
-    return { version: 3, seen: [] };
+    return { version: 5, initialized: false, seen: [] };
   }
 }
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 4,
+    version: 5,
     initialized: state.initialized === true,
     seen: Array.from(new Set(state.seen)).slice(-500),
   }));
@@ -48,25 +66,37 @@ function currentIdentityDid() {
   return did.startsWith("did:key:") ? did : "";
 }
 
-function acceptedForOfferOwner(deal, did) {
-  return deal
-    && deal.payerDid === did
-    && deal.payeeDid !== did
+function notificationForDeal(deal, did) {
+  const hasAcceptedParties = deal
+    && typeof deal.payerDid === "string"
     && typeof deal.payeeDid === "string"
+    && deal.payerDid.startsWith("did:key:")
     && deal.payeeDid.startsWith("did:key:")
+    && deal.payerDid !== deal.payeeDid
     && typeof deal.contractId === "string"
-    && deal.contractId.startsWith("0x")
-    && deal.status !== "proposed";
+    && deal.contractId.startsWith("0x");
+
+  if (!hasAcceptedParties) return null;
+
+  if (deal.payerDid === did && deal.status !== "proposed") {
+    return { ...deal, notificationKind: "accepted" };
+  }
+
+  if (deal.payeeDid === did && deal.status === "locked") {
+    return { ...deal, notificationKind: "locked" };
+  }
+
+  return null;
 }
 
-async function fetchAccepted(did) {
+async function fetchNotifications(did) {
   const response = await fetch(`${API_BASE}/api/v1/tclk/history?did=${encodeURIComponent(did)}`, {
     headers: { accept: "application/json" },
   });
   if (!response.ok) return [];
   const body = await response.json();
   const deals = Array.isArray(body?.deals) ? body.deals : [];
-  return deals.filter((deal) => acceptedForOfferOwner(deal, did));
+  return deals.map((deal) => notificationForDeal(deal, did)).filter(Boolean);
 }
 
 async function profileLabel(did) {
@@ -261,7 +291,7 @@ async function renderPanel() {
     item.className = "tclk-notification-item";
 
     const itemTitle = document.createElement("strong");
-    itemTitle.textContent = copy("Your offer was accepted", "Teklifin kabul edildi");
+    itemTitle.textContent = notificationTitle(deal);
 
     const meta = document.createElement("span");
     meta.textContent = deal.amount && deal.asset ? `${deal.amount} ${deal.asset}` : copy("Deal update", "Anlaşma güncellemesi");
@@ -270,7 +300,7 @@ async function renderPanel() {
     item.addEventListener("click", () => void openDeal(deal, key, null));
     panel.appendChild(item);
 
-    void profileLabel(deal.payeeDid).then((actor) => {
+    void profileLabel(notificationActorDid(deal)).then((actor) => {
       if (!item.isConnected) return;
       meta.textContent = deal.amount && deal.asset
         ? `${actor} · ${deal.amount} ${deal.asset}`
@@ -284,7 +314,7 @@ async function showToast(deal, key) {
   announced.add(key);
 
   document.querySelector(".tclk-accept-toast")?.remove();
-  const actor = await profileLabel(deal.payeeDid);
+  const actor = await profileLabel(notificationActorDid(deal));
 
   const toast = document.createElement("section");
   toast.className = "tclk-accept-toast";
@@ -302,12 +332,9 @@ async function showToast(deal, key) {
 
   const copyWrap = document.createElement("div");
   const title = document.createElement("strong");
-  title.textContent = copy("Your offer was accepted", "Teklifin kabul edildi");
+  title.textContent = notificationTitle(deal);
   const body = document.createElement("p");
-  body.textContent = copy(
-    `${actor} accepted your offer.`,
-    `${actor} teklifini kabul etti.`,
-  );
+  body.textContent = notificationBody(deal, actor);
   copyWrap.append(title, body);
 
   const close = document.createElement("button");
@@ -354,7 +381,7 @@ async function poll() {
   polling = true;
   try {
     const previousKeys = new Set(pending.keys());
-    const deals = await fetchAccepted(did);
+    const deals = await fetchNotifications(did);
     const state = loadState(did);
 
     // First successful sync establishes a clean baseline for this DID.
