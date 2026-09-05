@@ -293,21 +293,23 @@ let seedRevealed = false;
 let setupPath = "create";
 let capabilityStates = new Map();
 let certificateList = { certificate_count: 0, rank: null, certificates: [] };
-let toastTimer = null;
 
 const byId = (id) => document.getElementById(id);
 const setOperation = (value) => { byId("operation-status").textContent = value; };
 const showToast = (value) => {
   const toast = byId("toast");
   if (!toast) return;
-  if (toastTimer) clearTimeout(toastTimer);
   toast.textContent = value;
   toast.hidden = false;
-  toastTimer = setTimeout(() => {
+  toast.classList.remove("toast-auto-hide");
+  void toast.offsetWidth;
+  toast.classList.add("toast-auto-hide");
+  toast.onanimationend = () => {
     toast.hidden = true;
     toast.textContent = "";
-    toastTimer = null;
-  }, 3000);
+    toast.classList.remove("toast-auto-hide");
+    toast.onanimationend = null;
+  };
 };
 
 function uiText(en, tr) {
