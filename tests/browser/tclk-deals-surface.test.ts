@@ -8,7 +8,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
-    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v5")');
+    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v6")');
     expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v2")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
@@ -259,5 +259,14 @@ describe("TCLK offer duration defaults", () => {
   it("derives completion and refund windows from the offer duration", () => {
     expect(deals).toContain('const claim = expires + (2 * 60 * 60_000);');
     expect(deals).toContain('const refund = claim + (2 * 60 * 60_000);');
+  });
+});
+
+
+describe("TCLK tab render race guard", () => {
+  it("prevents stale async list renders from replacing a newer tab", () => {
+    expect(deals).toContain("let tabRenderToken = 0;");
+    expect(deals).toContain('currentTab !== expectedTab || tabRenderToken !== renderToken');
+    expect(deals).toContain("const renderToken = ++tabRenderToken;");
   });
 });

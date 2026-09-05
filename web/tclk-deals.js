@@ -19,6 +19,7 @@ let shell = null;
 let entry = null;
 let workspace = null;
 let currentTab = "discover";
+let tabRenderToken = 0;
 let busy = false;
 let boardCache = null;
 
@@ -611,14 +612,18 @@ function verifyingPanel() {
   };
 }
 
-async function renderDealCards(filter) {
+async function renderDealCards(filter, renderToken = tabRenderToken) {
+  const expectedTab = filter === "discover" ? "discover" : "mine";
   const main = workspace.querySelector(".tclk-main");
   const panel = verifyingPanel();
   main.replaceChildren(panel.element);
   const id = await identity();
+  if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
   setStatus(copy("Reading and verifying the signed TCLK offer board…", "İmzalı teklifler okunuyor ve anlaşma durumları doğrulanıyor…"), "working");
   const data = await board(true);
+  if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
   let deals = await buildDealIndex(data.records, panel.update);
+  if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
   const now = Date.now();
   let recoveryIssues = [];
   if (filter === "discover") {
@@ -638,8 +643,10 @@ async function renderDealCards(filter) {
     // a recovery issue instead.
     const recoveryResults = [];
     for (const summary of await fetchArchivedDeals(id.did)) {
+      if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
       if (!summary?.offerId) continue;
       const recovered = await recoverArchivedDeal(summary.offerId, summary.venue);
+      if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
       recoveryResults.push(recovered);
       if (recovered.ok) panel.recovering(summary.offerId);
     }
@@ -651,11 +658,16 @@ async function renderDealCards(filter) {
     // newestOffersFirst in tclk-deal-recovery.js).
     deals = newestOffersFirst(deals);
   }
+  if (currentTab !== expectedTab || tabRenderToken !== renderToken || workspace.querySelector(".tclk-main") !== main) return;
   const header = node("div", "tclk-list-head");
   header.append(node("h2", "", filter === "discover" ? copy("Open offers", "Açık teklifler") : copy("My TCLK deals", "Anlaşmalarım")));
   const refresh = node("button", "tclk-secondary", copy("Refresh", "Yenile"));
   refresh.type = "button";
-  refresh.addEventListener("click", () => { boardCache = null; void renderDealCards(filter); });
+  refresh.addEventListener("click", () => {
+    boardCache = null;
+    const nextToken = ++tabRenderToken;
+    void renderDealCards(filter, nextToken);
+  });
   header.appendChild(refresh);
   main.replaceChildren(header);
   if (recoveryIssues.length) {
@@ -1096,9 +1108,10 @@ function addAction(container, label, handler) {
 async function showTab(tab) {
   if (!["discover", "mine", "create"].includes(tab)) return;
   currentTab = tab;
+  const renderToken = ++tabRenderToken;
   workspace.querySelectorAll(".tclk-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
   if (tab === "create") renderCreate();
-  else await renderDealCards(tab === "discover" ? "discover" : "mine");
+  else await renderDealCards(tab === "discover" ? "discover" : "mine", renderToken);
 }
 
 function hideDeals() {
