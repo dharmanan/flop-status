@@ -4,8 +4,22 @@
 body { margin: 0; background: var(--bg); color: var(--text); }
 main { width: min(1040px, calc(100% - 40px)); margin: 64px auto; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.onboarding-topbar { flex-wrap: wrap; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.onboarding-brand { display: inline-flex; align-items: center; gap: 12px; }
+.onboarding-brand-mark { width: 20px; height: 20px; border: 1px solid #9bc2e7; transform: rotate(45deg); border-radius: 1px; }
 .eyebrow, .label, .step-label { opacity: .55; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+.onboarding-brand .eyebrow { margin: 0; opacity: .92; color: #e8edf2; font-weight: 700; letter-spacing: .14em; }
 .eyebrow { margin: 0; }
+.onboarding-progress { flex: 0 0 100%; display: grid; grid-template-columns: auto minmax(40px,1fr) auto minmax(40px,1fr) auto; gap: 16px; align-items: center; margin-top: 12px; padding: 14px 0 0; }
+.progress-step { display: inline-flex; align-items: center; gap: 10px; color: #73808b; white-space: nowrap; }
+.progress-step strong { font-size: 12px; font-weight: 600; }
+.progress-index { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #35424d; border-radius: 50%; font-size: 11px; color: #82909c; }
+.progress-rail { height: 1px; background: #25313b; }
+main:has(#identity-setup:not([hidden])) .progress-step[data-step="1"] { color: #eef4f9; }
+main:has(#identity-setup:not([hidden])) .progress-step[data-step="1"] .progress-index,
+main:has(#seed-gate:not([hidden])) .progress-step[data-step="2"] .progress-index { border-color: #3f8cff; color: #bcd7ff; box-shadow: inset 0 0 0 1px rgba(63,140,255,.18); }
+main:has(#seed-gate:not([hidden])) .progress-step[data-step="1"] { color: #8ea0ae; }
+main:has(#seed-gate:not([hidden])) .progress-step[data-step="2"] { color: #eef4f9; }
 .step-label { margin-bottom: 12px; }
 .language-switch { display: inline-flex; gap: 4px; border: 1px solid #2f2f2f; border-radius: 999px; padding: 3px; }
 .lang-button { min-height: 0; border: 0; background: transparent; color: #888; padding: 6px 9px; font-size: 12px; font-weight: 650; letter-spacing: .05em; }
@@ -26,15 +40,22 @@ button.primary-wide { width: 100%; margin-top: 18px; font-weight: 650; }
 input, textarea { width: 100%; border: 1px solid #3a3a3a; background: #171717; color: #f4f4f4; border-radius: 10px; padding: 12px 13px; font: inherit; }
 input:focus, textarea:focus { outline: 1px solid #777; border-color: #777; }
 label { display: block; margin: 14px 0 7px; font-size: 13px; opacity: .72; }
-.onboarding-shell { padding-top: 28px; }
-.onboarding-head { max-width: 650px; }
-.path-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 26px 0 18px; }
-.path-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; background: #151515; color: #f4f4f4; border-color: #2e2e2e; border-radius: 14px; padding: 16px 18px; }
-.path-choice span { opacity: .55; font-size: 13px; }
-.path-choice.active { background: #eee; color: #111; border-color: #eee; }
-.path-choice.active span { opacity: .65; }
-.setup-path { border: 1px solid #2b2b2b; border-radius: 16px; padding: 22px; }
-.path-copy { max-width: 620px; }
+.onboarding-shell { padding-top: 30px; border-top: 0; }
+.onboarding-head { max-width: 760px; }
+.onboarding-head h2 { font-size: clamp(30px, 3vw, 40px); }
+.onboarding-head .muted { max-width: 700px; font-size: 15px; }
+.path-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 26px 0 22px; }
+.path-choice { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 92px; text-align: left; background: #0b1014; color: #d7dfe6; border-color: #283642; border-radius: 11px; padding: 20px 54px 20px 20px; transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
+.path-choice::after { content: ""; position: absolute; right: 20px; top: 50%; width: 18px; height: 18px; border: 1px solid #33424e; border-radius: 50%; transform: translateY(-50%); }
+.path-choice strong { font-size: 15px; }
+.path-choice span { opacity: .58; font-size: 13px; }
+.path-choice:hover { border-color: #3a4c5b; background: #0d141a; }
+.path-choice.active { background: #0d1721; color: #f4f7fa; border-color: #3f8cff; box-shadow: inset 0 0 0 1px rgba(63,140,255,.1); }
+.path-choice.active::after { border-color: #4b97ff; box-shadow: inset 0 0 0 4px #0d1721; background: #4b97ff; }
+.path-choice.active span { opacity: .72; }
+.setup-path { border: 1px solid #263541; background: #090d11; border-radius: 12px; padding: 24px; }
+.setup-path input, .setup-path textarea { background: #070b0e; border-color: #2a3945; border-radius: 8px; }
+.path-copy { max-width: 700px; }
 .file-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .file-row .file-name { margin: 0; }
 .alternate-methods { margin-top: 24px; border-top: 1px solid #2c2c2c; padding-top: 16px; }
@@ -225,4 +246,54 @@ dt { opacity: .55; padding-right: 20px; }
   color: #d9e0e6;
   border-color: #414a54;
   background: #12171c;
+}
+
+
+.footer-flop-link {
+  color: #7f8993;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.footer-flop-link:hover {
+  color: #c6d0d8;
+}
+
+.footer-separator {
+  color: #3a434c;
+  font-size: 11px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 1000;
+  max-width: min(420px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  padding: 11px 15px;
+  border: 1px solid #31404c;
+  border-radius: 9px;
+  background: #0d141a;
+  color: #dce4eb;
+  box-shadow: 0 12px 32px rgba(0,0,0,.34);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .onboarding-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .progress-rail { display: none; }
+  .progress-step { min-width: 0; gap: 7px; }
+  .progress-step strong { overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (max-width: 640px) {
+  .onboarding-topbar { gap: 14px; padding-bottom: 18px; }
+  .onboarding-progress { margin-top: 6px; padding-top: 10px; }
+  .progress-index { width: 30px; height: 30px; }
+  .path-choice { min-height: 82px; }
+  .setup-path { padding: 18px; }
+  .designer-credit { flex-wrap: wrap; row-gap: 6px; }
+  .toast { bottom: 18px; }
 }
