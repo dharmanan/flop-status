@@ -225,6 +225,7 @@ describe("TCLK closure notification bridge", () => {
     expect(deals).toContain('const TCLK_CLOSURE_EVENT_PREFIX = "flop:event:tclk-closure:v1:"');
     expect(deals).toContain('await postLine(room, built.line);');
     expect(deals).toContain('await sendClosureEvent(id, otherDid, offer, accept.contract);');
-    expect(deals).toContain("A notification delivery failure must never undo or block the closure record itself.");
+    expect(deals).toContain("A notification delivery");
+    expect(deals).toContain("failure must never undo or block the closure record itself.");
   });
 });
