@@ -1,7 +1,7 @@
 export function settingsCustodyCopy(language = "en") {
   return language === "tr"
-    ? "Aktif imzalama anahtarı IndexedDB içinde dışarı aktarılamaz. Taşınabilir kimlik yedeğinin sahibi sensin, FLOP değil."
-    : "The active signing key is nonextractable in IndexedDB. The portable identity backup belongs to you, not FLOP.";
+    ? "Aktif imzalama anahtarı IndexedDB içinde dışarı aktarılamaz. Taşınabilir kimlik yedeğinin sahibi sensin, Flop Proof değil."
+    : "The active signing key is nonextractable in IndexedDB. The portable identity backup belongs to you, not Flop Proof.";
 }
 
 export function syncSettingsCustodyCopy() {

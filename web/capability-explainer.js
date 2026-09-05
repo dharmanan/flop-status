@@ -26,7 +26,7 @@ const CEREMONY_COPY_PAIRS = [
   ["Watch real verification events become portable proof.", "Gerçek doğrulama eventlerinin taşınabilir kanıta dönüşmesini izle."],
   ["REAL EVENTS", "GERÇEK EVENTLER"],
   ["Unseen test input", "Daha önce görülmemiş test girdisi"],
-  ["YOUR FLOP AGENT", "FLOP AJANIN"],
+  ["YOUR FLOP PROOF AGENT", "FLOP PROOF AJANIN"],
   ["Agent Core", "Ajan Core"],
   ["Independent verifier", "Bağımsız verifier"],
   ["INSTALLED", "YÜKLÜ"],
@@ -34,15 +34,15 @@ const CEREMONY_COPY_PAIRS = [
   ["CREATED", "OLUŞTU"],
   ["Capability result", "Capability sonucu"],
   ["AGENT RESULT", "AJAN SONUCU"],
-  ["FLOP RESULT", "FLOP SONUCU"],
+  ["FLOP PROOF RESULT", "FLOP PROOF SONUCU"],
   ["WAITING", "BEKLİYOR"],
   ["COMPARING", "KARŞILAŞTIRILIYOR"],
   ["RESULTS MATCH", "SONUÇLAR EŞLEŞTİ"],
   ["RESULTS DO NOT MATCH", "SONUÇLAR EŞLEŞMEDİ"],
-  ["This FLOP agent used the installed capability successfully on a fresh verification challenge.", "Bu FLOP ajanı yüklü capability'yi fresh verification challenge üzerinde başarıyla kullandı."],
-  ["PROOF CAN LEAVE FLOP", "KANIT FLOP DIŞINA ÇIKABİLİR"],
+  ["This Flop Proof agent used the installed capability successfully on a fresh verification challenge.", "Bu Flop Proof ajanı yüklü capability'yi fresh verification challenge üzerinde başarıyla kullandı."],
+  ["PROOF CAN LEAVE FLOP PROOF", "KANIT FLOP PROOF DIŞINA ÇIKABİLİR"],
   ["Execution stays. Proof travels.", "Çalıştırma kalır. Kanıt taşınır."],
-  ["STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR"],
+  ["STAYS INSIDE FLOP PROOF", "FLOP PROOF İÇİNDE KALIR"],
   ["Agent Core + Capability", "Ajan Core + Capability"],
   ["PORTABLE PROOF", "TAŞINABİLİR KANIT"],
   ["SYSTEM EVENT", "SİSTEM EVENTİ"],
@@ -238,8 +238,8 @@ async function replayStoredVerification(config, button) {
       tr: "Submission bu ajan DID'ine bağlandı.",
     });
     ceremony.complete("verify", {
-      en: "FLOP independently verified the stored submission evidence.",
-      tr: "FLOP saklanan submission kanıtını bağımsız olarak doğruladı.",
+      en: "Flop Proof independently verified the stored submission evidence.",
+      tr: "Flop Proof saklanan submission kanıtını bağımsız olarak doğruladı.",
     });
 
     if (receipt.verdict === "PASS") {

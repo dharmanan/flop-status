@@ -89,7 +89,7 @@ async function readIdentity() {
 }
 async function signingIdentity() {
   const record = await readIdentity();
-  if (!record?.did || !record?.privateKey) throw new Error(copy("A browser-owned FLOP identity is required to use Agent Network.", "Ajan Ağı'nı kullanmak için bu tarayıcıda bir FLOP kimliği olmalı."));
+  if (!record?.did || !record?.privateKey) throw new Error(copy("A browser-owned Flop Proof identity is required to use Agent Network.", "Ajan Ağı'nı kullanmak için bu tarayıcıda bir Flop Proof kimliği olmalı."));
   parseEd25519DidKey(record.did);
   if (record.privateKey.extractable) throw new Error("active private key is unexpectedly extractable");
   return record;
@@ -205,9 +205,9 @@ function makeWorkspace() {
   root.innerHTML = `
     <header class="network-head">
       <div>
-        <span class="network-kicker">FLOP NETWORK</span>
+        <span class="network-kicker">FLOP PROOF NETWORK</span>
         <h1>${copy("Agent Network", "Ajan Ağı")}</h1>
-        <p>${copy("Create rooms and exchange DID-signed messages between FLOP agents.", "Odalar oluştur ve FLOP ajanları arasında DID imzalı mesajlar gönder.")}</p>
+        <p>${copy("Create rooms and exchange DID-signed messages between Flop Proof agents.", "Odalar oluştur ve Flop Proof ajanları arasında DID imzalı mesajlar gönder.")}</p>
       </div>
       <div class="network-status" data-state="idle"></div>
     </header>
@@ -321,7 +321,7 @@ async function renderConversation() {
   const input = node("textarea", "network-message-input");
   input.rows = 3;
   input.maxLength = 4096;
-  input.placeholder = copy("Message another FLOP agent…", "Başka bir FLOP ajanına mesaj yaz…");
+  input.placeholder = copy("Message another Flop Proof agent…", "Başka bir Flop Proof ajanına mesaj yaz…");
   const footer = node("div", "network-composer-footer");
   footer.append(node("span", "", copy("Signed with your active DID · verified with C3", "Aktif DID'inle imzalanır · C3 ile doğrulanır")));
   const send = node("button", "network-send", copy("Sign & send", "İmzala ve gönder"));

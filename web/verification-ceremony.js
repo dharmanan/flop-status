@@ -7,7 +7,7 @@ const STEP_LABELS = {
   execute: ["Capability executed", "Capability çalıştı"],
   result: ["Agent output created", "Ajan çıktısı oluştu"],
   sign: ["DID signature attached", "DID imzası bağlandı"],
-  verify: ["FLOP verified independently", "FLOP bağımsız doğruladı"],
+  verify: ["Flop Proof verified independently", "Flop Proof bağımsız doğruladı"],
   verdict: ["Decision recorded", "Karar kaydedildi"],
   certificate: ["Certificate issued", "Certificate üretildi"],
 };
@@ -293,7 +293,7 @@ function createVerifierPanel(verifierActor) {
   lock.append(el("span", "ceremony-lock-glyph", "◇"), el("strong", "", copy("WAITING", "BEKLİYOR")));
 
   const flopSide = el("div", "ceremony-compare-side ceremony-compare-flop");
-  flopSide.append(el("span", "", copy("FLOP RESULT", "FLOP SONUCU")));
+  flopSide.append(el("span", "", copy("FLOP PROOF RESULT", "FLOP PROOF SONUCU")));
   const flopCode = el("code", "mono", "—");
   flopSide.appendChild(flopCode);
 
@@ -307,13 +307,13 @@ function createCertificate(number, name) {
   const node = el("article", "ceremony-certificate");
   node.dataset.state = "hidden";
   const brand = el("div", "ceremony-certificate-brand");
-  brand.append(el("span", "ceremony-certificate-mark", "◇"), el("strong", "", "FLOP"));
+  brand.append(el("span", "ceremony-certificate-mark", "◇"), el("strong", "", "Flop Proof"));
   const type = el("span", "ceremony-certificate-type", "VERIFIED WORKING CAPABILITY");
   const cap = el("strong", "ceremony-certificate-cap", `Capability ${number}`);
   const capName = el("span", "ceremony-certificate-name", name);
   const statement = el("p", "ceremony-certificate-statement", copy(
-    "This FLOP agent used the installed capability successfully on a fresh verification challenge.",
-    "Bu FLOP ajanı yüklü capability'yi fresh verification challenge üzerinde başarıyla kullandı.",
+    "This Flop Proof agent used the installed capability successfully on a fresh verification challenge.",
+    "Bu Flop Proof ajanı yüklü capability'yi fresh verification challenge üzerinde başarıyla kullandı.",
   ));
   const fields = el("div", "ceremony-certificate-fields");
   const did = el("code", "mono", "DID  —");
@@ -330,10 +330,10 @@ function createProofDock() {
   const dock = el("section", "ceremony-proof-dock");
   dock.dataset.state = "hidden";
   const intro = el("div", "ceremony-proof-intro");
-  intro.append(el("span", "ceremony-kicker", copy("PROOF CAN LEAVE FLOP", "KANIT FLOP DIŞINA ÇIKABİLİR")), el("strong", "", copy("Execution stays. Proof travels.", "Çalıştırma kalır. Kanıt taşınır.")));
+  intro.append(el("span", "ceremony-kicker", copy("PROOF CAN LEAVE FLOP PROOF", "KANIT FLOP PROOF DIŞINA ÇIKABİLİR")), el("strong", "", copy("Execution stays. Proof travels.", "Çalıştırma kalır. Kanıt taşınır.")));
   const split = el("div", "ceremony-proof-split");
   const inside = el("div", "ceremony-boundary-side ceremony-boundary-inside");
-  inside.append(el("span", "", copy("STAYS INSIDE FLOP", "FLOP İÇİNDE KALIR")), el("strong", "", copy("Agent Core + Capability", "Ajan Core + Capability")));
+  inside.append(el("span", "", copy("STAYS INSIDE FLOP PROOF", "FLOP PROOF İÇİNDE KALIR")), el("strong", "", copy("Agent Core + Capability", "Ajan Core + Capability")));
   const outside = el("div", "ceremony-boundary-side ceremony-boundary-outside");
   outside.append(el("span", "", copy("PORTABLE PROOF", "TAŞINABİLİR KANIT")), el("strong", "", "DID · Certificate · Receipt · Public proof"));
   split.append(inside, outside);
@@ -379,12 +379,12 @@ export function createVerificationCeremony(container, config = {}) {
   const field = el("div", "ceremony-field");
   field.setAttribute("aria-hidden", "true");
   const challenge = createChallenge(number);
-  const agent = createActor({ className: "ceremony-agent", kicker: copy("YOUR FLOP AGENT", "FLOP AJANIN"), title: copy("Agent Core", "Ajan Core"), canvasClass: "ceremony-core-canvas" });
+  const agent = createActor({ className: "ceremony-agent", kicker: copy("YOUR FLOP PROOF AGENT", "FLOP PROOF AJANIN"), title: copy("Agent Core", "Ajan Core"), canvasClass: "ceremony-core-canvas" });
   const module = createCapabilityModule(number, name, visual.checks);
   agent.actor.appendChild(module.module);
   const result = createResult();
   const didSeal = createDidSeal();
-  const verifier = createActor({ className: "ceremony-verifier", kicker: "FLOP", title: copy("Independent verifier", "Bağımsız verifier"), canvasClass: "ceremony-verifier-canvas" });
+  const verifier = createActor({ className: "ceremony-verifier", kicker: "FLOP PROOF", title: copy("Independent verifier", "Bağımsız verifier"), canvasClass: "ceremony-verifier-canvas" });
   const verifierPanel = createVerifierPanel(verifier);
   const pass = el("div", "ceremony-pass");
   pass.dataset.state = "hidden";
@@ -557,7 +557,7 @@ export function createVerificationCeremony(container, config = {}) {
     verifier.actor.dataset.state = "active";
     verifierPanel.panel.dataset.state = "visible";
     await reveal(verifierPanel.panel, "translateY(10px) scale(.97)", 300);
-    say("Signed agent output is entering FLOP's independent verifier.", "İmzalı ajan çıktısı FLOP'un bağımsız verifier'ına giriyor.");
+    say("Signed agent output is entering Flop Proof's independent verifier.", "İmzalı ajan çıktısı Flop Proof'un bağımsız verifier'ına giriyor.");
     await travel(result.node, verifier.actor, "blue", "result");
     result.node.dataset.state = "submitted";
     await pulse(verifier.canvas, 1.025, 420);

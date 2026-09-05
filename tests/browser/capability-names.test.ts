@@ -30,7 +30,7 @@ describe("localized capability display names", () => {
   it("covers workspace, proof and ceremony user-facing localization", () => {
     expect(namesSource).toContain('method: "Doğrulama yöntemi"');
     expect(namesSource).toContain('workspace: "YETENEK ÇALIŞMA ALANI"');
-    expect(namesSource).toContain('use: "Bu yeteneği FLOP içinde kullan"');
+    expect(namesSource).toContain('use: "Bu yeteneği Flop Proof içinde kullan"');
     expect(namesSource).toContain('proofPackage: "Kanıt Paketi"');
     expect(namesSource).toContain('receipt: "Makbuz"');
     expect(namesSource).toContain('publicProof: "Herkese Açık Kanıt"');
