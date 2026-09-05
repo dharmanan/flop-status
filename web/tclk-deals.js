@@ -969,20 +969,7 @@ async function appendDealActions(container, context) {
     });
   }
 
-  if (state.status === "accepted" && isPayer && accept) {
-    container.appendChild(node("p", "tclk-action-note", copy("The offer was accepted. Your turn: create the PaperRail lock.", "Teklif kabul edildi. Sıra sende: anlaşmayı PaperRail üzerinde kilitle.")));
-    addAction(container, copy("Create PaperRail lock", "PaperRail kilidini oluştur"), async () => {
-      await ensurePaperLock({ contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
-      const built = await tool("tclk_make_lock", { from: id.did, contract: accept.contract, rail: "paper", ref: accept.contract });
-      await postLine(room, built.line);
-    });
-  }
-
-  if (state.status === "accepted" && isPayee && !isPayer && accept) {
-    container.appendChild(node("p", "tclk-action-note", copy("You accepted the offer. The payer must create the PaperRail lock before you can continue.", "Teklifi kabul ettin. Devam edebilmen için şimdi ödeyen tarafın PaperRail kilidini oluşturması gerekiyor.")));
-  }
-
-  if (state.status === "accepted" && (isPayer || isPayee) && accept) {
+  const addAcceptedCancelAction = () => {
     addAction(container, copy("Cancel agreement", "Anlaşmayı iptal et"), async () => {
       const built = await tool("tclk_make_cancel", { from: id.did, contract, reason: "cancelled by party" });
       await postLine(room, built.line);
@@ -993,6 +980,21 @@ async function appendDealActions(container, context) {
         // The signed cancellation is authoritative; notification delivery is best-effort.
       }
     });
+  };
+
+  if (state.status === "accepted" && isPayer && accept) {
+    container.appendChild(node("p", "tclk-action-note", copy("The offer was accepted. Your turn: create the PaperRail lock.", "Teklif kabul edildi. Sıra sende: anlaşmayı PaperRail üzerinde kilitle.")));
+    addAction(container, copy("Create PaperRail lock", "PaperRail kilidini oluştur"), async () => {
+      await ensurePaperLock({ contract: accept.contract, statement: accept.statement, refundAfterMs: offer.refundAfterMs });
+      const built = await tool("tclk_make_lock", { from: id.did, contract: accept.contract, rail: "paper", ref: accept.contract });
+      await postLine(room, built.line);
+    });
+    addAcceptedCancelAction();
+  }
+
+  if (state.status === "accepted" && isPayee && !isPayer && accept) {
+    container.appendChild(node("p", "tclk-action-note", copy("You accepted the offer. The payer must create the PaperRail lock before you can continue.", "Teklifi kabul ettin. Devam edebilmen için şimdi ödeyen tarafın PaperRail kilidini oluşturması gerekiyor.")));
+    addAcceptedCancelAction();
   }
 
   if (state.status === "locked" && isPayee && accept) {

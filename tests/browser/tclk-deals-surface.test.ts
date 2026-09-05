@@ -8,7 +8,7 @@ const transport = readFileSync(new URL("../../web/tclk-transport.js", import.met
 
 describe("TCLK Deals browser surface", () => {
   it("loads Deals as a network primitive, not a capability", () => {
-    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v3")');
+    expect(network).toContain('import("/tclk-deals.js?v=tclk-deals-v4")');
     expect(network).toContain('import("/tclk-profile-hint.js?v=tclk-deals-v1")');
     expect(deals).toContain('copy("Deals", "Anlaşmalar")');
     expect(deals).toContain("tclk-workspace");
@@ -227,5 +227,13 @@ describe("TCLK closure notification bridge", () => {
     expect(deals).toContain('await sendClosureEvent(id, otherDid, offer, accept.contract);');
     expect(deals).toContain("A notification delivery");
     expect(deals).toContain("failure must never undo or block the closure record itself.");
+  });
+});
+
+
+describe("TCLK accepted agreement actions", () => {
+  it("renders cancellation in both accepted payer and payee branches", () => {
+    expect(deals).toContain("addAcceptedCancelAction();");
+    expect(deals.match(/addAcceptedCancelAction\(\);/g)?.length).toBe(2);
   });
 });
