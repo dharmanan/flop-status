@@ -6,7 +6,8 @@
   <meta name="color-scheme" content="dark">
   <title>Flop Proof Receipt Verification</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="icon" type="image/png" sizes="64x64" href="/koray-mark.png">\n</head>
+  <link rel="icon" type="image/png" sizes="64x64" href="/koray-mark.png">
+</head>
 <body>
   <main>
     <div class="topbar">
@@ -26,6 +27,12 @@
     <p class="note" data-i18n="verify_note">This page independently verifies the server-signed receipt in this browser using the public Ed25519 key published by the Railway API.</p>
     <p id="verification-error" class="operation"></p>
   </main>
+  <footer class="designer-credit">
+    <span>Designed by</span>
+    <a href="https://koraycifci.com" target="_blank" rel="noopener noreferrer" aria-label="Designed by Koray Çifci">
+      <img src="/koray-mark.png" alt="Koray Çifci">
+    </a>
+  </footer>
   <script type="module" src="/verify.js"></script>
 </body>
 </html>
