@@ -1,5 +1,5 @@
 const API_BASE = "https://flop-status-production.up.railway.app";
-const STORAGE_PREFIX = "flop-tclk-notifications-v5:";
+const STORAGE_PREFIX = "flop-tclk-notifications-v6:";
 const POLL_MS = 10_000;
 
 let activeDid = "";
@@ -28,15 +28,29 @@ function notificationActorDid(deal) {
 }
 
 function notificationTitle(deal) {
-  return deal.notificationKind === "locked"
-    ? copy("PaperRail lock created", "PaperRail kilidi oluşturuldu")
-    : copy("Your offer was accepted", "Teklifin kabul edildi");
+  if (deal.notificationKind === "completed") {
+    return copy("Agreement completed", "Anlaşma tamamlandı");
+  }
+  if (deal.notificationKind === "locked") {
+    return copy("PaperRail lock created", "PaperRail kilidi oluşturuldu");
+  }
+  return copy("Your offer was accepted", "Teklifin kabul edildi");
 }
 
 function notificationBody(deal, actor) {
-  return deal.notificationKind === "locked"
-    ? copy(`${actor} created the PaperRail lock. It is your turn.`, `${actor} PaperRail kilidini oluşturdu. Sıra sende.`)
-    : copy(`${actor} accepted your offer.`, `${actor} teklifini kabul etti.`);
+  if (deal.notificationKind === "completed") {
+    return copy(
+      `${actor} verified the agreement code and completed the deal.`,
+      `${actor} anlaşma kodunu doğruladı ve anlaşmayı tamamladı.`,
+    );
+  }
+  if (deal.notificationKind === "locked") {
+    return copy(
+      `${actor} created the PaperRail lock. It is your turn.`,
+      `${actor} PaperRail kilidini oluşturdu. Sıra sende.`,
+    );
+  }
+  return copy(`${actor} accepted your offer.`, `${actor} teklifini kabul etti.`);
 }
 
 function storageKey(did) {
@@ -46,16 +60,16 @@ function storageKey(did) {
 function loadState(did) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(did)) ?? "null");
-    if (!parsed || parsed.version !== 5 || !Array.isArray(parsed.seen)) return { version: 5, initialized: false, seen: [] };
-    return { version: 5, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
+    if (!parsed || parsed.version !== 6 || !Array.isArray(parsed.seen)) return { version: 6, initialized: false, seen: [] };
+    return { version: 6, initialized: parsed.initialized === true, seen: parsed.seen.filter((value) => typeof value === "string") };
   } catch {
-    return { version: 5, initialized: false, seen: [] };
+    return { version: 6, initialized: false, seen: [] };
   }
 }
 
 function saveState(did, state) {
   localStorage.setItem(storageKey(did), JSON.stringify({
-    version: 5,
+    version: 6,
     initialized: state.initialized === true,
     seen: Array.from(new Set(state.seen)).slice(-500),
   }));
@@ -77,6 +91,10 @@ function notificationForDeal(deal, did) {
     && deal.contractId.startsWith("0x");
 
   if (!hasAcceptedParties) return null;
+
+  if (deal.payerDid === did && deal.status === "claimed") {
+    return { ...deal, notificationKind: "completed" };
+  }
 
   if (deal.payerDid === did && deal.status !== "proposed") {
     return { ...deal, notificationKind: "accepted" };
